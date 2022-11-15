@@ -49,7 +49,7 @@ There are two main use cases:
   * Stored on blob storage
   * Logging of all actions triggered from the UI
 
-# Compatibility
+# Requirements
 
   * SAP Commerce (>=1811)
   * Tested with source databases:
@@ -82,6 +82,13 @@ This repository is provided "as-is"; no support is available.
 Find more information about SAP Commerce Cloud Setup on our [help site](https://help.sap.com/viewer/product/SAP_COMMERCE_CLOUD_PUBLIC_CLOUD/LATEST/en-US).
 
 With regards Commerce DB Sync, access to the database for customers is and will not be possible in the future and SAP does not provide any additional support on Commerce DB Sync in particular. Support can be bought as paid engagement from SAP Consulting only.
+
+# Contributing
+We welcome feedback, ideas, requests, and especially code contributions.
+
+Read the [Contributing document](CONTRIBUTING.md) and learn our Code of Conduct and how to:
+- Report an issue
+- Contribute code to SAP Commerce DB Sync
 
 # License
 Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This project is licensed under the Apache Software License, version 2.0 except as noted otherwise in the [LICENSE file](LICENSE).
