@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="web/webroot/WEB-INF/lib/displaytag-1.2.jar"/>
+	<classpathentry kind="lib" path="web/webroot/WEB-INF/lib/jstl-impl-1.2.jar"/>
+	<classpathentry exported="true" kind="lib" path="resources"/>
+	<classpathentry kind="src" output="eclipsebin/classes" path="src"/>
+	<classpathentry kind="src" output="eclipsebin/web/classes" path="web/src"/>
+	<classpathentry kind="src" output="eclipsebin/classes" path="testsrc"/>
+	<classpathentry kind="src" output="eclipsebin/classes" path="gensrc"/>
+	<classpathentry kind="src" path="/platform"/>
+	<classpathentry kind="lib" path="/platform/tomcat/lib/tomcat-dbcp.jar" sourcepath="/tmp/.org.sf.feeling.decompiler1586659330919/source/tomcat-dbcp-8.5.32-sources.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/commercedbsynctypesystem"/>
+	<classpathentry kind="output" path="eclipsebin/notused"/>
+</classpath>

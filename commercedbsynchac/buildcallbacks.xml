@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  --><project>
+        
+    <macrodef name="commercedbsynchac_before_ear">
+                
+        <sequential>
+                        
+            <!-- you can do anything before the EAR file is being packed -->
+                    
+        </sequential>
+            
+    </macrodef>
+    
+</project>

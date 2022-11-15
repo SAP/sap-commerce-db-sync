@@ -1,0 +1,17 @@
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>de.hybris.platform</groupId>
+    <artifactId>commercedbsynchac</artifactId>
+    <version>6.7.0.0-RC19</version>
+
+    <packaging>jar</packaging>
+
+    <dependencies>
+    </dependencies>
+</project>

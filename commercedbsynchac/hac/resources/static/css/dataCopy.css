@@ -1,0 +1,71 @@
+/*
+ *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  License: Apache-2.0
+ *
+ */
+
+.placeholder {
+    color: dimgrey;
+}
+
+.status dd {
+    font-size: 1rem;
+}
+
+.completed {
+    color: green;
+}
+
+.failed {
+    color: red;
+}
+
+#copySummary .total, #copySummary .failed, #copySummary .completed {
+    font-weight: bold;
+}
+
+#copyStatus .completed {
+    color: green;
+    text-transform: uppercase;
+    font-weight: bolder;
+}
+
+#copyStatus .failed {
+    text-transform: uppercase;
+    font-weight: bolder;
+}
+
+#copyLogContainer {
+    height: 600px;
+    overflow: auto;
+    font-family: monospace;
+    font-size: 1rem;
+    background-color: #FAFAFF;
+    padding: 1rem;
+    margin: 1rem 1rem 1rem 0;
+    border: 1px grey dashed;
+    border-radius: 3px;
+}
+
+#copyLogContainer p + p {
+    text-indent: 0;
+}
+
+#copyLogContainer .failed {
+    font-weight: bold;
+    font-size: 1.02em
+}
+
+#copyLogContainer .completed {
+    font-weight: bold;
+    font-size: 1.02em
+}
+
+button[disabled] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+button.control-button {
+  float:left;
+}

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="commercedbsynchacHacTabsConfig" class="de.hybris.platform.hac.custom.JsonHacConfiguration">
+        <property name="resource"
+                  value="#{configurationService.configuration.getProperty('migration.from.hac.enabled')?'classpath:commercedbsynchac-tab-config.json':'classpath:commercedbsynchac-without-migration-tab-config.json'}"/>
+    </bean>
+
+    <bean id="defaultMetricService" class="com.sap.cx.boosters.commercedbsynchac.metric.impl.DefaultMetricService">
+        <constructor-arg>
+            <list>
+                <ref bean="memoryPopulator"/>
+                <ref bean="cpuPopulator"/>
+                <ref bean="dtuPopulator"/>
+                <ref bean="hikariSourceConnectionPopulator"/>
+                <ref bean="hikariTargetConnectionPopulator"/>
+                <ref bean="ioPopulator"/>
+                <ref bean="tableTaskExecutorPopulator"/>
+            </list>
+        </constructor-arg>
+    </bean>
+
+    <bean id="memoryPopulator" class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.MemoryMetricPopulator"/>
+    <bean id="cpuPopulator" class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.CpuMetricPopulator"/>
+    <bean id="dtuPopulator" class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.DTUMetricPopulator"/>
+    <bean id="hikariSourceConnectionPopulator"
+          class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.HikariSourceConnectionMetricPopulator"/>
+    <bean id="hikariTargetConnectionPopulator"
+          class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.HikariTargetConnectionMetricPopulator"/>
+    <bean id="ioPopulator" class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.IOMetricPopulator">
+        <constructor-arg ref="performanceProfiler"/>
+    </bean>
+    <bean id="tableTaskExecutorPopulator"
+          class="com.sap.cx.boosters.commercedbsynchac.metric.populator.impl.TaskExecutorMetricPopulator">
+        <constructor-arg ref="dataWriteTaskExecutor"/>
+        <constructor-arg value="table"/>
+    </bean>
+
+
+</beans>

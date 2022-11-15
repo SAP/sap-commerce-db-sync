@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+
+<!--
+ All hybris buildcallbacks.xml macrodefinitions:
+ 
+ Build/Documentation
+ 
+	 before/after ant macro "clean"
+		 <macrodef name="commercedbsync_before_clean"/>
+		 <macrodef name="commercedbsync_after_clean"/>
+	 
+	 before/after ant macro "build"
+		 <macrodef name="commercedbsync_before_build"/>
+		 <macrodef name="commercedbsync_after_build"/>
+		 
+	 before/after ant macro "compile_core" - the core module of the extension
+		 <macrodef name="commercedbsync_before_compile_core">
+		 <macrodef name="commercedbsync_after_compile_core">
+	 
+	 before/after ant macro "compile_web" - the web module of the extension
+		 <macrodef name="commercedbsync_before_compile_web" />
+		 <macrodef name="commercedbsync_after_compile_web" />
+	 
+	 before/after ant macro "compile_hmc" - the hmc module of the extension
+		 <macrodef name="commercedbsync_before_compile_hmc" />
+		 <macrodef name="commercedbsync_after_compile_hmc" />
+ 
+ Preparing extension
+ 
+	 will be called in the beginning of the ant call and only once (also when using multiple 
+	 ant targets e.g. ant build yunittest)	
+		 <macrodef name="commercedbsync_only_once_prepare"/>
+ 
+ Creating ear module/production
+ 
+	 before/after ant macro "ear"
+		 <macrodef name="commercedbsync_before_ear"/>
+		 <macrodef name="commercedbsync_after_ear"/>
+
+	 before/after ant macro "production" - for hybris server only
+		 <macrodef name="commercedbsync_before_production" />
+		 <macrodef name="commercedbsync_after_production" />
+ 
+ JUnit Test
+ 
+	 before/after ant macro "yunitinit" 
+		 <macrodef name="commercedbsync_before_yunitinit" />
+		 <macrodef name="commercedbsync_after_yunitinit" />
+	 
+	 before/after ant macro "yunit"
+		 <macrodef name="commercedbsync_before_yunit" />
+		 <macrodef name="commercedbsync_after_yunit" /> 
+		 
+ Distribution package
+ 
+ 	 before/after ant macro "dist" - internal target; only for use when platform is available in source code
+		 <macrodef name="commercedbsync_after_dist"/>
+		 <macrodef name="commercedbsync_before_dist"/>
+	 
+	 before/after ant macro "dist_copy" - internal target; only for use when platform is available in source code
+		 <macrodef name="commercedbsync_before_dist_copy"/>
+		 <macrodef name="commercedbsync_after_dist_copy"/>
+		  
+ 	 With these filters you can override the default extension filters defined in platform/resources/ant/dist/filtersets.xml
+ 	  	 <patternset id="extension.commercedbsync.binary.filter">
+ 	  	  	 <patternset refid="extension.filter" />
+ 	  	  	 <exclude name="**/*-source.jar" />
+ 	  	 </patternset>
+ 	  	 <patternset id="extension.commercedbsync.source.filter">
+ 	  	  	 <exclude name="**/bin/**" />
+ 	  	 </patternset>
+     With this filter you can decide what should be excluded from development zip.
+ 	  	 <patternset id="extension.commercedbsync.devzip.filter">
+ 	  	 Include all files from extension.source.filter.
+ 	  	     <patternset refid="extension.source.filter" />
+         Exclude unwanted files.
+ 	  	  	 <exclude name="lib/exclude-me.jar" />
+ 	  	 </patternset>
+ 
+--><project name="commercedbsync_buildcallbacks">
+        
+    <macrodef name="commercedbsync_after_build">
+                
+        <sequential>
+                        
+            <patchAzureCloudUtils/>
+                    
+        </sequential>
+            
+    </macrodef>
+        
+    <macrodef name="commercedbsync_before_ear">
+                
+        <sequential>
+                        
+            <patchAzureCloudUtils/>
+                    
+        </sequential>
+            
+    </macrodef>
+        
+    <macrodef name="commercedbsync_before_production">
+                
+        <sequential>
+                        
+            <patchAzureCloudUtils/>
+                    
+        </sequential>
+            
+    </macrodef>
+        
+    <macrodef name="commercedbsync_before_dist">
+                
+        <sequential>
+                        
+            <patchAzureCloudUtils/>
+                    
+        </sequential>
+            
+    </macrodef>
+        
+    <macrodef name="patchAzureCloudUtils">
+                
+        <sequential>
+                        
+            <if>
+                                
+                <available file="${ext.azurecloud.path}/bin/azurecloudserver.jar"/>
+                                
+                <then>
+                                        
+                    <echo>PATCHING azurecloudserver.jar to enable configurable fake tenants in AzureCloudUtils</echo>
+                                        
+                    <jar destfile="${ext.azurecloud.path}/bin/azurecloudserver.jar" update="true">
+                                                
+                        <fileset dir="${ext.commercedbsync.path}/classes" includes="**/AzureCloudUtils.class"/>
+                                            
+                    </jar>
+                                    
+                </then>
+                                
+                <else>
+                                        
+                    <echo>${ext.azurecloud.path}/bin/azurecloudserver.jar doesn't exist. Cannot patch AzureCloudUtils to
+                        enable fake tenants!
+                    </echo>
+                                    
+                </else>
+                            
+            </if>
+                    
+        </sequential>
+            
+    </macrodef>
+    
+</project>

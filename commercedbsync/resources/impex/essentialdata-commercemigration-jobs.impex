@@ -1,0 +1,27 @@
+
+INSERT_UPDATE ServicelayerJob;code[unique=true];springId[unique=true]
+;incrementalMigrationJob;incrementalMigrationJob
+;fullMigrationJob;fullMigrationJob
+
+# Update details for incremental migration
+INSERT_UPDATE IncrementalMigrationCronJob;code[unique=true];active;job(code)[default=incrementalMigrationJob];sessionLanguage(isoCode)[default=en]
+;incrementalMigrationJob;true;
+
+INSERT_UPDATE IncrementalMigrationCronJob;code[unique=true];migrationItems
+#% afterEach: impex.getLastImportedItem().setActivationTime(new Date(System.currentTimeMillis() - 3600 * 1000));
+;incrementalMigrationJob;PAYMENTMODES,ADDRESSES,users,CAT2PRODREL,CONSIGNMENTS,ORDERS
+
+INSERT_UPDATE Trigger;cronjob(code)[unique=true];cronExpression
+#% afterEach: impex.getLastImportedItem().setLastStartTime(new Date(System.currentTimeMillis() - 3600 * 1000));
+;incrementalMigrationJob; 0 0/1 * * * ?
+
+INSERT_UPDATE FullMigrationCronJob;code[unique=true];active;job(code)[default=fullMigrationJob];sessionLanguage(isoCode)[default=en]
+;fullMigrationJob;true;
+
+INSERT_UPDATE FullMigrationCronJob;code[unique=true];truncateEnabled;migrationItems
+;fullMigrationJob;true;PAYMENTMODES,products
+
+INSERT_UPDATE Trigger;cronjob(code)[unique=true];cronExpression
+#% afterEach: impex.getLastImportedItem().setActivationTime(new Date(System.currentTimeMillis() - 3600 * 1000));
+;fullMigrationJob; 0 0 0 * * ?
+

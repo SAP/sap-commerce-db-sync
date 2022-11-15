@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="beans.xsd">
+
+    <enum class="com.sap.cx.boosters.commercedbsync.MigrationProgress">
+        <value>RUNNING</value>
+        <value>PROCESSED</value>
+        <value>COMPLETED</value>
+        <value>ABORTED</value>
+        <value>STALLED</value>
+    </enum>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask">
+        <property name="targetnodeId" type="int"/>
+        <property name="migrationId" type="String"/>
+        <property name="pipelinename" type="String"/>
+        <property name="sourcetablename" type="String"/>
+        <property name="targettablename" type="String"/>
+        <property name="sourcerowcount" type="long"/>
+        <property name="targetrowcount" type="long"/>
+        <property name="columnmap" type="java.util.Map&lt;String,String&gt;"/>
+        <property name="completed" type="boolean"/>
+        <property name="failure" type="boolean"/>
+        <property name="duration" type="String"/>
+        <property name="error" type="String"/>
+        <property name="lastUpdate" type="java.time.LocalDateTime"/>
+        <!-- workaround for hac json serializer; it is not configured to handle java.time.* -->
+        <property name="lastUpdateEpoch" type="Long"/>
+        <property name="avgWriterRowThroughput" type="double"/>
+        <property name="avgReaderRowThroughput" type="double"/>
+        <!-- ORACLE_TARGET -->
+        <property name="durationinseconds" type="double"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.MigrationStatus">
+        <property name="migrationID" type="String" equals="true"/>
+        <property name="start" type="java.time.LocalDateTime"/>
+        <property name="startEpoch" type="Long"/>
+        <property name="end" type="java.time.LocalDateTime"/>
+        <property name="endEpoch" type="Long"/>
+        <property name="lastUpdate" type="java.time.LocalDateTime"/>
+        <property name="lastUpdateEpoch" type="Long"/>
+        <property name="completed" type="boolean"/>
+        <property name="failed" type="boolean"/>
+        <property name="totalTasks" type="int"/>
+        <property name="completedTasks" type="int"/>
+        <property name="failedTasks" type="int"/>
+        <property name="status" type="com.sap.cx.boosters.commercedbsync.MigrationProgress"/>
+        <property name="statusUpdates" type="java.util.List&lt;com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask&gt;"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.MigrationReport">
+        <property name="migrationID" type="String" equals="true"/>
+        <property name="configuration" type="java.util.SortedMap&lt;String,String&gt;"/>
+        <property name="migrationStatus" type="com.sap.cx.boosters.commercedbsync.MigrationStatus"/>
+        <property name="databaseCopyTasks"
+                  type="java.util.Set&lt;com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask&gt;"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.TableCandidate">
+        <property name="commonTableName" type="String">
+            <description>No prefix, no type system suffix</description>
+        </property>
+        <property name="tableName" type="String">
+            <description>No prefix, with type system suffix</description>
+        </property>
+        <property name="fullTableName" type="String">
+            <description>With prefix, with type system suffix</description>
+        </property>
+        <property name="baseTableName" type="String">
+            <description>With prefix, with type system suffix, no additional suffix</description>
+        </property>
+        <property name="additionalSuffix" type="String">
+            <description>I.e, LP tables</description>
+        </property>
+        <property name="typeSystemRelatedTable" type="boolean"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.TypeSystemTable">
+        <property name="typeCode" type="String">
+            <description></description>
+        </property>
+        <property name="tableName" type="String">
+            <description></description>
+        </property>
+        <property name="name" type="String">
+            <description></description>
+        </property>
+        <property name="typeSystemName" type="String">
+            <description></description>
+        </property>
+        <property name="auditTableName" type="String">
+            <description></description>
+        </property>
+        <property name="propsTableName" type="String">
+            <description></description>
+        </property>
+        <property name="typeSystemSuffix" type="String">
+            <description></description>
+        </property>
+        <property name="typeSystemRelatedTable" type="boolean"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.SeekQueryDefinition">
+        <property name="table" type="String" />
+        <property name="column" type="String" />
+        <property name="lastColumnValue" type="Object" />
+        <property name="nextColumnValue" type="Object" />
+        <property name="batchSize" type="long" />
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition">
+        <property name="table" type="String" />
+        <property name="allColumns" type="java.util.Set&lt;String&gt;" />
+        <property name="batchSize" type="long" />
+        <property name="offset" type="long" />
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition">
+        <property name="table" type="String" />
+        <property name="column" type="String" />
+        <property name="batchSize" type="long" />
+    </bean>
+
+     <bean class="com.sap.cx.boosters.commercedbsync.SeekQueryDefinition">
+    <property name="deletionEnabled" type="boolean" />
+    <property name="lpTableEnabled" type="boolean" />
+  </bean>
+  <bean class="com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition">
+    <property name="deletionEnabled" type="boolean" />
+    <property name="lpTableEnabled" type="boolean" />
+  </bean>
+
+  <bean class="com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition">
+    <property name="deletionEnabled" type="boolean" />
+    <property name="lpTableEnabled" type="boolean" />
+  </bean>
+
+  <bean class="com.sap.cx.boosters.commercedbsync.MigrationStatus">
+    <property name="deletionEnabled" type="boolean" />
+    <property name="lpTableEnabled" type="boolean" />
+  </bean>
+</beans>

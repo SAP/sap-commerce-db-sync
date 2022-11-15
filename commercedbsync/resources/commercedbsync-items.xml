@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+<!--
+	ATTENTION: This is just an example file. You have to edit it according to your needs.
+-->
+
+<items xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="items.xsd">
+
+    <collectiontypes>
+        <collectiontype code="ReportingMigrationItemsList" elementtype="java.lang.String" autocreate="true"
+            generate="true" type="set"/>
+    </collectiontypes>
+    <enumtypes>
+        <enumtype code="ItemChangeType">
+            <value code="NEW"/>
+            <value code="DELETED"/>
+            <value code="MODIFIED"/>
+        </enumtype>
+    </enumtypes>
+
+    <itemtypes>
+        <itemtype code="MigrationCronJob" autocreate="true" generate="true" extends="CronJob"
+            jaloclass="com.sap.cx.boosters.commercedbsync.cron.MigrationCronJob">
+            <attributes>
+                <attribute qualifier="migrationItems" type="ReportingMigrationItemsList">
+                    <description>List of table included for the migration</description>
+                    <!-- since this is Collection(String) we MUST disable pre-fetching explicitly! -->
+                    <custom-properties>
+                        <property name="modelPrefetchMode">
+                            <value>java.lang.Boolean.FALSE</value>
+                        </property>
+                    </custom-properties>
+                    <persistence type="property"/>
+                    <modifiers optional="true"/>
+                </attribute>
+                <attribute qualifier="schemaAutotrigger" type="boolean" autocreate="true" generate="true">
+                    <description>automatically trigger schema migrator before data copy process is started</description>
+                    <persistence type="property" />
+                    <modifiers optional="true"/>
+                    <defaultvalue>false</defaultvalue>
+                </attribute>
+                <attribute qualifier="truncateEnabled" type="boolean" autocreate="true" generate="true">
+                    <description>delete rows in target table before inserting new records</description>
+                    <persistence type="property" />
+                    <modifiers optional="true"/>
+                    <defaultvalue>false</defaultvalue>
+                </attribute>
+            </attributes>
+        </itemtype>
+        <itemtype code="IncrementalMigrationCronJob" autocreate="true" generate="true" extends="MigrationCronJob"
+            jaloclass="com.sap.cx.boosters.commercedbsync.cron.IncrementalMigrationCronJob">
+            <description>
+                Cronjob For Incremental Migration.
+            </description>
+            <attributes>
+                <attribute qualifier="lastStartTime" type="java.util.Date">
+                    <description>Last Executed Incremental migration Timestamp</description>
+                    <modifiers optional="true"/>
+                    <persistence type="property"/>
+                </attribute>
+            </attributes>
+        </itemtype>
+
+        <itemtype code="FullMigrationCronJob" autocreate="true" generate="true" extends="MigrationCronJob"
+            jaloclass="com.sap.cx.boosters.commercedbsync.cron.FullMigrationCronJob">
+            <description>
+                Cronjob For full Migration.
+            </description>
+            <attributes>
+            </attributes>
+        </itemtype>
+
+        <itemtype generate="true"
+            code="ItemDeletionMarker"
+            jaloclass="com.sap.cx.boosters.commercedbsync.jalo.ItemDeletionMarker"
+            autocreate="true">
+            <deployment table="itemdeletionmarkers" typecode="30300"/>
+            <attributes>
+                <attribute qualifier="itemPK" type="java.lang.Long">
+                    <persistence type="property"/>
+                    <modifiers optional="false" write="false" initial="true"/>
+                </attribute>
+                <attribute qualifier="table" type="java.lang.String">
+                    <persistence type="property"/>
+                    <modifiers optional="false"  write="false" initial="true"/>
+                </attribute>
+                <attribute qualifier="changeType" type="ItemChangeType">
+                    <persistence type="property"/>
+                    <modifiers optional="false"/>
+                </attribute>
+            </attributes>
+            <indexes>
+                <index name="ItemDeletionIDX" unique="true">
+                    <key attribute="itemPK" />
+                    <key attribute="table" />
+                </index>
+                <index name="ModifiedtimeIDX" unique="false">
+                    <key attribute="modifiedtime" />
+                    <key attribute="table" />
+                </index>
+
+            </indexes>
+        </itemtype>
+
+    </itemtypes>
+</items>

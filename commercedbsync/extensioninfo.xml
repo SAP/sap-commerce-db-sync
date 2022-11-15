@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  --><extensioninfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="extensioninfo.xsd">
+        
+    <extension abstractclassprefix="Generated" classprefix="Commercedbsync" managername="CommercedbsyncManager" managersuperclass="de.hybris.platform.jalo.extension.Extension" name="commercedbsync" usemaven="true">
+                
+        <coremodule generated="true" manager="de.hybris.platform.jalo.extension.GenericManager" packageroot="com.sap.cx.boosters.commercedbsync"/>
+                
+    
+    </extension>
+    
+</extensioninfo>

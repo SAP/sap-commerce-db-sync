@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="beans.xsd">
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData">
+        <property name="results" type="java.lang.String[][]"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData">
+        <property name="source" type="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData"/>
+        <property name="target" type="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.ReportResultData">
+        <property name="reportId" type="java.lang.String"/>
+        <property name="modifiedTimestamp" type="java.lang.String"/>
+        <property name="primaryUri" type="java.lang.String"/>
+    </bean>
+
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.DataSourceConfigurationData">
+        <property name="profile" type="java.lang.String"/>
+        <property name="driver" type="java.lang.String"/>
+        <property name="connectionString" type="java.lang.String"/>
+        <property name="userName" type="java.lang.String"/>
+        <property name="password" type="java.lang.String"/>
+        <property name="schema" type="java.lang.String"/>
+        <property name="catalog" type="java.lang.String"/>
+        <property name="maxActive" type="java.lang.Integer"/>
+        <property name="maxIdle" type="java.lang.Integer"/>
+        <property name="minIdle" type="java.lang.Integer"/>
+        <property name="removeAbandoned" type="java.lang.Boolean"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.DataSourceValidationResultData">
+        <property name="valid" type="java.lang.Boolean"/>
+        <property name="exception" type="java.lang.String"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.MetricData">
+        <property name="metricId" type="java.lang.String"/>
+        <property name="name" type="java.lang.String"/>
+        <property name="description" type="java.lang.String"/>
+        <property name="primaryValue" type="java.lang.Double"/>
+        <property name="primaryValueLabel" type="java.lang.String"/>
+        <property name="primaryValueUnit" type="java.lang.String"/>
+        <property name="primaryValueThreshold" type="java.lang.Double"/>
+        <property name="primaryValueStandardColor" type="java.lang.String"/>
+        <property name="primaryValueCriticalColor" type="java.lang.String"/>
+        <property name="secondaryValue" type="java.lang.Double"/>
+        <property name="secondaryValueLabel" type="java.lang.String"/>
+        <property name="secondaryValueUnit" type="java.lang.String"/>
+        <property name="secondaryValueThreshold" type="java.lang.Double"/>
+        <property name="secondaryValueStandardColor" type="java.lang.String"/>
+        <property name="secondaryValueCriticalColor" type="java.lang.String"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.SchemaSqlFormData">
+        <property name="sqlQuery" type="java.lang.String"/>
+        <property name="accepted" type="java.lang.Boolean"/>
+    </bean>
+
+
+</beans>

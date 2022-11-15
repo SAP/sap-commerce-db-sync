@@ -1,37 +1,87 @@
-# SAP Repository Template
+# SAP Commerce DB Sync
 
-Default templates for SAP open source repositories, including LICENSE, .reuse/dep5, Code of Conduct, etc... All repositories on github.com/SAP will be created based on this template.
+[![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/commerce-migration-toolkit)](https://api.reuse.software/info/github.com/SAP-samples/commerce-migration-toolkit)
 
-## To-Do
+SAP Commerce DB Sync performs table-to-table replication in single-directionally manner between two SAP Commerce instances (onPrem to Cloud) or between SAP Commerce and an external database.
 
-In case you are the maintainer of a new SAP open source project, these are the steps to do with the template files:
+SAP Commerce DB Sync is implemented as SAP Commerce extensions and it does not require any third-party ETL.
 
-- Check if the default license (Apache 2.0) also applies to your project. A license change should only be required in exceptional cases. If this is the case, please change the [license file](LICENSE).
-- Enter the correct metadata for the REUSE tool. See our [wiki page](https://wiki.wdf.sap.corp/wiki/display/ospodocs/Using+the+Reuse+Tool+of+FSFE+for+Copyright+and+License+Information) for details how to do it. You can find an initial .reuse/dep5 file to build on. Please replace the parts inside the single angle quotation marks < > by the specific information for your repository and be sure to run the REUSE tool to validate that the metadata is correct.
-- Adjust the contribution guidelines (e.g. add coding style guidelines, pull request checklists, different license if needed etc.)
-- Add information about your project to this README (name, description, requirements etc). Especially take care for the <your-project> placeholders - those ones need to be replaced with your project name. See the sections below the horizontal line and [our guidelines on our wiki page](https://wiki.wdf.sap.corp/wiki/display/ospodocs/Guidelines+for+README.md+file) what is required and recommended.
-- Remove all content in this README above and including the horizontal line ;)
+There are two main use cases:
+* __Replicate data across an external database__: you can push data regularly in batch mode through a Commerce Cloud cronjob and synchronize to an external database. A typical use case is for analytics and reporting purpose when you need direct JDBC access to the database to run analytic jobs.
+* __Data migration__: paired with the self-service media process described on [this CXWorks article](https://www.sap.com/cxworks/article/2589632453/migrate_to_sap_commerce_cloud_migrate_media_with_azcopy), it allows to self-service a one-shot data migration from the on-premise SAP Commerce environment to a SAP Commerce Cloud subscription.
 
-***
+# Getting started
 
-# Our new open source project
+* [User Guide for Data Replication](docs/user/USER-GUIDE-DATA-REPLICATION.md) Go through the details about Data replication between SAP Commerce Cloud and an external database. 
+* [User Guide for Data Migration](docs/user/USER-GUIDE-DATA-MIGRATION.md) When ready to start the migration activities, follow the instructions in the User Guide to trigger the data migration.
+* [Configuration Guide](docs/configuration/CONFIGURATION-GUIDE.md) The extensions ship with a default configuration that may need to be adjusted depending on the desired behaviour. This guide explains how different features and behaviours can be configured.
+* [Security Guide](docs/security/SECURITY-GUIDE.md) A data migration typically features sensitive data and uses delicate system access. Make sure you have read the Security Guide before you proceed with any migration activities and thereby acknowledge the security recommendations stated in the guide.
+* [Performance Guide](docs/performance/PERFORMANCE-GUIDE.md) Performance is crucial for any data migration, not only for large databases but also generally to reduce the time of the cut-over window. The performance guide explains the basic concept of performance tuning and also provides benchmarks that will give you an impression of how to estimate the cutover time window.
+* [Developer Guide](docs/developer/DEVELOPER-GUIDE.md) If you want to contribute please read this guide.
+* [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md) A collection of common problems and how to tackle them.
 
-## About this project
+# Features Overview
 
-*Insert a short description of your project here...*
+* Database Connectivity
+  * Multipe supported databases: Oracle, MySQL, HANA, MSSQL
+  * UI based connection validation
+* Schema Differences
+  * UI based schema differences detector
+  * Automated target schema adaption
+    * Table creation / removal
+    * Column creation / removal
+  * Configurable behaviour
+* Data Copy
+  * UI based copy trigger
+  * Configurable target table truncation
+  * Configurable index disabling
+  * Read/write batching with configurable sizes
+  * Copy parallelization
+  * Cluster awareness
+  * Column exclusions
+  * Table exclusions/inclusions
+  * Incremental mode (delta)
+  * Custom tables
+  * Staged approach using table prefix
+* Reporting / Audit
+  * Automated reporting for schema changes
+  * Automated reporting for copy processes
+  * Stored on blob storage
+  * Logging of all actions triggered from the UI
 
-## Requirements and Setup
+# Compatibility
 
-*Insert a short description what is required to get your project running...*
+  * SAP Commerce (>=1811)
+  * Tested with source databases:
+    * Azure SQL
+    * MySQL (5.7)
+    * Oracle (XE 11g)
+    * HANA (express 2.0) and HANA Cloud
+  * Tested with target databases:
+    * Azure SQL
+    * Oracle (XE 11g)
+    * HANA (express 2.0) and HANA Cloud
 
-## Support, Feedback, Contributing
+# Performance
 
-This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/SAP/<your-project>/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
+Commerce DB Sync has been built to offer reasonable performance with large amount of data using the following design: 
+* Table to table replication using JDBC (low level)
+* Selection of tables so we do not need a full synchronization in particular for large technical table (task logs, audit logs...)​
+* Multi-threaded and can manage multiple tables at the same time ​
+* Using UPSERT (INSERT/UPDATE)
+* Use read replica Commerce database as a source database
 
-## Code of Conduct
+# Demo Video
+Here is a video that presents how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud: 
+  https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3
 
-We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone. By participating in this project, you agree to abide by its [Code of Conduct](CODE_OF_CONDUCT.md) at all times.
+# How to Obtain Support
 
-## Licensing
+This repository is provided "as-is"; no support is available.
 
-Copyright (20xx-)20xx SAP SE or an SAP affiliate company and <your-project> contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/SAP/<your-project>).
+Find more information about SAP Commerce Cloud Setup on our [help site](https://help.sap.com/viewer/product/SAP_COMMERCE_CLOUD_PUBLIC_CLOUD/LATEST/en-US).
+
+With regards Commerce DB Sync, access to the database for customers is and will not be possible in the future and SAP does not provide any additional support on Commerce DB Sync in particular. Support can be bought as paid engagement from SAP Consulting only.
+
+# License
+Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This project is licensed under the Apache Software License, version 2.0 except as noted otherwise in the [LICENSE file](LICENSE).

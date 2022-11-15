@@ -1,0 +1,52 @@
+/*
+ *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  License: Apache-2.0
+ *
+ */
+
+.CodeMirror {
+  height: 100%;
+}
+
+.CodeMirror-line-numbers {
+  background-color: lightgray;
+  border-right: 1px solid #eee;
+  min-width: 2em;
+  height: 100%;
+  color: gray;
+  text-align: right;
+  padding: .4em .2em .4em .4em;
+  font-family: "Consolas", "Monaco", "Bitstream Vera Sans Mono", "Courier New", Courier, monospace !important;
+}
+
+.border {
+	background-color: #FAFAFF;
+	border: 1px solid darkgray;
+}
+
+.textarea-container {
+	position: relative;
+	border: 1px dashed #666 !important;
+}
+
+textarea {
+	width: 100%;
+}
+
+#spinnerWrapper {
+	display: none;
+	margin-top: 100px;
+	width: 100%;
+	position: absolute;
+	z-index: 1000;
+	text-align: center;
+}
+
+textarea {
+	width: 100%;
+}
+
+button[disabled] {
+  cursor: default;
+  opacity: 0.5;
+}

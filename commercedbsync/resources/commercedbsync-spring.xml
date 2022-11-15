@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  License: Apache-2.0
+  ~
+  -->
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="
+            http://www.springframework.org/schema/util
+            http://www.springframework.org/schema/util/spring-util.xsd
+            http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="mdcTaskDecorator" class="com.sap.cx.boosters.commercedbsync.concurrent.MDCTaskDecorator"/>
+
+    <!--    number of read threads is bound by the number of write threads-->
+    <bean id="dataReadTaskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+        <property name="taskDecorator" ref="mdcTaskDecorator"/>
+        <property name="threadNamePrefix" value="MigrationRead-"/>
+        <property name="queueCapacity" value="0"/>
+        <property name="keepAliveSeconds" value="60"/>
+        <property name="allowCoreThreadTimeOut" value="true"/>
+    </bean>
+
+    <bean id="dataWriteTaskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+        <property name="taskDecorator" ref="mdcTaskDecorator"/>
+        <property name="threadNamePrefix" value="MigrationWrite-"/>
+        <property name="corePoolSize" value="${migration.data.maxparalleltablecopy}"/>
+        <property name="maxPoolSize" value="${migration.data.maxparalleltablecopy}"/>
+        <property name="keepAliveSeconds" value="180"/>
+        <property name="allowCoreThreadTimeOut" value="true"/>
+    </bean>
+
+    <bean id="dataReadWorkerPoolFactory" class="com.sap.cx.boosters.commercedbsync.concurrent.impl.DefaultDataWorkerPoolFactory">
+        <constructor-arg name="taskDecorator" ref="mdcTaskDecorator"/>
+        <constructor-arg name="threadNamePrefix" value="MigrationReadWorker-"/>
+        <constructor-arg name="maxPoolSize" value="${migration.data.workers.reader.maxtasks}"/>
+        <constructor-arg name="keepAliveSeconds" value="60"/>
+        <constructor-arg name="queueable" value="true"/>
+    </bean>
+
+    <!--    using queueCapacity=0 since queueing up writer workers retains datasets which may heavily bloat memory. -->
+    <bean id="dataWriteWorkerPoolFactory"
+          class="com.sap.cx.boosters.commercedbsync.concurrent.impl.DefaultDataWorkerPoolFactory">
+        <constructor-arg name="taskDecorator" ref="mdcTaskDecorator"/>
+        <constructor-arg name="threadNamePrefix" value="MigrationWriteWorker-"/>
+        <constructor-arg name="maxPoolSize" value="${migration.data.workers.writer.maxtasks}"/>
+        <constructor-arg name="keepAliveSeconds" value="180"/>
+        <constructor-arg name="queueable" value="false"/>
+    </bean>
+
+    <alias name="defaultMigrationContext" alias="migrationContext"/>
+    <bean name="defaultMigrationContext" class="com.sap.cx.boosters.commercedbsync.context.impl.DefaultMigrationContext">
+        <constructor-arg name="sourceDataSourceConfiguration" ref="sourceDataSourceConfiguration"/>
+        <constructor-arg name="targetDataSourceConfiguration" ref="targetDataSourceConfiguration"/>
+        <constructor-arg name="dataRepositoryFactory" ref="dataRepositoryFactory"/>
+        <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+    </bean>
+
+    <alias name="incrementalMigrationContext" alias="migrationContext"/>
+  <alias name="defaultIncrementalMigrationContext" alias="incrementalMigrationContext"/>
+  <bean name="defaultIncrementalMigrationContext"
+    class="com.sap.cx.boosters.commercedbsync.context.impl.DefaultIncrementalMigrationContext"
+    parent="defaultMigrationContext">
+    <constructor-arg name="sourceDataSourceConfiguration" ref="sourceDataSourceConfiguration"/>
+    <constructor-arg name="targetDataSourceConfiguration" ref="targetDataSourceConfiguration"/>
+    <constructor-arg name="dataRepositoryFactory" ref="dataRepositoryFactory"/>
+    <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+  </bean>
+
+    <alias name="defaultMigrationContextValidator" alias="migrationContextValidator"/>
+    <bean name="defaultMigrationContextValidator" class="com.sap.cx.boosters.commercedbsync.context.validation.impl.DefaultMigrationContextValidator">
+        <property name="configurationService" ref="configurationService" />
+    </bean>
+
+    <alias name="defaultDataRepositoryFactory" alias="dataRepositoryFactory"/>
+    <bean name="defaultDataRepositoryFactory"
+          class="com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory">
+        <constructor-arg ref="databaseMigrationDataTypeMapperService"/>
+    </bean>
+
+
+    <alias name="defaultTargetDataSourceConfiguration" alias="targetDataSourceConfiguration"/>
+    <bean name="defaultTargetDataSourceConfiguration"
+          class="com.sap.cx.boosters.commercedbsync.profile.impl.DefaultDataSourceConfiguration">
+        <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+        <constructor-arg name="profile" value="target"/>
+    </bean>
+
+    <alias name="defaultSourceDataSourceConfiguration" alias="sourceDataSourceConfiguration"/>
+    <bean name="defaultSourceDataSourceConfiguration"
+          class="com.sap.cx.boosters.commercedbsync.profile.impl.DefaultDataSourceConfiguration">
+        <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+        <constructor-arg name="profile" value="source"/>
+    </bean>
+
+    <alias name="defaultMigrationDataSourceFactory" alias="defaultMigrationDataSourceFactory"/>
+    <bean name="defaultMigrationDataSourceFactory"
+          class="com.sap.cx.boosters.commercedbsync.datasource.impl.DefaultMigrationDataSourceFactory"/>
+
+    <alias name="defaultDatabaseMigrationDataTypeMapperService" alias="databaseMigrationDataTypeMapperService"/>
+    <bean id="defaultDatabaseMigrationDataTypeMapperService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseMigrationDataTypeMapperService"/>
+
+    <alias name="defaultDatabaseMigrationService" alias="databaseMigrationService"/>
+    <bean id="defaultDatabaseMigrationService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseMigrationService">
+        <property name="databaseCopyScheduler" ref="databaseCopyScheduler"/>
+        <property name="copyItemProvider" ref="dataCopyItemProvider"/>
+        <property name="performanceProfiler" ref="performanceProfiler"/>
+        <property name="databaseMigrationReportService" ref="databaseMigrationReportService"/>
+        <property name="schemaDifferenceService" ref="schemaDifferenceService"/>
+        <property name="migrationContextValidator" ref="migrationContextValidator"/>
+    </bean>
+
+    <alias name="customClusterDatabaseCopyScheduler" alias="databaseCopyScheduler"/>
+    <bean id="customClusterDatabaseCopyScheduler"
+          class="com.sap.cx.boosters.commercedbsync.scheduler.impl.CustomClusterDatabaseCopyScheduler">
+        <property name="eventService" ref="eventService"/>
+        <property name="clusterService" ref="clusterService"/>
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+    </bean>
+
+    <alias name="pipeDatabaseMigrationCopyService" alias="databaseMigrationCopyService"/>
+    <bean id="pipeDatabaseMigrationCopyService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.PipeDatabaseMigrationCopyService">
+        <constructor-arg ref="dataPipeFactory"/>
+        <constructor-arg ref="pipeWriterStrategy"/>
+        <constructor-arg ref="dataWriteTaskExecutor"/>
+        <constructor-arg ref="databaseCopyTaskRepository"/>
+    </bean>
+
+    <alias name="defaultDataPipeFactory" alias="dataPipeFactory"/>
+    <bean id="defaultDataPipeFactory" class="com.sap.cx.boosters.commercedbsync.concurrent.impl.DefaultDataPipeFactory">
+        <constructor-arg ref="databaseCopyScheduler"/>
+        <constructor-arg ref="databaseCopyTaskRepository"/>
+        <constructor-arg ref="dataReadTaskExecutor"/>
+        <constructor-arg ref="dataReadWorkerPoolFactory"/>
+    </bean>
+
+    <alias name="defaultPipeWriterStrategy" alias="pipeWriterStrategy"/>
+    <bean id="defaultPipeWriterStrategy" class="com.sap.cx.boosters.commercedbsync.strategy.impl.CopyPipeWriterStrategy">
+        <constructor-arg ref="databaseMigrationDataTypeMapperService"/>
+        <constructor-arg ref="databaseCopyTaskRepository"/>
+        <constructor-arg ref="dataWriteWorkerPoolFactory"/>
+    </bean>
+
+
+    <alias name="defaultSchemaDifferenceService" alias="schemaDifferenceService"/>
+    <bean id="defaultSchemaDifferenceService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseSchemaDifferenceService">
+        <property name="dataCopyTableFilter" ref="dataCopyTableFilter"/>
+        <property name="databaseMigrationReportStorageService" ref="databaseMigrationReportStorageService"/>
+        <property name="copyItemProvider" ref="dataCopyItemProvider"/>
+        <property name="configurationService" ref="configurationService"/>
+    </bean>
+
+    <!-- Event Listeners -->
+    <alias name="defaultCopyDatabaseTableEventListener" alias="copyDatabaseTableEventListener"/>
+    <bean id="defaultCopyDatabaseTableEventListener"
+          class="com.sap.cx.boosters.commercedbsync.events.handlers.CopyDatabaseTableEventListener"
+          parent="abstractEventListener">
+        <property name="databaseMigrationCopyService" ref="databaseMigrationCopyService"/>
+        <property name="clusterService" ref="clusterService"/>
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+        <property name="migrationContext" ref="migrationContext"/>
+        <property name="performanceProfiler" ref="performanceProfiler"/>
+    </bean>
+
+
+    <alias name="defaultMigrationPostProcessor" alias="migrationPostProcessor"/>
+    <bean id="defaultMigrationPostProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.DefaultMigrationPostProcessor"/>
+
+    <bean id="reportMigrationPostProcessor"
+          class="com.sap.cx.boosters.commercedbsync.processors.impl.ReportMigrationPostProcessor">
+        <property name="databaseMigrationReportService" ref="databaseMigrationReportService"/>
+        <property name="databaseMigrationReportStorageService" ref="databaseMigrationReportStorageService"/>
+    </bean>
+
+    <bean id="adjustActiveTypeSystemPostProcessor"
+          class="com.sap.cx.boosters.commercedbsync.processors.impl.AdjustActiveTypeSystemPostProcessor">
+          <!--  ORACLE_TARGET START  -->
+          <property name="configurationService" ref="configurationService" />
+          <!--  ORACLE_TARGET END -->
+    </bean>
+
+    <alias name="defaultCopyCompleteEventListener" alias="copyCompleteEventListener"/>
+    <bean id="defaultCopyCompleteEventListener"
+          class="com.sap.cx.boosters.commercedbsync.events.handlers.CopyCompleteEventListener"
+          parent="abstractEventListener">
+        <property name="migrationContext" ref="migrationContext"/>
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+        <property name="performanceProfiler" ref="performanceProfiler"/>
+        <property name="postProcessors">
+            <util:list>
+                <ref bean="migrationPostProcessor"/>
+                <ref bean="reportMigrationPostProcessor"/>
+                <ref bean="adjustActiveTypeSystemPostProcessor"/>
+            </util:list>
+        </property>
+    </bean>
+
+    <alias name="defaultDatabaseCopyTaskRepository" alias="databaseCopyTaskRepository"/>
+    <bean id="defaultDatabaseCopyTaskRepository"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseCopyTaskRepository">
+        <property name="clusterService" ref="clusterService"/>
+    </bean>
+
+    <alias name="defaultDataCopyItemProvider" alias="dataCopyItemProvider"/>
+    <bean id="defaultDataCopyItemProvider" class="com.sap.cx.boosters.commercedbsync.provider.impl.DefaultDataCopyItemProvider">
+        <property name="dataCopyTableFilter" ref="dataCopyTableFilter"/>
+    </bean>
+
+    <alias name="defaultPerformanceProfiler" alias="performanceProfiler"/>
+    <bean id="defaultPerformanceProfiler"
+          class="com.sap.cx.boosters.commercedbsync.performance.impl.DefaultPerformanceProfiler">
+    </bean>
+
+    <alias name="defaultDatabaseMigrationReportService" alias="databaseMigrationReportService"/>
+    <bean id="defaultDatabaseMigrationReportService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseMigrationReportService">
+        <property name="databaseCopyScheduler" ref="databaseCopyScheduler"/>
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+        <property name="configurationService" ref="configurationService"/>
+    </bean>
+
+    <alias name="blobDatabaseMigrationReportStorageService" alias="databaseMigrationReportStorageService"/>
+    <bean id="blobDatabaseMigrationReportStorageService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.BlobDatabaseMigrationReportStorageService">
+        <property name="migrationContext" ref="migrationContext"/>
+    </bean>
+
+    <alias name="compositeDataCopyTableFilter" alias="dataCopyTableFilter"/>
+    <bean id="compositeDataCopyTableFilter"
+          class="com.sap.cx.boosters.commercedbsync.filter.impl.CompositeDataCopyTableFilter">
+        <property name="filters">
+            <list>
+                <ref bean="exclusionDataCopyTableFilter"/>
+                <ref bean="inclusionDataCopyTableFilter"/>
+                <ref bean="incrementalDataCopyTableFilter"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="exclusionDataCopyTableFilter"
+          class="com.sap.cx.boosters.commercedbsync.filter.impl.ExclusionDataCopyTableFilter"/>
+
+    <bean id="inclusionDataCopyTableFilter"
+          class="com.sap.cx.boosters.commercedbsync.filter.impl.InclusionDataCopyTableFilter"/>
+
+    <bean id="incrementalDataCopyTableFilter"
+          class="com.sap.cx.boosters.commercedbsync.filter.impl.IncrementalDataCopyTableFilter"/>
+
+    <bean id="initProcessTrigger" class="com.sap.cx.boosters.commercedbsync.setup.InitUpdateProcessTrigger">
+        <constructor-arg ref="migrationContext"/>
+        <constructor-arg ref="databaseMigrationService"/>
+    </bean>
+
+    <!-- used for table prefix workaround -->
+    <alias name="defaultDatabaseMigrationSynonymService" alias="databaseMigrationSynonymService"/>
+    <bean id="defaultDatabaseMigrationSynonymService"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseMigrationSynonymService"/>
+    <!--
+    <bean id="migrationSystemSetup" class="MigrationSystemSetup">
+        <constructor-arg ref="configurationService"/>
+    </bean>
+    -->
+
+     <!-- All migration job can inherit  -->
+  <bean id="abstractMigrationJobPerformable" class="com.sap.cx.boosters.commercedbsync.jobs.AbstractMigrationJobPerformable"
+    abstract="true" parent="abstractJobPerformable">
+    <property name="incrementalMigrationContext" ref="incrementalMigrationContext"/>
+    <property name="databaseMigrationService" ref="databaseMigrationService"/>
+    <property name="cronJobService" ref="cronJobService"/>
+    <property name="jdbcTemplate" ref="jdbcTemplate"/>
+  </bean>
+
+  <bean id="incrementalMigrationJob" class="com.sap.cx.boosters.commercedbsync.jobs.IncrementalMigrationJob"
+    parent="abstractMigrationJobPerformable">
+  </bean>
+
+  <bean id="fullMigrationJob" class="com.sap.cx.boosters.commercedbsync.jobs.FullMigrationJob"
+    parent="abstractMigrationJobPerformable">
+  </bean>
+
+<!--  <bean id="defaultCMTRemoveInterceptor"-->
+<!--    class="DefaultCMTRemoveInterceptor">-->
+<!--    <property name="typeService" ref="typeService" />-->
+<!--    <property name="modelService" ref="modelService" />-->
+<!--  </bean>-->
+
+<!--  <bean id="defaultCMTRemoveInterceptorMapping"-->
+<!--    class="de.hybris.platform.servicelayer.interceptor.impl.InterceptorMapping">-->
+<!--    <property name="interceptor" ref="defaultCMTRemoveInterceptor"/>-->
+<!--    <property name="typeCode" value="Item" />-->
+<!--  </bean>-->
+
+  <bean id="defaultCMTAfterSaveListener" class="com.sap.cx.boosters.commercedbsync.listeners.DefaultCMTAfterSaveListener">
+    <property name="modelService" ref="modelService" />
+    <property name="typeService" ref="typeService" />
+  </bean>
+
+<!--  <alias name="defaultDataRepositoryFactory" alias="dataRepositoryFactory"/>-->
+<!--  <bean name="defaultDataRepositoryFactory"-->
+<!--    class="DataIncrementalRepositoryFactory">-->
+<!--    <constructor-arg ref="databaseMigrationDataTypeMapperService"/>-->
+<!--  </bean>-->
+
+</beans>

@@ -1,0 +1,28 @@
+[
+  {
+    "basePath": "/commercedbsynchac",
+    "mainTabLabel": "Migration",
+    "subTabs": [
+      {
+        "path": "/migrationDataSource",
+        "label": "Data Sources",
+        "skipPrefix": false
+      },
+      {
+        "path": "/migrationSchema",
+        "label": "Schema Migration",
+        "skipPrefix": false
+      },
+      {
+        "path": "/migrationData",
+        "label": "Data Migration",
+        "skipPrefix": false
+      },
+      {
+        "path": "/migrationReports",
+        "label": "Reports",
+        "skipPrefix": false
+      }
+    ]
+  }
+]

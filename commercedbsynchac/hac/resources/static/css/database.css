@@ -1,0 +1,70 @@
+/*
+ *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  License: Apache-2.0
+ *
+ */
+
+.nobox {
+	border: 0;
+	width: 100%;
+}
+
+.textarea {
+	height: auto;
+}
+
+#spinner {
+	margin: 100px auto;
+	opacity: 0.5;
+}
+
+.spinner {
+	opacity: 0.5;
+}
+
+#spinnerWrapper,#loggingSpinnerWrapper {
+	text-align: center;
+}
+
+#tableWrapper {
+	display: none;
+	padding-bottom: 2em;
+}
+
+#tableCopySchemaWrapper {
+	display: none;
+	padding-bottom: 2em;
+}
+
+#tableCopyDataWrapper {
+	display: none;
+	padding-bottom: 2em;
+}
+
+#loggingContentWrapper,#downloadLog,#slider-size,#downloadForm,#analyzeResults {
+	display: none;
+}
+
+#loggingContentWrapper {
+	margin-bottom: 3em;
+}
+
+#dataSourceInfos legend {
+	color: #005BBC;
+	font-size: 16px;	
+}
+
+.floatLeft {
+	float: left;
+}
+#copyStatusContainer {
+
+}
+
+#copyStatusContainer dd {
+	font-size: 1.2em;
+}
+
+.progress {
+	font-weight: bolder;
+}
