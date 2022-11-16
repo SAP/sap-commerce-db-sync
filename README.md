@@ -14,6 +14,7 @@ There are two main use cases:
 
 * [User Guide for Data Replication](docs/user/USER-GUIDE-DATA-REPLICATION.md) Go through the details about Data replication between SAP Commerce Cloud and an external database. 
 * [User Guide for Data Migration](docs/user/USER-GUIDE-DATA-MIGRATION.md) When ready to start the migration activities, follow the instructions in the User Guide to trigger the data migration.
+* [Demo video] (https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3) how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud.
 * [Configuration Guide](docs/configuration/CONFIGURATION-GUIDE.md) The extensions ship with a default configuration that may need to be adjusted depending on the desired behaviour. This guide explains how different features and behaviours can be configured.
 * [Security Guide](docs/security/SECURITY-GUIDE.md) A data migration typically features sensitive data and uses delicate system access. Make sure you have read the Security Guide before you proceed with any migration activities and thereby acknowledge the security recommendations stated in the guide.
 * [Performance Guide](docs/performance/PERFORMANCE-GUIDE.md) Performance is crucial for any data migration, not only for large databases but also generally to reduce the time of the cut-over window. The performance guide explains the basic concept of performance tuning and also provides benchmarks that will give you an impression of how to estimate the cutover time window.
@@ -71,24 +72,17 @@ Commerce DB Sync has been built to offer reasonable performance with large amoun
 * Using UPSERT (INSERT/UPDATE)
 * Use read replica Commerce database as a source database
 
-# Demo Video
-Here is a video that presents how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud: 
-  https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3
+# Disclaimer
+
+Commerce DB Sync uses direct JDBC access to Commerce Cloud database. This access may be restricted in the future for customers.
 
 # How to Obtain Support
 
-This repository is provided "as-is"; no support is available.
-
-Find more information about SAP Commerce Cloud Setup on our [help site](https://help.sap.com/viewer/product/SAP_COMMERCE_CLOUD_PUBLIC_CLOUD/LATEST/en-US).
-
-With regards Commerce DB Sync, access to the database for customers is and will not be possible in the future and SAP does not provide any additional support on Commerce DB Sync in particular. Support can be bought as paid engagement from SAP Consulting only.
+This repository is provided "as-is"; **SAP does not provide any additional support**.
+SAP Services team is the creator and main contributor to SAP Commerce DB Sync, they can provide assistance as a paid engagement. If you plan to setup SAP Commerce DB Sync for your project, we highly recommend involving SAP Services to ensure a successful implementation.
 
 # Contributing
-We welcome feedback, ideas, requests, and especially code contributions.
-
-Read the [Contributing document](CONTRIBUTING.md) and learn our Code of Conduct and how to:
-- Report an issue
-- Contribute code to SAP Commerce DB Sync
+Want to contribute? Check out our [Contributing document](CONTRIBUTING.md) and follow our [code of conduct](CODE_OF_CONDUCT.md).
 
 # License
 Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This project is licensed under the Apache Software License, version 2.0 except as noted otherwise in the [LICENSE file](LICENSE).
