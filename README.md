@@ -79,7 +79,8 @@ Commerce DB Sync uses direct JDBC access to Commerce Cloud database. This access
 # How to Obtain Support
 
 This repository is provided "as-is"; **SAP does not provide any additional support**.
-SAP Services team is the creator and main contributor to SAP Commerce DB Sync, they can provide assistance as a paid engagement. If you plan to setup SAP Commerce DB Sync for your project, we highly recommend involving SAP Services to ensure a successful implementation.
+
+SAP Services team is the creator and main contributor to SAP Commerce DB Sync, the team can provide assistance as a paid engagement. If you plan to setup SAP Commerce DB Sync for your project, we highly recommend involving SAP Services to ensure a successful implementation.
 
 # Contributing
 Want to contribute? Check out our [Contributing document](CONTRIBUTING.md) and follow our [code of conduct](CODE_OF_CONDUCT.md).
