@@ -1,6 +1,6 @@
 # SAP Commerce DB Sync
 
-[![REUSE status](https://api.reuse.software/badge/github.com/SAP-samples/commerce-migration-toolkit)](https://api.reuse.software/info/github.com/SAP-samples/commerce-migration-toolkit)
+[![REUSE status](https://api.reuse.software/badge/github.com/SAP/sap-commerce-db-sync)](https://api.reuse.software/info/github.com/SAP/sap-commerce-db-sync)
 
 SAP Commerce DB Sync performs table-to-table replication in single-directionally manner between two SAP Commerce instances (onPrem to Cloud) or between SAP Commerce and an external database.
 
