@@ -8,6 +8,7 @@ SAP Commerce DB Sync is implemented as SAP Commerce extensions and it does not r
 
 There are two main use cases:
 * __Replicate data across an external database__: you can push data regularly in batch mode through a Commerce Cloud cronjob and synchronize to an external database. A typical use case is for analytics and reporting purpose when you need direct JDBC access to the database to run analytic jobs.
+![architecture overview for data sync between SAP Commerce Cloud to an external database](docs/user/data_replication_architecture.png)
 * __Data migration__: paired with the self-service media process described on [this CXWorks article](https://www.sap.com/cxworks/article/2589632453/migrate_to_sap_commerce_cloud_migrate_media_with_azcopy), it allows to self-service a one-shot data migration from the on-premise SAP Commerce environment to a SAP Commerce Cloud subscription.
 
 # Getting started
