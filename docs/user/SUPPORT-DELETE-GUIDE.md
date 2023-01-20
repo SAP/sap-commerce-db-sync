@@ -1,10 +1,10 @@
 # Commerce Database Sync - Deletion Support
 
-SAP Commerce DB Sync does support deletions. It it can be enabled for the transactional table using two different approaches:
+SAP Commerce DB Sync does support deletions. It can be enabled for the transactional table using two different approaches:
 - Default Approach using After Save Event Listener
 - Alternative approach using Remove Interceptor
 
-## Approached for deletions
+## Approaches for deletions
 
 ### Default Approach using After Save Event Listener
 
