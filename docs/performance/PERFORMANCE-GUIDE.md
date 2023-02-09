@@ -124,7 +124,7 @@ The amount of database connections can be defined as follows:
 ### Disabling Indexes
 
 Indexes can be a bottleneck when inserting batches.
-MsSQL offers a way to temporarily disable indexes during the copy process.
+MS SQL Server offers a way to temporarily disable indexes during the copy process.
 This can be done using the property:
 
 `migration.data.indices.disable.enabled`
