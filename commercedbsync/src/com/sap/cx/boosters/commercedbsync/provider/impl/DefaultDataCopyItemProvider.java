@@ -21,6 +21,7 @@ import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -56,13 +57,6 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 					LOG.debug("$$Table Common Name" + source.getCommonTableName() + ", Base Table ="
 							+ source.getBaseTableName() + ", Suffix = " + source.getAdditionalSuffix() + " , Full TB = "
 							+ source.getFullTableName() + ",Table Name = " + source.getTableName());
-					/*
-					 * if (Arrays.stream(TYPE_SYSTEM_RELATED_TYPES) .anyMatch(t
-					 * ->
-					 * StringUtils.startsWithIgnoreCase(source.getBaseTableName(
-					 * ), t))) { }
-					 */
-
 				}
 				LOG.debug("---------END------," + debugtext);
 			}
@@ -99,10 +93,6 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
 	@Override
 	public Set<TableCandidate> getTargetTableCandidates(final MigrationContext context) throws Exception {
-		return getAllTableCandidates(context);
-	}
-
-	private Set<TableCandidate> getAllTableCandidates(final MigrationContext context) throws Exception {
 		final DataRepository targetRepository = context.getDataTargetRepository();
 		final String prefix = targetRepository.getDataSourceConfiguration().getTablePrefix();
 
@@ -169,13 +159,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 				LOG.debug("LP table Match... " + lpTable.getFullTableName());
 				tableCandidates.add(lpTable);
 			}
-
-			/*
-			 * if (allTableNames.contains(lpTable.getFullTableName())) {
-			 * tableCandidates.add(lpTable); }
-			 */
 			// ORACLE_TARGET -END
-
 			if (shouldMigrateAuditTable(context, t.getAuditTableName())) {
 				final TableCandidate auditTable = createTableCandidate(repository, t.getAuditTableName());
 
@@ -184,11 +168,6 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 				if (allTableNames.stream().anyMatch(auditTable.getFullTableName()::equalsIgnoreCase)) {
 					tableCandidates.add(lpTable);
 				}
-
-				/*
-				 * if (allTableNames.contains(auditTable.getFullTableName())) {
-				 * tableCandidates.add(auditTable); }
-				 */
 				// ORACLE_TARGET - END
 			}
 		});
@@ -247,7 +226,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 	}
 
 	private Set<CopyContext.DataCopyItem> createCopyItems(final MigrationContext context,
-			final Set<TableCandidate> sourceTablesToMigrate, final Map<String, TableCandidate> targetTablesToMigrate) {
+			final Set<TableCandidate> sourceTablesToMigrate, final Map<String, TableCandidate> targetTablesToMigrate) throws SQLException {
 		final Set<CopyContext.DataCopyItem> copyItems = new HashSet<>();
 		for (final TableCandidate sourceTableToMigrate : sourceTablesToMigrate) {
 			final String targetTableKey = sourceTableToMigrate.getCommonTableName().toLowerCase();
@@ -264,10 +243,12 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 	}
 
 	private CopyContext.DataCopyItem createCopyItem(final MigrationContext context, final TableCandidate sourceTable,
-			final TableCandidate targetTable) {
+			final TableCandidate targetTable) throws SQLException {
 		final String sourceTableName = sourceTable.getFullTableName();
 		final String targetTableName = targetTable.getFullTableName();
-		final CopyContext.DataCopyItem dataCopyItem = new CopyContext.DataCopyItem(sourceTableName, targetTableName);
+		DataRepository sds = context.getDataSourceRepository();
+		String sTableName = context.getItemTypeViewNameByTable(sourceTableName, sds);
+		final CopyContext.DataCopyItem dataCopyItem = new CopyContext.DataCopyItem(sTableName, targetTableName);
 		addColumnMappingsIfNecessary(context, sourceTable, dataCopyItem);
 		return dataCopyItem;
 	}

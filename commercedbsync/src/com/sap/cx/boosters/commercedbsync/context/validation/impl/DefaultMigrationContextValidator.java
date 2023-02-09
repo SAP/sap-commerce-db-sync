@@ -15,25 +15,19 @@ import java.util.Locale;
 
 public class DefaultMigrationContextValidator implements MigrationContextValidator {
 
-    private static final String DB_URL_PROPERTY_KEY = "migration.ds.target.db.url";
+    private static final String MIGRATION_DS_TARGET_DB_URL = "migration.ds.target.db.url";
+    private static final String COMMERCE_DB_URL = "db.url";
     private static final String DISABLE_UNLOCKING = "system.unlocking.disabled";
     private ConfigurationService configurationService;
 
     @Override
     public void validateContext(final MigrationContext context) {
-        // Canonically the target should always be the CCV2 DB and we have to verify nobody is trying to copy *from* that
-        final String sourceDbUrl = context.getDataSourceRepository().getDataSourceConfiguration().getConnectionString();
-        final String ccv2ManagedDB = getConfigurationService().getConfiguration().getString(DB_URL_PROPERTY_KEY);
+        final String migrationTargetDbUrl = getConfigurationService().getConfiguration().getString(MIGRATION_DS_TARGET_DB_URL);
+        final String commerceDbUrl = getConfigurationService().getConfiguration().getString(COMMERCE_DB_URL);
         final boolean isSystemLocked = getConfigurationService().getConfiguration().getBoolean(DISABLE_UNLOCKING);
-
-        if (sourceDbUrl.equals(ccv2ManagedDB)) {
-            throw new RuntimeException("Invalid data source configuration - cannot use the CCV2-managed database as the source.");
+        if (migrationTargetDbUrl.equals(commerceDbUrl) && isSystemLocked) {
+            throw new RuntimeException("Unable to run migration on a locked system. Check property " + DISABLE_UNLOCKING);
         }
-
-        if (isSystemLocked) {
-            throw new RuntimeException("You cannot run the migration on locked system. Check property " + DISABLE_UNLOCKING);
-        }
-
         //we check this for locale related comparison
         Locale defaultLocale = Locale.getDefault();
         if (defaultLocale == null || StringUtils.isEmpty(defaultLocale.toString())) {

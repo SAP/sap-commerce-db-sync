@@ -6,27 +6,29 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.google.common.base.Joiner;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.bootstrap.ddl.DataBaseProvider;
-import de.hybris.bootstrap.ddl.DatabaseSettings;
-import de.hybris.bootstrap.ddl.HybrisPlatform;
-import org.apache.commons.lang.StringUtils;
-import org.apache.ddlutils.Platform;
-import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.repository.platform.MigrationHybrisMSSqlPlatform;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+
+import javax.sql.DataSource;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.ddlutils.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.repository.platform.MigrationHybrisMSSqlPlatform;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
+
+import de.hybris.bootstrap.ddl.DataBaseProvider;
+import de.hybris.bootstrap.ddl.DatabaseSettings;
+import de.hybris.bootstrap.ddl.HybrisPlatform;
 
 public class AzureDataRepository extends AbstractDataRepository {
 
@@ -55,8 +57,9 @@ public class AzureDataRepository extends AbstractDataRepository {
 
     @Override
     protected String buildOffsetBatchQuery(OffsetQueryDefinition queryDefinition, String... conditions) {
-        String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
-        return String.format("SELECT * FROM %s WHERE %s ORDER BY %s OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", queryDefinition.getTable(), expandConditions(conditions), orderBy, queryDefinition.getOffset(), queryDefinition.getBatchSize());
+        final String batchQuery = String.format("SELECT * FROM %s WHERE %s ORDER BY %s OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", queryDefinition.getTable(), expandConditions(conditions), queryDefinition.getOrderByColumns());
+        LOG.debug("Executing batch query {}", batchQuery);
+        return batchQuery;
     }
 
     @Override
@@ -77,8 +80,8 @@ public class AzureDataRepository extends AbstractDataRepository {
                 "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownum\n" +
                 "    FROM %s\n WHERE %s" +
                 ") AS t\n" +
-                "WHERE t.rownum %% %s = 0\n" +
-                "ORDER BY t.%s", column, column, column, tableName, expandConditions(conditions), queryDefinition.getBatchSize(), column);
+                "WHERE t.rownum %% ? = 0\n" +
+                "ORDER BY t.%s", column, column, column, tableName, expandConditions(conditions), column);
     }
 
     @Override
@@ -162,7 +165,8 @@ public class AzureDataRepository extends AbstractDataRepository {
                 "INNER JOIN \n" +
                 "     sys.index_columns ic ON  t1.ObjectId = ic.object_id and t1.IndexId = ic.index_id \n" +
                 "INNER JOIN \n" +
-                "     sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id ", tableName, getDataSourceConfiguration().getSchema());
+                "     sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id \n" +
+                "ORDER BY ic.key_ordinal", tableName, getDataSourceConfiguration().getSchema());
     }
 
     @Override

@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  sqlserver-source:
+      container_name: 'sqlserver-source'
+      image: mcr.microsoft.com/azure-sql-edge
+      environment:
+        - ACCEPT_EULA=Y
+        - MSSQL_PID=Developer
+        - SA_PASSWORD=Passw0rd
+      ports:
+        - "6433:1433"
+      volumes:
+        - "mssql-azuresql-edge-data-s:/var/opt/mssql"
+        - "mssql-ext-s:/var/opt/mssql-extensibility"
+
+  sqlserver-target:
+      container_name: 'sqlserver-target'
+      image: mcr.microsoft.com/azure-sql-edge
+      environment:
+        - ACCEPT_EULA=Y
+        - MSSQL_PID=Developer
+        - SA_PASSWORD=Passw0rd
+      ports:
+        - "7433:1433"
+      volumes:
+        - "mssql-azuresql-edge-data-t:/var/opt/mssql"
+        - "mssql-ext-t:/var/opt/mssql-extensibility"
+
+  azurite:
+      container_name: 'azurite'
+      image: mcr.microsoft.com/azure-storage/azurite
+      environment:
+        - ACCEPT_EULA=Y
+        - MSSQL_PID=Developer
+        - SA_PASSWORD=Passw0rd
+      ports:
+        - "10000:10000"
+        - "10001:10001"
+        - "10002:10002"
+      volumes:
+        - azurite:/data
+
+volumes:
+  azurite:
+  mssql-azuresql-edge-data-s:
+  mssql-azuresql-edge-data-t:
+  mssql-ext-s:
+  mssql-ext-t:

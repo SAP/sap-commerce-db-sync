@@ -5,38 +5,47 @@
  */
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
-import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
-import com.sap.cx.boosters.commercedbsync.performance.PerformanceProfiler;
-import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
-import com.sap.cx.boosters.commercedbsync.MigrationReport;
-import com.sap.cx.boosters.commercedbsync.MigrationStatus;
-import com.sap.cx.boosters.commercedbsync.context.CopyContext;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.context.validation.MigrationContextValidator;
-import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportService;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
-import org.slf4j.MDC;
-
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import com.sap.cx.boosters.commercedbsync.MigrationReport;
+import com.sap.cx.boosters.commercedbsync.MigrationStatus;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.context.CopyContext;
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import com.sap.cx.boosters.commercedbsync.context.validation.MigrationContextValidator;
+import com.sap.cx.boosters.commercedbsync.performance.PerformanceProfiler;
+import com.sap.cx.boosters.commercedbsync.processors.MigrationPreProcessor;
+import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
+import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportService;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
+
 public class DefaultDatabaseMigrationService implements DatabaseMigrationService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultDatabaseMigrationService.class);
+    
     private DatabaseCopyScheduler databaseCopyScheduler;
     private CopyItemProvider copyItemProvider;
     private PerformanceProfiler performanceProfiler;
     private DatabaseMigrationReportService databaseMigrationReportService;
     private DatabaseSchemaDifferenceService schemaDifferenceService;
     private MigrationContextValidator migrationContextValidator;
+    private ArrayList<MigrationPreProcessor> preProcessors;
 
     @Override
     public String startMigration(final MigrationContext context) throws Exception {
         migrationContextValidator.validateContext(context);
-
-        // TODO: running migration check
         performanceProfiler.reset();
 
         final String migrationId = UUID.randomUUID().toString();
@@ -48,12 +57,15 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
         }
 
         CopyContext copyContext = buildCopyContext(context, migrationId);
+        
+        preProcessors.forEach(p -> p.process(copyContext));
+        
         databaseCopyScheduler.schedule(copyContext);
 
         return migrationId;
     }
 
-    @Override
+	@Override
     public void stopMigration(MigrationContext context, String migrationID) throws Exception {
         CopyContext copyContext = buildIdContext(context, migrationID);
         databaseCopyScheduler.abort(copyContext);
@@ -86,6 +98,26 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
         return databaseMigrationReportService.getMigrationReport(copyContext);
     }
 
+	 @Override
+	 public String getMigrationID(final MigrationContext migrationContext)
+	 {
+		 String migrationId = null;
+		 try (Connection conn = migrationContext.getDataTargetRepository().getConnection();
+				 PreparedStatement stmt = conn.prepareStatement("SELECT migrationId FROM MIGRATIONTOOLKIT_TABLECOPYSTATUS"))
+		 {
+			 final ResultSet rs = stmt.executeQuery();
+			 if (rs.next())
+			 {
+				 migrationId = rs.getString("migrationId");
+			 }
+		 }
+		 catch (final Exception e)
+		 {
+			 LOG.error("Couldn't fetch migrationId", e);
+		 }
+		 return migrationId;
+	 }
+    
     @Override
     public MigrationStatus waitForFinish(MigrationContext context, String migrationID) throws Exception {
         MigrationStatus status;
@@ -124,4 +156,8 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
     public void setMigrationContextValidator(MigrationContextValidator migrationContextValidator) {
         this.migrationContextValidator = migrationContextValidator;
     }
+    
+ 	public void setPreProcessors(final ArrayList<MigrationPreProcessor> preProcessors) {
+		this.preProcessors = preProcessors;
+	}    
 }

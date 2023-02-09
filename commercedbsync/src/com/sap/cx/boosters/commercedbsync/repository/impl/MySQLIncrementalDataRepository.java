@@ -6,11 +6,6 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.google.common.base.Joiner;
-import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.platform.util.Config;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,11 +14,18 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
+
+import de.hybris.platform.util.Config;
 
 public class MySQLIncrementalDataRepository extends MySQLDataRepository{
 
@@ -42,8 +44,7 @@ public class MySQLIncrementalDataRepository extends MySQLDataRepository{
     if(!queryDefinition.isDeletionEnabled()) {
       return super.buildOffsetBatchQuery(queryDefinition,conditions);
     }
-    String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
-    return String.format("select * from %s where %s order by %s limit %s,%s", deletionTable, expandConditions(conditions), orderBy, queryDefinition.getOffset(), queryDefinition.getBatchSize());
+    return String.format("select * from %s where %s order by %s limit %s,%s", deletionTable, expandConditions(conditions), queryDefinition.getOrderByColumns(), queryDefinition.getOffset(), queryDefinition.getBatchSize());
   }
 
   @Override

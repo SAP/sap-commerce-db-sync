@@ -43,9 +43,10 @@ public interface DatabaseCopyTaskRepository {
      * @param context
      * @param from
      * @param to
+     * @return true if migration status is updated, false otherwise
      * @throws Exception
      */
-    void setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to) throws Exception;
+    boolean setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to) throws Exception;
 
     /**
      * Retrieves the current migration status

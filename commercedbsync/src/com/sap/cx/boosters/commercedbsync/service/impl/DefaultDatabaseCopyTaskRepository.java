@@ -34,6 +34,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 
+import javax.sql.DataSource;
+
 
 /**
  * Repository to manage the status on of the migration copy tasks across the cluster
@@ -60,21 +62,23 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         setMigrationStatus(context, MigrationProgress.RUNNING, progress);
     }
 
-    @Override
-    public void setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to) throws Exception {
+	 @Override
+	 public boolean setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to) throws Exception
+	 {
+		 boolean updated = false;
+		 final String update = "UPDATE MIGRATIONTOOLKIT_TABLECOPYSTATUS SET status = ? WHERE status = ? AND migrationId = ?";
+		 final DataSource dataSource = context.getMigrationContext().getDataTargetRepository().getDataSource();
 
-        String update = "UPDATE MIGRATIONTOOLKIT_TABLECOPYSTATUS SET status = ? WHERE status = ? AND migrationId = ?";
-        try (Connection conn = getConnection(context);
-             PreparedStatement stmt = conn.prepareStatement(update)
-        ) {
-            stmt.setObject(1, to.name());
-            stmt.setObject(2, from.name());
-            stmt.setObject(3, context.getMigrationId());
-            stmt.executeUpdate();
-            conn.commit();
-        }
-    }
-
+		 try (Connection conn = dataSource.getConnection(); PreparedStatement stmt = conn.prepareStatement(update))
+		 {
+			 stmt.setObject(1, to.name());
+			 stmt.setObject(2, from.name());
+			 stmt.setObject(3, context.getMigrationId());
+			 updated = stmt.executeUpdate() > 0;
+		 }
+		 
+		 return updated;
+	 }
 
     @Override
     public MigrationStatus getMigrationStatus(CopyContext context) throws Exception {

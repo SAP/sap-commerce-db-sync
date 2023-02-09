@@ -61,8 +61,7 @@ public class AzureIncrementalDataRepository extends AzureDataRepository{
   }
 
   private String buildOffsetBatchQueryForDeletion(OffsetQueryDefinition queryDefinition, String... conditions) {
-    String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
-    return String.format("SELECT * FROM %s WHERE %s ORDER BY %s OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", deletionTable, expandConditions(conditions), orderBy, queryDefinition.getOffset(), queryDefinition.getBatchSize());
+    return String.format("SELECT * FROM %s WHERE %s ORDER BY %s OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", deletionTable, expandConditions(conditions), queryDefinition.getOrderByColumns(), queryDefinition.getOffset(), queryDefinition.getBatchSize());
   }
 
   @Override

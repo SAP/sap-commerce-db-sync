@@ -16,9 +16,9 @@ import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
 public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
 
     private String profile;
-    private Configuration configuration;
     private String driver;
     private String connectionString;
+    private String connectionStringPrimary;
     private String userName;
     private String password;
     private String schema;
@@ -33,7 +33,6 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
 
     public DefaultDataSourceConfiguration(Configuration configuration, String profile) {
         this.profile = profile;
-        this.configuration = configuration;
         this.load(configuration, profile);
     }
 
@@ -53,6 +52,11 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     }
 
     @Override
+    public String getConnectionStringPrimary() {
+        return connectionStringPrimary;
+    }
+    
+    @Override
     public String getUserName() {
         return userName;
     }
@@ -69,13 +73,11 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
 
     @Override
     public String getTypeSystemName() {
-        this.typeSystemName = getProfileProperty(profile, configuration, "db.typesystemname");
         return typeSystemName;
     }
 
     @Override
     public String getTypeSystemSuffix() {
-        this.typeSystemSuffix = getProfileProperty(profile, configuration, "db.typesystemsuffix");
         return typeSystemSuffix;
     }
 
@@ -112,6 +114,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     protected void load(Configuration configuration, String profile) {
         this.driver = getProfileProperty(profile, configuration, "db.driver");
         this.connectionString = getProfileProperty(profile, configuration, "db.url");
+        this.connectionStringPrimary = getProfileProperty(profile, configuration, "db.url.primary", false);
         this.userName = getProfileProperty(profile, configuration, "db.username");
         this.password = getProfileProperty(profile, configuration, "db.password");
         this.schema = getProfileProperty(profile, configuration, "db.schema");
@@ -137,13 +140,21 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         }
     }
 
-    protected String getProfileProperty(String profile, Configuration configuration, String key) {
+    protected String getProfileProperty(final String profile, final Configuration configuration, final String key)
+    {
+   	 return getProfileProperty(profile, configuration, key, true);
+    }
+    
+    protected String getProfileProperty(String profile, Configuration configuration, String key, boolean checkPropery) {
         String profilePropertyKey = createProfilePropertyKey(key, profile);
         String property = configuration.getString(profilePropertyKey);
         if (StringUtils.startsWith(property, "${")) {
             property = configuration.getString(StringUtils.substringBetween(property, "{", "}"));
         }
-        return checkProperty(property, profilePropertyKey);
+        if(checkPropery) {
+      	  return checkProperty(property, profilePropertyKey);
+        }
+        return property;
     }
 
     protected String checkProperty(String property, String key) {

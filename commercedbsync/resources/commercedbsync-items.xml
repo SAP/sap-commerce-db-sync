@@ -72,6 +72,11 @@
                 Cronjob For full Migration.
             </description>
             <attributes>
+                <attribute qualifier="fullDatabaseMigration" type="boolean">
+                    <persistence type="property"/>
+                    <modifiers optional="false"/>
+                    <defaultvalue>false</defaultvalue>
+                </attribute>            
             </attributes>
         </itemtype>
 

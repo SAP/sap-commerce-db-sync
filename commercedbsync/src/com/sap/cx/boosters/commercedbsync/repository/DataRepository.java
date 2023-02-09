@@ -33,6 +33,8 @@ public interface DataRepository {
     Database asDatabase(boolean reload);
 
     Set<String> getAllTableNames() throws Exception;
+    
+    Set<String> getAllViewNames() throws SQLException;
 
     Set<TypeSystemTable> getAllTypeSystemTables() throws Exception;
 
@@ -63,8 +65,12 @@ public interface DataRepository {
     DataSourceConfiguration getDataSourceConfiguration();
 
     int executeUpdateAndCommit(String updateStatement) throws Exception;
+    
+    int executeUpdateAndCommitOnPrimary(String updateStatement) throws Exception;
 
     void runSqlScript(final Resource resource);
+    
+    void runSqlScriptOnPrimary(final Resource resource);
 
     float getDatabaseUtilization() throws SQLException;
 
@@ -85,10 +91,12 @@ public interface DataRepository {
     Connection getConnection() throws Exception;
 
     DataSource getDataSource();
+    
+    DataSource getDataSourcePrimary();
 
     DataSet getBatchMarkersOrderedByColumn(MarkersQueryDefinition queryDefinition, Instant time) throws Exception;
 
     DataSet getUniqueColumns(String table) throws Exception;
 
-    boolean validateConnection() throws Exception;
+    boolean validateConnection() throws SQLException;
 }

@@ -7,26 +7,33 @@
 package com.sap.cx.boosters.commercedbsync.context.impl;
 
 
-import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.StringUtils;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
-
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.lang.StringUtils;
+
+import com.google.common.base.Splitter;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
 
 public class DefaultMigrationContext implements MigrationContext {
     private final DataRepository dataSourceRepository;
@@ -34,7 +41,7 @@ public class DefaultMigrationContext implements MigrationContext {
     protected boolean deletionEnabled;
     protected boolean lpTableMigrationEnabled;
 
-    protected final Configuration configuration;
+    protected final Configuration configuration; 
 
     public DefaultMigrationContext(final DataSourceConfiguration sourceDataSourceConfiguration,
                                    final DataSourceConfiguration targetDataSourceConfiguration,
@@ -244,6 +251,18 @@ public class DefaultMigrationContext implements MigrationContext {
     }
 
     @Override
+    public boolean isFullDatabaseMigration()
+    {
+   	 return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_FULLDATABASE);
+    }
+    
+    @Override
+    public void setFullDatabaseMigrationEnabled(final boolean enabled)
+    {
+   	 this.configuration.setProperty(CommercedbsyncConstants.MIGRATION_DATA_FULLDATABASE, Boolean.toString(enabled));
+    }    
+    
+    @Override
     public void refreshSelf() {
 
     }
@@ -289,18 +308,74 @@ public class DefaultMigrationContext implements MigrationContext {
         }
         return map;
     }
-
-    private Map<String, String[]> getDynamicPropertyKeysValue(final String key) {
-        final Map<String, String[]> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    
+    private Map<String, String> getDynamicRawProperties(final String key) {
+        final Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         final Configuration subset = configuration.subset(key);
         final Iterator<String> keys = subset.getKeys();
-
         while (keys.hasNext()) {
             final String current = keys.next();
-            final String params = configuration.getString(key + "." + current);
-            final String[] paramsArray = params.split(",");
-            map.put(current, paramsArray);
+            Optional.ofNullable(subset.getString(current)).ifPresent(value -> map.put(current, value));
         }
         return map;
     }
+
+	@Override
+	public String getItemTypeViewNamePattern() {
+		return getStringProperty(CommercedbsyncConstants.MIGRATION_DB_VIEW_NAME_PATTERN);
+	}
+
+	@Override
+    public String getItemTypeViewNameByTable(String tableName, DataRepository repository) throws SQLException {
+    	Set<String> views = repository.getAllViewNames();
+    	String possibleVieName = String.format(StringUtils.trimToEmpty(getItemTypeViewNamePattern()), tableName);
+    	return views.contains(possibleVieName) ? possibleVieName : tableName;
+	}
+	
+	@Override
+    public String getViewWhereClause(final String tableName) {
+    	String whereConfigKey = CommercedbsyncConstants.MIGRATION_DATA_VIEW_TBL_JOIN_WHERE.replace("{table}", tableName);
+    	String fromSection = configuration.getString(whereConfigKey);
+    	if (StringUtils.isBlank(fromSection.trim())) {
+    		fromSection = tableName;
+    	}
+    	return fromSection;
+    }
+	
+	@Override
+	public Map<String, String> getCustomColumnsForView(final String tableName) {
+		String tblConfigKey = CommercedbsyncConstants.MIGRATION_DATA_VIEW_COL_REPLACEMENT.replace("{table}", tableName);
+		String trimToTable = tblConfigKey.replace(".{column}", ""); 
+		return getDynamicRawProperties(trimToTable);
+	}
+	
+	@Override
+	public Set<String> getTablesForViews() {
+		Set<String> tables = new HashSet<>();
+		String str = CommercedbsyncConstants.MIGRATION_DATA_VIEW_TBL_GENERATION;
+		// prefix before table placeholder
+		String key = str.substring(0, str.indexOf("{") - 1);
+        final Configuration subset = configuration.subset(key);
+        final Iterator<String> keys = subset.getKeys();
+        while (keys.hasNext()) {
+            final String current = keys.next();
+            // trim from common prefix
+            String subkey = current.replace(key, "");
+            List<String> subkeyList = Splitter.on(".").splitToList(subkey);
+            if (subkeyList.size() == 2 && "enabled".equals(subkeyList.get(1))) {
+            	boolean val = subset.getBoolean(current, false);
+            	if (val) {
+            		String tablename = Splitter.on(".").splitToList(subkey).get(0);
+            		tables.add(tablename);
+            	}
+            }
+        }
+		return tables;
+	}
+	
+	@Override
+	public String getViewColumnPrefixFor(final String tableName)
+	{
+		return configuration.getString("migration.data.view.t." + tableName +".columnPrefix");
+	}	
 }

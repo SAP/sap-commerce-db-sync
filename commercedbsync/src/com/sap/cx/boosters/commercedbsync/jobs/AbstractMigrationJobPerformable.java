@@ -5,28 +5,6 @@
  */
 package com.sap.cx.boosters.commercedbsync.jobs;
 
-import com.sap.cx.boosters.commercedbsync.MigrationStatus;
-import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import de.hybris.platform.cronjob.enums.CronJobResult;
-import de.hybris.platform.cronjob.enums.CronJobStatus;
-import de.hybris.platform.cronjob.jalo.AbortCronJobException;
-import de.hybris.platform.cronjob.model.CronJobModel;
-import de.hybris.platform.servicelayer.cronjob.AbstractJobPerformable;
-import de.hybris.platform.servicelayer.cronjob.CronJobService;
-import de.hybris.platform.servicelayer.cronjob.PerformResult;
-import de.hybris.platform.util.Config;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.BooleanUtils;
-import com.sap.cx.boosters.commercedbsync.context.IncrementalMigrationContext;
-import com.sap.cx.boosters.commercedbsync.model.cron.FullMigrationCronJobModel;
-import com.sap.cx.boosters.commercedbsync.model.cron.IncrementalMigrationCronJobModel;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -36,10 +14,33 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Set;
 
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import com.sap.cx.boosters.commercedbsync.MigrationProgress;
+import com.sap.cx.boosters.commercedbsync.MigrationStatus;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.context.IncrementalMigrationContext;
+import com.sap.cx.boosters.commercedbsync.model.cron.FullMigrationCronJobModel;
+import com.sap.cx.boosters.commercedbsync.model.cron.IncrementalMigrationCronJobModel;
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
+
+import de.hybris.platform.cronjob.enums.CronJobStatus;
+import de.hybris.platform.cronjob.jalo.AbortCronJobException;
+import de.hybris.platform.cronjob.model.CronJobModel;
+import de.hybris.platform.servicelayer.cronjob.AbstractJobPerformable;
+import de.hybris.platform.servicelayer.cronjob.CronJobService;
+import de.hybris.platform.util.Config;
+
 public abstract class AbstractMigrationJobPerformable extends AbstractJobPerformable<CronJobModel> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractMigrationJobPerformable.class);
 
+    private static final String[] RUNNING_MIGRATION = new String[] { MigrationProgress.RUNNING.toString(), MigrationProgress.PROCESSED.toString(), MigrationProgress.POSTPROCESSING.toString() };
     private static final String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributeDescriptors", "collectiontypes", "composedtypes", "enumerationvalues", "maptypes"};
 
 	private static final String MIGRATION_UPDATE_TYPE_SYSTEM = "migration.ds.update.typesystem.table";
@@ -201,7 +202,7 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
 				aborted = true;
 				break;
 			}
-		} while (!status.isCompleted());
+		} while (StringUtils.equalsAnyIgnoreCase(status.getStatus().toString(), RUNNING_MIGRATION));
 
 		if (aborted)
 		{

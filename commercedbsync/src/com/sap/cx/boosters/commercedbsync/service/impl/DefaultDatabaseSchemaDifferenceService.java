@@ -279,7 +279,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 			final SchemaDifference sourceSchemaDifference = computeDiff(migrationContext,
 					migrationContext.getDataTargetRepository(), migrationContext.getDataSourceRepository(),
 					targetTableCandidates);
-			LOG.info("compute SCHMEA diff, REF DB ="
+			LOG.info("compute SCHEMA diff, REF DB ="
 					+ migrationContext.getDataSourceRepository().getDatabaseProvider().getDbName()
 					+ "vs Checking in DB = "
 					+ migrationContext.getDataTargetRepository().getDatabaseProvider().getDbName());
@@ -338,6 +338,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 				"Target TS Name=" + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
 		LOG.info("Target TS Suffix ="
 				+ context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
+		LOG.info("getItemTypeViewNamePattern=" + context.getItemTypeViewNamePattern());
 
 		LOG.info("--------MIGRATION CONTEXT- END----------");
 	}

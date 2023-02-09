@@ -21,6 +21,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED = "migration.schema.target.columns.remove.enabled";
     public static final String MIGRATION_TARGET_MAX_STAGE_MIGRATIONS = "migration.ds.target.db.max.stage.migrations";
     public static final String MIGRATION_SCHEMA_AUTOTRIGGER_ENABLED = "migration.schema.autotrigger.enabled";
+    public static final String MIGRATION_DATA_FULLDATABASE = "migration.data.fulldatabase.enabled";
     public static final String MIGRATION_DATA_READER_BATCHSIZE = "migration.data.reader.batchsize";
     public static final String MIGRATION_DATA_TRUNCATE_ENABLED = "migration.data.truncate.enabled";
     public static final String MIGRATION_DATA_TRUNCATE_EXCLUDED = "migration.data.truncate.excluded";
@@ -78,6 +79,17 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
 	public static final String MIGRATION_ORACLE_VARCHAR24k = "VARCHAR2(4000)";
 
 	// ORACLE_TARGET -- END
+	
+	// DB View support
+	public static final String MIGRATION_DB_VIEW_NAME_PATTERN = 		"migration.data.view.name.pattern";
+
+	// DDL View Generation
+	// property
+	
+	public static final String MIGRATION_DATA_VIEW_TBL_GENERATION = 	"migration.data.view.t.{table}.enabled";
+	public static final String MIGRATION_DATA_VIEW_TBL_JOIN_WHERE = 	"migration.data.view.t.{table}.joinWhereClause";
+	public static final String MIGRATION_DATA_VIEW_COL_REPLACEMENT = 	"migration.data.view.t.{table}.columnTransformation.{column}";    
+	
 
 	private CommercedbsyncConstants() {
 		// empty to avoid instantiating this constant class

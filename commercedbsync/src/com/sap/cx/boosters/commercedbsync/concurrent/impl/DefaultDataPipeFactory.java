@@ -14,6 +14,8 @@ import com.sap.cx.boosters.commercedbsync.performance.PerformanceRecorder;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import com.sap.cx.boosters.commercedbsync.views.TableViewGenerator;
+
 import org.apache.commons.lang3.tuple.Pair;
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
@@ -31,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -108,12 +111,12 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             if (batchColumn.isEmpty()) {
                 // trying offset queries with unique index columns
                 Set<String> batchColumns;
-                DataSet uniqueColumns = context.getMigrationContext().getDataSourceRepository().getUniqueColumns(table);
+                DataSet uniqueColumns = context.getMigrationContext().getDataSourceRepository().getUniqueColumns(TableViewGenerator.getTableNameForView(table, context.getMigrationContext()));
                 if (uniqueColumns.isNotEmpty()) {
                     if (uniqueColumns.getColumnCount() == 0) {
                         throw new IllegalStateException("Corrupt dataset retrieved. Dataset should have information about unique columns");
                     }
-                    batchColumns = uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0))).collect(Collectors.toSet());
+                    batchColumns = uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0))).collect(Collectors.toCollection(LinkedHashSet::new));
                     for (int offset = 0; offset < totalRows; offset += pageSize) {
                         DataReaderTask dataReaderTask = new BatchOffsetDataReaderTask(pipeTaskContext, offset, batchColumns);
                         workerExecutor.safelyExecute(dataReaderTask);
@@ -217,7 +220,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             long pageSize = getPipeTaskContext().getPageSize();
             OffsetQueryDefinition queryDefinition = new OffsetQueryDefinition();
             queryDefinition.setTable(table);
-            queryDefinition.setAllColumns(batchColumns);
+            queryDefinition.setOrderByColumns(batchColumns.stream().collect(Collectors.joining(",")));
             queryDefinition.setBatchSize(pageSize);
             queryDefinition.setOffset(offset);
             queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
@@ -265,6 +268,10 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             queryDefinition.setBatchSize(pageSize);
             queryDefinition.setDeletionEnabled(ctx.getMigrationContext().isDeletionEnabled());
             queryDefinition.setLpTableEnabled(ctx.getMigrationContext().isLpTableMigrationEnabled());
+            if(LOG.isDebugEnabled())
+            {
+          	  LOG.debug("Executing markers query for {} with lastvalue: {}, nextvalue: {}, batchsize: {}", table, lastValue, nextValue.orElseGet(() -> null), pageSize);
+            }
             DataSet page = adapter.getBatchOrderedByColumn(ctx.getMigrationContext(), queryDefinition);
             getPipeTaskContext().getRecorder().record(PerformanceUnit.ROWS, pageSize);
             getPipeTaskContext().getPipe().put(MaybeFinished.of(page));
