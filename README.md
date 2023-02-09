@@ -15,12 +15,15 @@ There are two main use cases:
 
 * [User Guide for Data Replication](docs/user/USER-GUIDE-DATA-REPLICATION.md) Go through the details about Data replication between SAP Commerce Cloud and an external database. 
 * [User Guide for Data Migration](docs/user/USER-GUIDE-DATA-MIGRATION.md) When ready to start the migration activities, follow the instructions in the User Guide to trigger the data migration.
-* [Demo video](https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3) on how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud.
 * [Configuration Guide](docs/configuration/CONFIGURATION-GUIDE.md) The extensions ship with a default configuration that may need to be adjusted depending on the desired behaviour. This guide explains how different features and behaviours can be configured.
 * [Security Guide](docs/security/SECURITY-GUIDE.md) A data migration typically features sensitive data and uses delicate system access. Make sure you have read the Security Guide before you proceed with any migration activities and thereby acknowledge the security recommendations stated in the guide.
 * [Performance Guide](docs/performance/PERFORMANCE-GUIDE.md) Performance is crucial for any data migration, not only for large databases but also generally to reduce the time of the cut-over window. The performance guide explains the basic concept of performance tuning and also provides benchmarks that will give you an impression of how to estimate the cutover time window.
 * [Developer Guide](docs/developer/DEVELOPER-GUIDE.md) If you want to contribute please read this guide.
 * [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md) A collection of common problems and how to tackle them.
+
+# Quick demo
+
+[![Watch the video](/docs/user/commerce-db-sync-demo.png)](https://video.sap.com/embed/secure/iframe/entryId/1_7bhihtlz/uiConfId/30317401/st/0)
 
 # Features Overview
 
