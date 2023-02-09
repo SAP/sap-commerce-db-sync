@@ -11,6 +11,7 @@
         const stopButton = document.getElementById("buttonStopCopyData")
         const startUrl = startButton.dataset.url;
         const stopUrl = stopButton.dataset.url;
+        const resumeUrl =  startUrl.replace("copyData", "resumeRunning");
         const statusContainer = document.getElementById('copyStatus');
         const summaryContainer = document.getElementById('copySummary');
         const timeContainer = document.getElementById('copyTime');
@@ -81,14 +82,14 @@
 
         function resumeRunning() {
             $.ajax({
-                url: '/hac/commercedbsynchac/resumeRunning',
+                url: resumeUrl,
                 type: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': token
                 },
                 success: function (data) {
-                    if(data && data.status === 'RUNNING') {
+                    if(data && (data.status === 'RUNNING' || data.status === 'PROCESSED' || data.status == 'POSTPROCESSING')) {
                         startButtonContentBefore = startButton.innerHTML;
                         startButton.innerHTML = startButtonContentBefore + ' ' + hac.global.getSpinnerImg();
                         startButton.disabled = true;

@@ -6,22 +6,24 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.google.common.base.Joiner;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.repository.platform.MigrationHybrisHANAPlatform;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.bootstrap.ddl.DataBaseProvider;
-import de.hybris.bootstrap.ddl.DatabaseSettings;
-import de.hybris.bootstrap.ddl.HybrisPlatform;
+import java.sql.Types;
+
+import javax.sql.DataSource;
+
 import org.apache.ddlutils.Platform;
-import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
-import javax.sql.DataSource;
-import java.sql.Types;
+import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.repository.platform.MigrationHybrisHANAPlatform;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
+
+import de.hybris.bootstrap.ddl.DataBaseProvider;
+import de.hybris.bootstrap.ddl.DatabaseSettings;
+import de.hybris.bootstrap.ddl.HybrisPlatform;
 
 public class HanaDataRepository extends AbstractDataRepository {
 
@@ -31,8 +33,7 @@ public class HanaDataRepository extends AbstractDataRepository {
 
     @Override
     protected String buildOffsetBatchQuery(OffsetQueryDefinition queryDefinition, String... conditions) {
-        String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
-        return String.format("select * from %s where %s order by %s limit %s offset %s", queryDefinition.getTable(), expandConditions(conditions), orderBy, queryDefinition.getBatchSize(), queryDefinition.getOffset());
+        return String.format("select * from %s where %s order by %s limit %s offset %s", queryDefinition.getTable(), expandConditions(conditions), queryDefinition.getOrderByColumns(), queryDefinition.getBatchSize(), queryDefinition.getOffset());
     }
 
     @Override

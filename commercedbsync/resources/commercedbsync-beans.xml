@@ -10,6 +10,7 @@
     <enum class="com.sap.cx.boosters.commercedbsync.MigrationProgress">
         <value>RUNNING</value>
         <value>PROCESSED</value>
+        <value>POSTPROCESSING</value>
         <value>COMPLETED</value>
         <value>ABORTED</value>
         <value>STALLED</value>
@@ -116,9 +117,9 @@
 
     <bean class="com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition">
         <property name="table" type="String" />
-        <property name="allColumns" type="java.util.Set&lt;String&gt;" />
         <property name="batchSize" type="long" />
         <property name="offset" type="long" />
+		<property name="orderByColumns" type="String" />
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition">

@@ -26,11 +26,14 @@ import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.events.CopyDatabaseTableEvent;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import com.sap.cx.boosters.commercedbsync.views.TableViewGenerator;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.core.io.ClassPathResource;
 
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -47,6 +50,7 @@ import java.util.stream.Collectors;
 
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MDC_CLUSTERID;
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MDC_PIPELINE;
+import static org.mockito.ArgumentMatchers.contains;
 
 /**
  * Scheduler for Cluster Based Migrations
@@ -82,7 +86,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         }
         logMigrationContext(context.getMigrationContext());
 		// ORACLE_TARGET - END
-         context.getMigrationContext().getDataTargetRepository().runSqlScript(new ClassPathResource(sqlScript));
+        context.getMigrationContext().getDataTargetRepository().runSqlScript(new ClassPathResource(sqlScript));
         int ownNodeId = clusterService.getClusterId();
         if (!CollectionUtils.isEmpty(context.getCopyItems())) {
             databaseCopyTaskRepository.createMigrationStatus(context);
@@ -103,6 +107,9 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 } else {
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, sourceRowCount, ownNodeId);
                     databaseCopyTaskRepository.markTaskCompleted(context, dataCopyItem, "0");
+                    if(!context.getMigrationContext().isIncrementalModeEnabled() && context.getMigrationContext().isTruncateEnabled()) {
+                    	context.getMigrationContext().getDataTargetRepository().truncateTable(dataCopyItem.getTargetItem());
+                    }
                 }
             }
             startMonitorThread(context);
@@ -146,7 +153,9 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
 				"Target TS Name=" + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
 		LOG.info("Target TS Suffix ="
 				+ context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-
+		LOG.info("getItemTypeViewNamePattern=" + context.getItemTypeViewNamePattern());
+		
+		
 		LOG.info("--------MIGRATION CONTEXT- END----------");
 	}
     private List<Pair<CopyContext.DataCopyItem, Long>> generateSchedulerItemList(CopyContext context, DataRepositoryAdapter dataRepositoryAdapter) throws Exception {

@@ -7,6 +7,7 @@ SAP Commerce DB Sync performs table-to-table replication in single-directionally
 SAP Commerce DB Sync is implemented as SAP Commerce extensions and it does not require any third-party ETL.
 
 There are two main use cases:
+
 * __Replicate data across an external database__: you can push data regularly in batch mode through a Commerce Cloud cronjob and synchronize to an external database. A typical use case is for analytics and reporting purpose when you need direct JDBC access to the database to run analytic jobs.
 ![architecture overview for data sync between SAP Commerce Cloud to an external database](docs/user/data_replication_architecture.png)
 * __Data migration__: paired with the self-service media process described on [this CXWorks article](https://www.sap.com/cxworks/article/2589632453/migrate_to_sap_commerce_cloud_migrate_media_with_azcopy), it allows to self-service a one-shot data migration from the on-premise SAP Commerce environment to a SAP Commerce Cloud subscription.
@@ -20,61 +21,70 @@ There are two main use cases:
 * [Performance Guide](docs/performance/PERFORMANCE-GUIDE.md) Performance is crucial for any data migration, not only for large databases but also generally to reduce the time of the cut-over window. The performance guide explains the basic concept of performance tuning and also provides benchmarks that will give you an impression of how to estimate the cutover time window.
 * [Developer Guide](docs/developer/DEVELOPER-GUIDE.md) If you want to contribute please read this guide.
 * [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md) A collection of common problems and how to tackle them.
+* [View Support for Migration](docs/testing/README.md) usage of a `VIEW` instead source table.
 
 # Quick demo
 
-[![Watch the video](/docs/user/commerce-db-sync-demo.png)](https://video.sap.com/embed/secure/iframe/entryId/1_7bhihtlz/uiConfId/30317401/st/0)
+[![Watch the video](docs/user/commerce-db-sync-demo.png)](https://video.sap.com/embed/secure/iframe/entryId/1_7bhihtlz/uiConfId/30317401/st/0)
+
 
 # Features Overview
 
-* Database Connectivity
-  * Multipe supported databases: Oracle, MySQL, HANA, MSSQL
-  * UI based connection validation
-* Schema Differences
-  * UI based schema differences detector
-  * Automated target schema adaption
-    * Table creation / removal
-    * Column creation / removal
-  * Configurable behaviour
-* Data Copy
-  * UI based copy trigger
-  * Configurable target table truncation
-  * Configurable index disabling
-  * Read/write batching with configurable sizes
-  * Copy parallelization
-  * Cluster awareness
-  * Column exclusions
-  * Table exclusions/inclusions
-  * Incremental mode (delta)
-  * Custom tables
-  * Staged approach using table prefix
-* Reporting / Audit
-  * Automated reporting for schema changes
-  * Automated reporting for copy processes
-  * Stored on blob storage
-  * Logging of all actions triggered from the UI
+- Database Connectivity
+  - Multipe supported databases: Oracle, MySQL, HANA, MSSQL
+  - UI based connection validation
+- Schema Differences
+  - UI based schema differences detector
+  - Automated target schema adaption
+    - Table creation / removal
+    - Column creation / removal
+  - Configurable behaviour
+- Data Copy
+  - UI based copy trigger
+  - Configurable target table truncation
+  - Configurable index disabling
+  - Read/write batching with configurable sizes
+  - Copy parallelization
+  - Cluster awareness
+  - Column exclusions
+  - Table exclusions/inclusions
+  - Incremental mode (delta)
+  - Custom tables
+  - Staged approach using table prefix
+  - [View usage instead of table](docs/testing/README.md)
+- Reporting / Audit
+  - Automated reporting for schema changes
+  - Automated reporting for copy processes
+  - Stored on blob storage
+  - Logging of all actions triggered from the UI
 
 # Requirements
 
-  * SAP Commerce (>=1811)
-  * Tested with source databases:
-    * Azure SQL
-    * MySQL (5.7)
-    * Oracle (XE 11g)
-    * HANA (express 2.0) and HANA Cloud
-  * Tested with target databases:
-    * Azure SQL
-    * Oracle (XE 11g)
-    * HANA (express 2.0) and HANA Cloud
+- SAP Commerce (>=1811)
+- Tested with source databases:
+  - Azure SQL
+  - MySQL (5.7)
+  - Oracle (XE 11g)
+  - HANA (express 2.0) and HANA Cloud
+- Tested with target databases:
+  - Azure SQL
+  - Oracle (XE 11g)
+  - HANA (express 2.0) and HANA Cloud
 
 # Performance
 
-Commerce DB Sync has been built to offer reasonable performance with large amount of data using the following design: 
-* Table to table replication using JDBC (low level)
-* Selection of tables so we do not need a full synchronization in particular for large technical table (task logs, audit logs...)​
-* Multi-threaded and can manage multiple tables at the same time ​
-* Using UPSERT (INSERT/UPDATE)
-* Use read replica Commerce database as a source database
+Commerce DB Sync has been built to offer reasonable performance with large amount of data using the following design:
+
+- Table to table replication using JDBC (low level)
+- Selection of tables so we do not need a full synchronization in particular for large technical table (task logs, audit logs...)​
+- Multi-threaded and can manage multiple tables at the same time ​
+- Using UPSERT (INSERT/UPDATE)
+- Use read replica Commerce database as a source database
+
+# Demo Video
+
+Here is a video that presents how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud:
+https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3
 
 # Disclaimer
 
@@ -90,4 +100,6 @@ SAP Services team is the creator and main contributor to SAP Commerce DB Sync, t
 Want to contribute? Check out our [Contributing document](CONTRIBUTING.md) and follow our [code of conduct](CODE_OF_CONDUCT.md).
 
 # License
+
 Copyright (c) 2023 SAP SE or an SAP affiliate company. All rights reserved. This project is licensed under the Apache Software License, version 2.0 except as noted otherwise in the [LICENSE file](LICENSE).
+

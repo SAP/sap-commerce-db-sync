@@ -6,13 +6,13 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.google.common.base.Joiner;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.bootstrap.ddl.DataBaseProvider;
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
+
+import de.hybris.bootstrap.ddl.DataBaseProvider;
 
 public class MySQLDataRepository extends AbstractDataRepository {
     public MySQLDataRepository(DataSourceConfiguration dataSourceConfiguration, DatabaseMigrationDataTypeMapperService databaseMigrationDataTypeMapperService) {
@@ -21,8 +21,7 @@ public class MySQLDataRepository extends AbstractDataRepository {
 
     @Override
     protected String buildOffsetBatchQuery(OffsetQueryDefinition queryDefinition, String... conditions) {
-        String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
-        return String.format("select * from %s where %s order by %s limit %s,%s", queryDefinition.getTable(), expandConditions(conditions), orderBy, queryDefinition.getOffset(), queryDefinition.getBatchSize());
+        return String.format("select * from %s where %s order by %s limit %s,%s", queryDefinition.getTable(), expandConditions(conditions), queryDefinition.getOrderByColumns(), queryDefinition.getOffset(), queryDefinition.getBatchSize());
     }
 
     @Override

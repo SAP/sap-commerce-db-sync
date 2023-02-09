@@ -86,9 +86,6 @@ public class CommercemigrationhacController {
     @Autowired
     BlobDatabaseMigrationReportStorageService blobDatabaseMigrationReportStorageService;
 
-
-    private String currentMigrationId;
-
     @RequestMapping(value =
             {"/migrationSchema"}, method =
             {org.springframework.web.bind.annotation.RequestMethod.GET})
@@ -116,7 +113,7 @@ public class CommercemigrationhacController {
     public String data(final Model model) {
         logAction("Data migration tab clicked");
 		// ORACLE_TARGET -- start
-		migrationContext.refreshSelf();
+//		migrationContext.refreshSelf();
         model.addAttribute("isIncremental", migrationContext.isIncrementalModeEnabled());
         Instant timestamp = migrationContext.getIncrementalTimestamp();
         model.addAttribute("incrementalTimestamp", timestamp == null ? DEFAULT_EMPTY_VAL : timestamp);
@@ -295,8 +292,8 @@ public class CommercemigrationhacController {
 		// ORACLE_TARGET -- start
 		migrationContext.refreshSelf();
 		// ORACLE_TARGET -- END
-        this.currentMigrationId = databaseMigrationService.startMigration(migrationContext);
-        return databaseMigrationService.getMigrationState(migrationContext, this.currentMigrationId);
+        String currentMigrationId = databaseMigrationService.startMigration(migrationContext);
+        return databaseMigrationService.getMigrationState(migrationContext, currentMigrationId);
     }
 
     @RequestMapping(value = "/abortCopy", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -310,11 +307,12 @@ public class CommercemigrationhacController {
         return "true";
     }
 
-    @RequestMapping(value = "/resumeRunning", method = RequestMethod.GET)
+    @GetMapping(value = "/resumeRunning")
     @ResponseBody
     public MigrationStatus resumeRunning() throws Exception {
-        if (StringUtils.isNotEmpty(this.currentMigrationId)) {
-            MigrationStatus migrationState = databaseMigrationService.getMigrationState(migrationContext, this.currentMigrationId);
+       final String currentMigrationId = databaseMigrationService.getMigrationID(migrationContext); 
+   	 if (StringUtils.isNotEmpty(currentMigrationId)) {
+            MigrationStatus migrationState = databaseMigrationService.getMigrationState(migrationContext, currentMigrationId);
             prepareStateForJsonSerialization(migrationState);
             return migrationState;
         } else {

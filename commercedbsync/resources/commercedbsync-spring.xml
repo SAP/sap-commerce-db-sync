@@ -113,6 +113,14 @@
         <property name="databaseMigrationReportService" ref="databaseMigrationReportService"/>
         <property name="schemaDifferenceService" ref="schemaDifferenceService"/>
         <property name="migrationContextValidator" ref="migrationContextValidator"/>
+        <property name="preProcessors">
+            <util:list>
+                <ref bean="truncateNotMigratedTablesPreProcessor"/>
+                <ref bean="transformFunctionGeneratorPreProcessor"/>
+                <ref bean="typeInfoTableGeneratorPreProcessor"/>
+                <ref bean="viewGeneratorPreProcessor"/>
+            </util:list>
+        </property>        
     </bean>
 
     <alias name="customClusterDatabaseCopyScheduler" alias="databaseCopyScheduler"/>
@@ -169,6 +177,18 @@
         <property name="performanceProfiler" ref="performanceProfiler"/>
     </bean>
 
+    <bean id="truncateNotMigratedTablesPreProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.TruncateNotMigratedTablesPreProcessor"/>
+    <bean id="transformFunctionGeneratorPreProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.TransformFunctionGeneratorPreProcessor"/>
+    <bean id="typeInfoTableGeneratorPreProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.TypeInfoTableGeneratorPreProcessor">
+		<property name="flexibleSearchService" ref="flexibleSearchService"/>
+        <property name="configurationService" ref="configurationService"/>
+	</bean>            
+    <bean id="viewGeneratorPreProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.ViewGeneratorPreProcessor"/>
+
 
     <alias name="defaultMigrationPostProcessor" alias="migrationPostProcessor"/>
     <bean id="defaultMigrationPostProcessor"
@@ -185,7 +205,15 @@
           <!--  ORACLE_TARGET START  -->
           <property name="configurationService" ref="configurationService" />
           <!--  ORACLE_TARGET END -->
-    </bean>
+    </bean> 
+
+    <bean id="viewDropPostProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.ViewDropPostProcessor" />
+
+    <bean id="indexAlignerPostProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.IndexAlignerPostProcessor">
+		<property name="configurationService" ref="configurationService" />
+	</bean>
 
     <alias name="defaultCopyCompleteEventListener" alias="copyCompleteEventListener"/>
     <bean id="defaultCopyCompleteEventListener"
@@ -197,6 +225,8 @@
         <property name="postProcessors">
             <util:list>
                 <ref bean="migrationPostProcessor"/>
+                <ref bean="viewDropPostProcessor"/>
+                <ref bean="indexAlignerPostProcessor"/>
                 <ref bean="reportMigrationPostProcessor"/>
                 <ref bean="adjustActiveTypeSystemPostProcessor"/>
             </util:list>

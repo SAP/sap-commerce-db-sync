@@ -58,6 +58,7 @@ public class FullMigrationJob extends AbstractMigrationJobPerformable {
 		 incrementalMigrationContext.setTruncateEnabled(fullMigrationCronJobModel.isTruncateEnabled());
          incrementalMigrationContext.setSchemaMigrationAutoTriggerEnabled(fullMigrationCronJobModel.isSchemaAutotrigger());
          incrementalMigrationContext.setIncrementalModeEnabled(false);
+         incrementalMigrationContext.setFullDatabaseMigrationEnabled(fullMigrationCronJobModel.isFullDatabaseMigration());
          currentMigrationId = databaseMigrationService.startMigration(incrementalMigrationContext);
 		 MigrationStatus currentState = waitForFinishCronjobs(incrementalMigrationContext, currentMigrationId,cronJobModel);
 		}

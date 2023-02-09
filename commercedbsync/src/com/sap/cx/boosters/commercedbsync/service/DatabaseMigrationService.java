@@ -55,6 +55,8 @@ public interface DatabaseMigrationService {
 
     MigrationReport getMigrationReport(MigrationContext context, String migrationID) throws Exception;
 
+    String getMigrationID(MigrationContext migrationContext);
+    
     /**
      * Busy wait until migration is done. Use only for tests!
      *

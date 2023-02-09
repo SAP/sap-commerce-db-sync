@@ -6,13 +6,6 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.bootstrap.ddl.DataBaseProvider;
-import de.hybris.bootstrap.ddl.DatabaseSettings;
-import de.hybris.bootstrap.ddl.HybrisOraclePlatform;
-import de.hybris.bootstrap.ddl.HybrisPlatform;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -21,14 +14,20 @@ import java.util.Collections;
 import javax.sql.DataSource;
 
 import org.apache.ddlutils.Platform;
+import org.springframework.core.io.Resource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
-import org.springframework.core.io.Resource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
 
-import com.google.common.base.Joiner;
+import de.hybris.bootstrap.ddl.DataBaseProvider;
+import de.hybris.bootstrap.ddl.DatabaseSettings;
+import de.hybris.bootstrap.ddl.HybrisOraclePlatform;
+import de.hybris.bootstrap.ddl.HybrisPlatform;
 
 public class OracleDataRepository extends AbstractDataRepository {
 	public OracleDataRepository(final DataSourceConfiguration dataSourceConfiguration,
@@ -52,7 +51,6 @@ public class OracleDataRepository extends AbstractDataRepository {
 
     @Override
     protected String buildOffsetBatchQuery(OffsetQueryDefinition queryDefinition, String... conditions) {
-        String orderBy = Joiner.on(',').join(queryDefinition.getAllColumns());
         return String.format(
                 "select * " +
                         " from ( " +
@@ -62,7 +60,7 @@ public class OracleDataRepository extends AbstractDataRepository {
                         "  over (order by %s) rn " +
                         " from %s t where %s) " +
                         "where rn between %s and %s " +
-                        "order by rn", queryDefinition.getBatchSize(), orderBy, queryDefinition.getTable(), expandConditions(conditions), queryDefinition.getOffset() + 1, queryDefinition.getOffset() + queryDefinition.getBatchSize());
+                        "order by rn", queryDefinition.getBatchSize(), queryDefinition.getOrderByColumns(), queryDefinition.getTable(), expandConditions(conditions), queryDefinition.getOffset() + 1, queryDefinition.getOffset() + queryDefinition.getBatchSize());
     }
 
     // https://blogs.oracle.com/oraclemagazine/on-top-n-and-pagination-queries

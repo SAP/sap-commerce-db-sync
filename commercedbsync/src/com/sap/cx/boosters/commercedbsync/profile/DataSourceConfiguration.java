@@ -15,6 +15,8 @@ public interface DataSourceConfiguration {
     String getDriver();
 
     String getConnectionString();
+    
+    String getConnectionStringPrimary();
 
     String getUserName();
 

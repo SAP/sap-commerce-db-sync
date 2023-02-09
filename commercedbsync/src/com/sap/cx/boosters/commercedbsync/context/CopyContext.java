@@ -57,7 +57,7 @@ public class CopyContext {
     }
 
     public static class DataCopyItem {
-        private final String sourceItem;
+        private String sourceItem;
         private final String targetItem;
         private final Map<String, String> columnMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         private final Long rowCount;
@@ -79,8 +79,12 @@ public class CopyContext {
         public String getSourceItem() {
             return sourceItem;
         }
+        
+        public void setSourceItem(String sourceItem) {
+			this.sourceItem = sourceItem;
+		}
 
-        public String getTargetItem() {
+		public String getTargetItem() {
             return targetItem;
         }
 

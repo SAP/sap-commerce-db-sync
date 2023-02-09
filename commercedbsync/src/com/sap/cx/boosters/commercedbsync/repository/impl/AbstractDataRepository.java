@@ -6,34 +6,8 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import com.google.common.base.Joiner;
-import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
-import com.sap.cx.boosters.commercedbsync.dataset.impl.DefaultDataColumn;
-import com.sap.cx.boosters.commercedbsync.dataset.impl.DefaultDataSet;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
-import de.hybris.bootstrap.ddl.DatabaseSettings;
-import de.hybris.bootstrap.ddl.HybrisPlatformFactory;
-import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.ddlutils.Platform;
-import org.apache.ddlutils.model.Database;
-import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.TypeSystemTable;
-import com.sap.cx.boosters.commercedbsync.dataset.DataColumn;
-import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
-import com.sap.cx.boosters.commercedbsync.datasource.MigrationDataSourceFactory;
-import com.sap.cx.boosters.commercedbsync.datasource.impl.DefaultMigrationDataSourceFactory;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.io.Resource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-
-import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,7 +15,9 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +25,36 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+
+import javax.sql.DataSource;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.ddlutils.Platform;
+import org.apache.ddlutils.model.Database;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+
+import com.google.common.base.Joiner;
+import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.TypeSystemTable;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.dataset.DataColumn;
+import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
+import com.sap.cx.boosters.commercedbsync.dataset.impl.DefaultDataColumn;
+import com.sap.cx.boosters.commercedbsync.dataset.impl.DefaultDataSet;
+import com.sap.cx.boosters.commercedbsync.datasource.MigrationDataSourceFactory;
+import com.sap.cx.boosters.commercedbsync.datasource.impl.DefaultMigrationDataSourceFactory;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
+
+import de.hybris.bootstrap.ddl.DatabaseSettings;
+import de.hybris.bootstrap.ddl.HybrisPlatformFactory;
+import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
 
 /**
  * Base information an a
@@ -84,6 +90,30 @@ public abstract class AbstractDataRepository implements DataRepository {
     public DataSource getDataSource() {
         return dataSourceHolder.computeIfAbsent("DATASOURCE", s -> migrationDataSourceFactory.create(dataSourceConfiguration));
     }
+    
+	 @Override
+	 public DataSource getDataSourcePrimary()
+	 {
+		 return dataSourceHolder.computeIfAbsent("DATASOURCEPRIMARY", s -> {
+			 DataSource primaryDataSource = getDataSource();
+			 final String connectionStringPrimary = dataSourceConfiguration.getConnectionStringPrimary();
+			 if(StringUtils.isNotBlank(connectionStringPrimary))
+			 {
+				 final Map<String, Object> dataSourceConfigurationMap = new HashMap<>();
+				 dataSourceConfigurationMap.put("connection.url", connectionStringPrimary);
+				 dataSourceConfigurationMap.put("driver", dataSourceConfiguration.getDriver());
+				 dataSourceConfigurationMap.put("username", dataSourceConfiguration.getUserName());
+				 dataSourceConfigurationMap.put("password", dataSourceConfiguration.getPassword());
+				 dataSourceConfigurationMap.put("pool.size.max", Integer.valueOf(1));
+				 dataSourceConfigurationMap.put("pool.size.idle.min", Integer.valueOf(1));
+				 dataSourceConfigurationMap.put("registerMbeans",Boolean.FALSE);
+				 
+				 primaryDataSource = migrationDataSourceFactory.create(dataSourceConfigurationMap);
+			 }
+
+			 return primaryDataSource;
+		 });
+	 }
 
     public Connection getConnection() throws SQLException {
         Connection connection = getDataSource().getConnection();
@@ -106,6 +136,22 @@ public abstract class AbstractDataRepository implements DataRepository {
         return connection;
     }
 
+	 @Override
+	 public int executeUpdateAndCommitOnPrimary(final String updateStatement) throws SQLException
+	 {
+		 try (final Connection conn = getConnectionFromPrimary(); final Statement statement = conn.createStatement())
+		 {
+			 return statement.executeUpdate(updateStatement);
+		 }
+	 }
+	 
+	 public Connection getConnectionFromPrimary() throws SQLException
+	 {
+		 final Connection connection = getDataSourcePrimary().getConnection();
+		 connection.setAutoCommit(true);
+		 return connection;
+	 }	 
+    
     @Override
     public void runSqlScript(Resource resource) {
         final ResourceDatabasePopulator databasePopulator = new ResourceDatabasePopulator(resource);
@@ -113,6 +159,13 @@ public abstract class AbstractDataRepository implements DataRepository {
         databasePopulator.execute(getDataSource());
     }
 
+    @Override
+    public void runSqlScriptOnPrimary(Resource resource) {
+        final ResourceDatabasePopulator databasePopulator = new ResourceDatabasePopulator(resource);
+        databasePopulator.setIgnoreFailedDrops(true);
+        databasePopulator.execute(getDataSourcePrimary());
+    }
+    
     @Override
     public float getDatabaseUtilization() throws SQLException {
         throw new UnsupportedOperationException("Must be added in the specific repository implementation");
@@ -379,7 +432,9 @@ public abstract class AbstractDataRepository implements DataRepository {
                 typeSystemTable.setTableName(tableName);
                 typeSystemTable.setName(name);
                 typeSystemTable.setTypeSystemName(resultSet.getString("TypeSystemName"));
-                typeSystemTable.setAuditTableName(resultSet.getString("AuditTableName"));
+                if (hasAuditTable(resultSet, yDeploymentsTable)) {
+                    typeSystemTable.setAuditTableName(resultSet.getString("AuditTableName"));
+                }
                 typeSystemTable.setPropsTableName(resultSet.getString("PropsTableName"));
                 typeSystemTable.setTypeSystemSuffix(detectTypeSystemSuffix(tableName, name));
                 typeSystemTable.setTypeSystemRelatedTable(PersistenceInformation.isTypeSystemRelatedDeployment(name));
@@ -387,6 +442,15 @@ public abstract class AbstractDataRepository implements DataRepository {
             }
         }
         return allTypeSystemTables;
+    }
+
+    private Boolean hasAuditTable(final ResultSet resultSet, final String yDeploymentsTable) {
+        try {
+            return resultSet.findColumn("AuditTableName") > 0;
+        } catch (SQLException ignored) {
+            LOG.debug("No column with name 'AuditTableName' found in table {}", yDeploymentsTable);
+            return false;
+        }
     }
 
     private String detectTypeSystemSuffix(String tableName, String name) {
@@ -412,6 +476,8 @@ public abstract class AbstractDataRepository implements DataRepository {
                 }
                 return isAudit;
             }
+        } catch (SQLException ignored) {
+            return false;
         }
     }
 
@@ -450,12 +516,22 @@ public abstract class AbstractDataRepository implements DataRepository {
         String[] conditions = null;
         if (conditionsList.size() > 0) {
             conditions = conditionsList.toArray(new String[conditionsList.size()]);
-        }
+            if(LOG.isDebugEnabled())
+            {
+            	LOG.debug("Batch query conditions {}", Arrays.toString(conditions));	
+            }
+        }        
+        LOG.debug("Batch query table: {}, offset: {}, batchSize: {}, orderByColumns: {}", queryDefinition.getTable(), queryDefinition.getOffset(), queryDefinition.getBatchSize(), queryDefinition.getOrderByColumns());
         try (Connection connection = getConnection();
              PreparedStatement stmt = connection.prepareStatement(buildOffsetBatchQuery(queryDefinition, conditions))) {
             stmt.setFetchSize(Long.valueOf(queryDefinition.getBatchSize()).intValue());
             if (time != null) {
                 stmt.setTimestamp(1, Timestamp.from(time));
+                stmt.setLong(2, queryDefinition.getOffset());
+                stmt.setLong(3, queryDefinition.getBatchSize());
+            } else {
+               stmt.setLong(1, queryDefinition.getOffset());
+               stmt.setLong(2, queryDefinition.getBatchSize());
             }
             ResultSet resultSet = stmt.executeQuery();
             return convertToBatchDataSet(resultSet);
@@ -472,14 +548,21 @@ public abstract class AbstractDataRepository implements DataRepository {
         //get batches with modifiedts >= configured time for incremental migration
         List<String> conditionsList = new ArrayList<>(2);
         processDefaultConditions(queryDefinition.getTable(), conditionsList);
+        int conditionIndex = 1;
+        int timeConditionIndex = 0;
         if (time != null) {
             conditionsList.add("modifiedts > ?");
+            timeConditionIndex = conditionIndex++;
         }
+        int lastColumnConditionIndex = 0;
         if (queryDefinition.getLastColumnValue() != null) {
-            conditionsList.add(String.format("%s >= %s", queryDefinition.getColumn(), queryDefinition.getLastColumnValue()));
+            conditionsList.add(String.format("%s >= ?", queryDefinition.getColumn()));
+            lastColumnConditionIndex = conditionIndex++;
         }
+        int nextColumnConditionIndex = 0;
         if (queryDefinition.getNextColumnValue() != null) {
-            conditionsList.add(String.format("%s < %s", queryDefinition.getColumn(), queryDefinition.getNextColumnValue()));
+            conditionsList.add(String.format("%s < ?", queryDefinition.getColumn()));
+            nextColumnConditionIndex = conditionIndex++;
         }
         String[] conditions = null;
         if (conditionsList.size() > 0) {
@@ -488,9 +571,15 @@ public abstract class AbstractDataRepository implements DataRepository {
         try (Connection connection = getConnection();
              PreparedStatement stmt = connection.prepareStatement(buildValueBatchQuery(queryDefinition, conditions))) {
             stmt.setFetchSize(Long.valueOf(queryDefinition.getBatchSize()).intValue());
-            if (time != null) {
-                stmt.setTimestamp(1, Timestamp.from(time));
+            if (timeConditionIndex > 0) {
+                stmt.setTimestamp(timeConditionIndex, Timestamp.from(time));
             }
+            if (lastColumnConditionIndex > 0) {
+               stmt.setObject(lastColumnConditionIndex, queryDefinition.getLastColumnValue());
+            }
+            if (nextColumnConditionIndex > 0) {
+               stmt.setObject(nextColumnConditionIndex, queryDefinition.getNextColumnValue());
+            }            
             ResultSet resultSet = stmt.executeQuery();
             return convertToBatchDataSet(resultSet);
         }
@@ -519,6 +608,9 @@ public abstract class AbstractDataRepository implements DataRepository {
             stmt.setFetchSize(Long.valueOf(queryDefinition.getBatchSize()).intValue());
             if (time != null) {
                 stmt.setTimestamp(1, Timestamp.from(time));
+                stmt.setLong(2, queryDefinition.getBatchSize());
+            } else {
+            	stmt.setLong(1, queryDefinition.getBatchSize());
             }
             ResultSet resultSet = stmt.executeQuery();
             return convertToBatchDataSet(resultSet);
@@ -571,10 +663,25 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     @Override
-    public boolean validateConnection() throws Exception {
+    public boolean validateConnection() throws SQLException {
         try (Connection connection = getConnection()) {
             return connection.isValid(120);
         }
     }
-
+    
+    @Override
+    public Set<String> getAllViewNames() throws SQLException {
+        Set<String> allViewNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        try (Connection connection = getConnection()) {
+    		DatabaseMetaData meta = connection.getMetaData();
+    		ResultSet resultSet = meta.getTables(null, null, "%", new String[] {"VIEW"});
+            while (resultSet.next()) {
+                String tableName = resultSet.getString("TABLE_NAME");
+                if (!StringUtils.startsWithIgnoreCase(tableName, CommercedbsyncConstants.MIGRATION_TABLESPREFIX)) {
+                    allViewNames.add(tableName);
+                }
+            }
+        }
+        return allViewNames;
+    }
 }
