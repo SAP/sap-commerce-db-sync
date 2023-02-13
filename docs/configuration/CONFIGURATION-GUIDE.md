@@ -74,8 +74,9 @@ For example with media filtered just for the images folder is possible to achiev
 migration.data.view.t.medias.enabled=true # enable view generation
 # If you are joining more than one tables in the where clause then use a columnPrefix label
 migration.data.view.t.medias.columnPrefix=item_t1
-# name `v_medias` is generated due to default name pattern value v_%s. No need to configure
-migration.data.view.t.medias.joinWhereClause=FROM medias item_t1 JOIN mediafolders item_t2 ON item_t1.p_folder = item_t2.PK WHERE (item_t2.p_qualifier like 'images')
+# The joinWhereClause is used within view definition. i.e. CREATE VIEW v_media AS SELECT * FROM {joinWhereClause} 
+# name `v_medias` is generated due to default name pattern value v_%s as the view name so no need to configure it for joinWhereClause
+migration.data.view.t.medias.joinWhereClause=medias item_t1 JOIN mediafolders item_t2 ON item_t1.p_folder = item_t2.PK WHERE (item_t2.p_qualifier like 'images')
 ```
 
 Output for that will be like this:
