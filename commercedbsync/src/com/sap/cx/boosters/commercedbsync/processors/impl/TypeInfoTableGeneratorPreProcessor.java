@@ -67,10 +67,27 @@ public class TypeInfoTableGeneratorPreProcessor implements MigrationPreProcessor
 
 	private String getPlatformSpecificSQL(final DataBaseProvider databaseProvider)
 	{
-		String platformSpecificSQL = "mssql-typeinfotable.sql";
-		if (databaseProvider.isHanaUsed() || databaseProvider.isOracleUsed() || databaseProvider.isPostgreSqlUsed())
+		String platformSpecificSQL = "-typeinfotable.sql";
+		switch (databaseProvider.getDbName().toLowerCase())
 		{
-			platformSpecificSQL = null;
+			case "sqlserver":
+				platformSpecificSQL = "mssql" + platformSpecificSQL;
+				break;
+			case "mysql":
+				platformSpecificSQL = "mysql" + platformSpecificSQL;
+				break;
+			case "oracle":
+				platformSpecificSQL = "oracle" + platformSpecificSQL;
+				break;
+			case "postgresql":
+				platformSpecificSQL = "postgresql" + platformSpecificSQL;
+				break;
+			case "sap":
+				platformSpecificSQL = "sap" + platformSpecificSQL;
+				break;
+			default:
+				platformSpecificSQL = "hsqldb" + platformSpecificSQL;
+				
 		}
 
 		LOG.info("Identified platform specific typeinfo table SQL {}", platformSpecificSQL);

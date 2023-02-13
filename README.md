@@ -21,7 +21,6 @@ There are two main use cases:
 * [Performance Guide](docs/performance/PERFORMANCE-GUIDE.md) Performance is crucial for any data migration, not only for large databases but also generally to reduce the time of the cut-over window. The performance guide explains the basic concept of performance tuning and also provides benchmarks that will give you an impression of how to estimate the cutover time window.
 * [Developer Guide](docs/developer/DEVELOPER-GUIDE.md) If you want to contribute please read this guide.
 * [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md) A collection of common problems and how to tackle them.
-* [View Support for Migration](docs/testing/README.md) usage of a `VIEW` instead source table.
 
 # Quick demo
 
@@ -51,7 +50,7 @@ There are two main use cases:
   - Incremental mode (delta)
   - Custom tables
   - Staged approach using table prefix
-  - [View usage instead of table](docs/testing/README.md)
+  - View usage instead of table
 - Reporting / Audit
   - Automated reporting for schema changes
   - Automated reporting for copy processes
