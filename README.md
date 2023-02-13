@@ -10,7 +10,7 @@ There are two main use cases:
 
 * __Replicate data across an external database__: you can push data regularly in batch mode through a Commerce Cloud cronjob and synchronize to an external database. A typical use case is for analytics and reporting purpose when you need direct JDBC access to the database to run analytic jobs.
 ![architecture overview for data sync between SAP Commerce Cloud to an external database](docs/user/data_replication_architecture.png)
-* __Data migration__: paired with the self-service media process described on [this CXWorks article](https://www.sap.com/cxworks/article/2589632453/migrate_to_sap_commerce_cloud_migrate_media_with_azcopy), it allows to self-service a one-shot data migration from the on-premise SAP Commerce environment to a SAP Commerce Cloud subscription.
+* __Data migration__: paired with the self-service media process described in [this CXWorks article](https://www.sap.com/cxworks/article/2589632453/migrate_to_sap_commerce_cloud_migrate_media_with_azcopy), it allows to self-service a one-shot data migration from the on-premise SAP Commerce environment to a SAP Commerce Cloud subscription.
 
 # Getting started
 
@@ -79,11 +79,6 @@ Commerce DB Sync has been built to offer reasonable performance with large amoun
 - Multi-threaded and can manage multiple tables at the same time ​
 - Using UPSERT (INSERT/UPDATE)
 - Use read replica Commerce database as a source database
-
-# Demo Video
-
-Here is a video that presents how to use SAP Commerce DB sync (formerly known as CMT) for data migration from onPrem to Cloud:
-https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_gxduwrl3
 
 # Disclaimer
 
