@@ -37,7 +37,7 @@ public class IndexAlignerPostProcessor implements MigrationPostProcessor
 			final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
 			final String indiciesSQL = generateAlterTablesSql(migrationContext);
 			indiciesSQL.lines().forEach(indexSQL -> {
-				if(StringUtils.isNotBlank(indexSQL))
+				if (StringUtils.isNotBlank(indexSQL))
 				{
 					LOG.info("Executing {}", indexSQL);
 					try
@@ -56,37 +56,47 @@ public class IndexAlignerPostProcessor implements MigrationPostProcessor
 
 	private String generateAlterTablesSql(final MigrationContext migrationContext)
 	{
-		final Database sourceDatabase = migrationContext.getDataSourceRepository().asDatabase();
-		final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
-		final Database targetDatabase = dataTargetRepository.asDatabase();
-		final Set<String> excludedIndices = getExcludedIndicies();
-
-		for (final String copiedTable : migrationContext.getIncludedTables())
+		String alterTablesSql = "";
+		try
 		{
-			final Table sourceTable = sourceDatabase.findTable(copiedTable);
-			final Table targetTable = targetDatabase.findTable(copiedTable);
-			if (sourceTable != null && targetTable != null)
+			final Database sourceDatabase = migrationContext.getDataSourceRepository().asDatabase();
+			final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
+			final Database targetDatabase = dataTargetRepository.asDatabase();
+			final Set<String> excludedIndices = getExcludedIndicies();
+
+			for (final String copiedTable : migrationContext.getIncludedTables())
 			{
-				final Index[] sourceTableIndices = sourceTable.getIndices();
-				final Index[] targetTableIndices = targetTable.getIndices();
-				for (final Index sourceTableIndex : sourceTableIndices)
+				final Table sourceTable = sourceDatabase.findTable(copiedTable);
+				final Table targetTable = targetDatabase.findTable(copiedTable);
+				if (sourceTable != null && targetTable != null)
 				{
-					if (!ArrayUtils.contains(targetTableIndices, sourceTableIndex)
-							&& !excludedIndices.contains((sourceTable.getName() + "." + sourceTableIndex.getName()).toLowerCase()))
+					final Index[] sourceTableIndices = sourceTable.getIndices();
+					final Index[] targetTableIndices = targetTable.getIndices();
+					for (final Index sourceTableIndex : sourceTableIndices)
 					{
-						LOG.debug("Found missing index {} for {}", sourceTableIndex, copiedTable);
-						targetTable.addIndex(sourceTableIndex);
+						if (!ArrayUtils.contains(targetTableIndices, sourceTableIndex)
+								&& !excludedIndices.contains((sourceTable.getName() + "." + sourceTableIndex.getName()).toLowerCase()))
+						{
+							LOG.debug("Found missing index {} for {}", sourceTableIndex, copiedTable);
+							targetTable.addIndex(sourceTableIndex);
+						}
 					}
 				}
+				else
+				{
+					LOG.warn("Table {} is not found one of the databases: source[{}], target[{}]", copiedTable, sourceTable,
+							targetTable);
+				}
 			}
-			else
-			{
-				LOG.warn("Table {} is not found one of the databases: source[{}], target[{}]", copiedTable, sourceTable, targetTable);
-			}
+
+			alterTablesSql = dataTargetRepository.asPlatform().getAlterTablesSql(targetDatabase);
+			LOG.debug("Generated alter table sql for missing indexes: {}", alterTablesSql);
+		}
+		catch (final Exception e)
+		{
+			LOG.error("Alter table generation failed", e);
 		}
 
-		final String alterTablesSql = dataTargetRepository.asPlatform().getAlterTablesSql(targetDatabase);
-		LOG.debug("Generated alter table sql for missing indexes: {}", alterTablesSql);
 		return alterTablesSql;
 	}
 
