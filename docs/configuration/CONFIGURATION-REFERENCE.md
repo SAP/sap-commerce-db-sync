@@ -44,3 +44,8 @@
 | migration.data.pipe.timeout                       | no        |   7200                                                                                    | The max time the pipe can blocked if it is running full before it times out.
 | migration.data.pipe.capacity                       | no        |   100                                                                                    | The maximum amount of element the pipe can handle before it starts blocking.
 | migration.stalled.timeout                       | no        |   7200                                                                                    | The time after which the pipe (and hence the migration) will be marked as stalled.
+| migration.data.view.t.{table}.enabled           | no | | Enables view creation for the table
+| migration.data.view.t.{table}.columnPrefix      | no | | Puts prefix to the columns of view's SELECT statement. Required only if view uses JOIN with other tables.
+| migration.data.view.t.{table}.joinWhereClause   | no | | Join and Where Clause for the view
+| migration.data.view.t.{table}.columnTransformation.{columname} | no | | Basic transformation for the column
+| migration.data.t.typeinfo.{type}.enabled | no | | Puts type PK into MIGRATIONTOOLKIT_TF_TYPEINFO table

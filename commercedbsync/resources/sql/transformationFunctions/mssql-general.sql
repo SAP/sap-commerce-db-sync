@@ -35,3 +35,24 @@ IF @uid = 'admin'
 
 RETURN '*'
 END;
+
+CREATE OR ALTER FUNCTION mask_custom(@Prefix int, @Mask varchar(max), @Suffix int, @Original varchar(MAX))
+RETURNS VARCHAR(max)
+AS
+BEGIN
+
+     RETURN SUBSTRING(@Original,1,@Prefix) + 
+     @Mask +
+     SUBSTRING(@Original,LEN(@Original) - @Suffix + 1, LEN(@Original))
+END;
+
+CREATE OR ALTER FUNCTION mask_email(@String varchar(MAX))
+RETURNS VARCHAR(max)
+AS
+BEGIN
+
+     RETURN LEFT(@String, 3) + '*****@' 
+        + REVERSE(LEFT(RIGHT(REVERSE(@String) , CHARINDEX('@', @String) +2), 2))
+        + '******'
+        + RIGHT(@String, 4)
+END;
