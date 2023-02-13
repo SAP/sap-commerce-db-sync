@@ -37,9 +37,9 @@ For this, disable incremental mode and use the property migration.data.tables.in
 
 Use the following property to configure the log level:
 
-log4j2.logger.migrationToolkit.level
+`log4j2.logger.migrationToolkit.level`
 
-Default value is INFO.
+Default value is `INFO`.
 
 ## Dynamic View Generation
 
