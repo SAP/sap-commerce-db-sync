@@ -66,5 +66,17 @@
         <property name="accepted" type="java.lang.Boolean"/>
     </bean>
 
+    <bean class="de.hybris.platform.commercedbsynchac.data.ConfigPanelDTO">
+        <property name="items" type="java.util.List&lt;de.hybris.platform.commercedbsynchac.data.ConfigPanelItemDTO&gt;"/>
+    </bean>
 
+    <bean class="de.hybris.platform.commercedbsynchac.data.ConfigPanelItemDTO">
+        <property name="id" type="java.lang.String"/>
+        <property name="name" type="java.lang.String"/>
+        <property name="propertyBinding" type="java.lang.String"/>
+        <property name="description" type="java.lang.String"/>
+        <property name="type" type="java.lang.Class"/>
+        <property name="initialValue" type="java.lang.Object"/>
+        <property name="renderIf" type="java.lang.String"/>
+    </bean>
 </beans>

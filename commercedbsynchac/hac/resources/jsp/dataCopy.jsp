@@ -13,6 +13,7 @@
           media="screen, projection"/>
     <link rel="stylesheet" type="text/css" href="<c:url value="/static/css/chartjs/Chart.min.css"/>"/>
     <script type="text/javascript" src="<c:url value="/static/js/history.js"/>"></script>
+    <script type="text/javascript" src="<c:url value="/static/js/configPanel.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/dataCopy.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/migrationMetrics.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/chartjs/Chart.min.js"/>"></script>
@@ -25,15 +26,25 @@
 <div class="prepend-top span-24" id="content">
     <div id="migrationPanel" class="marginLeft colborder span-17">
         <h2>Data Migration</h2>
-        <c:if test="${isIncremental}">
-            <hac:note additionalCssClass="marginBottom">
-                Incremental mode is enabled. Only rows changed after ${incrementalTimestamp} for specified tables will be copied.
-            </hac:note>
+        <c:if test="${!isDataExportEnabled}">
+            <c:if test="${isIncremental}">
+                <hac:note additionalCssClass="marginBottom">
+                    Incremental mode is enabled. Only rows changed after ${incrementalTimestamp} for specified tables will be copied.<BR>
+                </hac:note>
+            </c:if>
+            <c:if test="${!isTimezoneEqual}">
+                <hac:note additionalCssClass="marginBottom">
+                    The timezone on source and target database are different. It could cause problem. Please take it into account and check components using timezone after migration.<BR>
+                </hac:note>
+                <span id="timezoneCheckboxContainer"><input type="checkbox" id="timezoneCheckbox" name="timezoneCheckbox"  onchange="document.getElementById('buttonCopyData').disabled=!this.checked"> I am aware of timezone differences, proceed with migration</span>
+            </c:if>
+            <div class="clearfix">
+                <button id="buttonCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/copyData"/>">Start</button>
+                <button id="buttonStopCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/abortCopy"/>">Stop</button>
+            </div>
+            <div id="configPanel" class="prepend-top clearfix" data-configPanelDataUrl="<c:url value="/commercedbsynchac/configPanel"/>">
+            </div>
         </c:if>
-        <div class="clearfix">
-            <button id="buttonCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/copyData"/>">Start</button>
-            <button id="buttonStopCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/abortCopy"/>">Stop</button>
-        </div>
         <div class="prepend-top clearfix info marginRight">
             <div class="span-8">
                 <dl>
@@ -90,9 +101,20 @@
                 <button id="buttonCopyReport" class="inactive" disabled>Download Report</button>
             </form>
         </div>
-        <div class="prepend-top" style="visibility:hidden">
-            <button id="buttonSwitchPrefix" data-url="<c:url value="/commercedbsynchac/switchPrefix?prefix=${tgtMigPrefix}"/>">Switch Synonym to Prefix ${tgtMigPrefix}</button>
-        </div>
+        <c:if test="${isLogSql}">
+            <div class="prepend-top">
+                <form id="formDataSourceReport" method="GET" action="<c:url value="/commercedbsynchac/dataSourceJdbcReport"/>">
+                    <input type="hidden" name="migrationId"/>
+                    <button id="buttonDataSourceReport" class="inactive" disabled>Download Data Source JDBC Report</button>
+                </form>
+            </div>
+            <div class="prepend-top">
+                <form id="formDataTargetReport" method="GET" action="<c:url value="/commercedbsynchac/dataTargetJdbcReport"/>">
+                    <input type="hidden" name="migrationId"/>
+                    <button id="buttonDataTargetReport" class="inactive" disabled>Download Data Target JDBC Report</button>
+                </form>
+            </div>
+        </c:if>
         <div class="prepend-top">
             <h2>Migration Log</h2>
             <div id="copyLogContainer">

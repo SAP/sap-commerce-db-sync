@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -15,8 +15,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 public class TaskExecutorMetricPopulator implements MetricPopulator {
 
-    private AsyncTaskExecutor executor;
-    private String name;
+    private final AsyncTaskExecutor executor;
+    private final String name;
 
     public TaskExecutorMetricPopulator(AsyncTaskExecutor executor, String name) {
         this.executor = executor;

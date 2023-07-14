@@ -11,7 +11,7 @@
 <head>
     <title>Copy Schema To SAP Commerce Cloud</title>
     <link rel="stylesheet" href="<c:url value="/static/css/table.css"/>" type="text/css" media="screen, projection"/>
-    <link rel="stylesheet" href="<c:url value="/static/css/monitoring/database.css"/>" type="text/css"
+    <link rel="stylesheet" href="<c:url value="/static/css/database.css"/>" type="text/css"
           media="screen, projection"/>
     <link rel="stylesheet" href="<c:url value="/static/css/schemaCopy.css"/>" type="text/css"
           media="screen, projection"/>

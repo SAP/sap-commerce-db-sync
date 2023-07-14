@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -15,7 +15,7 @@ import com.sap.cx.boosters.commercedbsynchac.metric.populator.MetricPopulator;
 
 public class IOMetricPopulator implements MetricPopulator {
 
-    private PerformanceProfiler performanceProfiler;
+    private final PerformanceProfiler performanceProfiler;
 
     public IOMetricPopulator(PerformanceProfiler performanceProfiler) {
         this.performanceProfiler = performanceProfiler;
@@ -24,8 +24,10 @@ public class IOMetricPopulator implements MetricPopulator {
     @Override
     public MetricData populate(MigrationContext context) throws Exception {
         MetricData data = new MetricData();
-        int avgRowReading = (int) performanceProfiler.getAverageByCategoryAndUnit(PerformanceCategory.DB_READ, PerformanceUnit.ROWS);
-        int avgRowWriting = (int) performanceProfiler.getAverageByCategoryAndUnit(PerformanceCategory.DB_WRITE, PerformanceUnit.ROWS);
+        int avgRowReading = (int) performanceProfiler.getAverageByCategoryAndUnit(PerformanceCategory.DB_READ,
+                PerformanceUnit.ROWS);
+        int avgRowWriting = (int) performanceProfiler.getAverageByCategoryAndUnit(PerformanceCategory.DB_WRITE,
+                PerformanceUnit.ROWS);
         int totalIO = avgRowReading + avgRowWriting;
         if (avgRowReading < 1 && avgRowWriting < 1) {
             avgRowReading = -1;

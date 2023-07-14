@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -38,64 +38,57 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     private List<MigrationPostProcessor> postProcessors;
 
-	@Override
-	protected void onEvent(final CopyCompleteEvent event) {
-		final String migrationId = event.getMigrationId();
+    @Override
+    protected void onEvent(final CopyCompleteEvent event) {
+        final String migrationId = event.getMigrationId();
 
-		LOG.info("Migration finished on Node {} with result {}", event.getSourceNodeId(), event.getCopyResult());
-		final CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),
-				performanceProfiler);
+        LOG.info("Migration finished on Node {} with result {}", event.getSourceNodeId(), event.getCopyResult());
+        final CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),
+                performanceProfiler);
 
         executePostProcessors(copyContext);
     }
 
     /**
-     * Runs through all the Post Processors in a transaction to avoid multiple executions
+     * Runs through all the Post Processors in a transaction to avoid multiple
+     * executions
      *
      * @param copyContext
      */
-	 private void executePostProcessors(final CopyContext copyContext)
-	 {
-		 try
-		 {
-			 Transaction.current().execute(new TransactionBody()
-			 {
-				 @Override
-				 public Object execute() throws Exception
-				 {
+    private void executePostProcessors(final CopyContext copyContext) {
+        try {
+            Transaction.current().execute(new TransactionBody() {
+                @Override
+                public Object execute() throws Exception {
 
-					 final boolean eligibleForPostProcessing = databaseCopyTaskRepository.setMigrationStatus(copyContext,
-							 MigrationProgress.PROCESSED, MigrationProgress.POSTPROCESSING)
-							 || databaseCopyTaskRepository.setMigrationStatus(copyContext, MigrationProgress.ABORTED,
-									 MigrationProgress.POSTPROCESSING);
+                    final boolean eligibleForPostProcessing = databaseCopyTaskRepository.setMigrationStatus(copyContext,
+                            MigrationProgress.PROCESSED, MigrationProgress.POSTPROCESSING)
+                            || databaseCopyTaskRepository.setMigrationStatus(copyContext, MigrationProgress.ABORTED,
+                                    MigrationProgress.POSTPROCESSING);
 
-					 if (eligibleForPostProcessing)
-					 {
-						 LOG.info("Starting PostProcessor execution");
-						 postProcessors.forEach(p -> p.process(copyContext));
+                    if (eligibleForPostProcessing) {
+                        LOG.info("Starting PostProcessor execution");
 
-						 databaseCopyTaskRepository.setMigrationStatus(copyContext, MigrationProgress.POSTPROCESSING,
-								 MigrationProgress.COMPLETED);
-						 LOG.info("Finishing PostProcessor execution");
-					 }
+                        postProcessors.stream().filter(p -> p.shouldExecute(copyContext))
+                                .forEach(p -> p.process(copyContext));
 
-					 return null;
-				 }
-			 });
-		 }
-		 catch (final Exception e)
-		 {
-			 LOG.error("Error during PostProcessor execution", e);
-			 if (e instanceof RuntimeException re)
-			 {
-				 throw re;
-			 }
-			 else
-			 {
-				 throw new RuntimeException(e);
-			 }
-		 }
-	 }
+                        databaseCopyTaskRepository.setMigrationStatus(copyContext, MigrationProgress.POSTPROCESSING,
+                                MigrationProgress.COMPLETED);
+                        LOG.info("Finishing PostProcessor execution");
+                    }
+
+                    return null;
+                }
+            });
+        } catch (final Exception e) {
+            LOG.error("Error during PostProcessor execution", e);
+            if (e instanceof RuntimeException re) {
+                throw re;
+            } else {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     public void setDatabaseCopyTaskRepository(final DatabaseCopyTaskRepository databaseCopyTaskRepository) {
         this.databaseCopyTaskRepository = databaseCopyTaskRepository;
@@ -105,11 +98,11 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
         this.migrationContext = migrationContext;
     }
 
-	public void setPerformanceProfiler(final PerformanceProfiler performanceProfiler) {
-		this.performanceProfiler = performanceProfiler;
-	}
+    public void setPerformanceProfiler(final PerformanceProfiler performanceProfiler) {
+        this.performanceProfiler = performanceProfiler;
+    }
 
-	public void setPostProcessors(final List<MigrationPostProcessor> postProcessors) {
-		this.postProcessors = postProcessors;
-	}
+    public void setPostProcessors(final List<MigrationPostProcessor> postProcessors) {
+        this.postProcessors = postProcessors;
+    }
 }

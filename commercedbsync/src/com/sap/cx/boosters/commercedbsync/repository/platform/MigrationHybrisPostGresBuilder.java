@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -11,6 +11,7 @@ import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.TypeMap;
 import org.apache.ddlutils.platform.postgresql.PostgreSqlBuilder;
+
 import java.sql.Types;
 
 public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
@@ -26,7 +27,7 @@ public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
         int sizePos = nativeType.indexOf("{0}");
         StringBuilder sqlType = new StringBuilder();
 
-        if((column.getTypeCode() == Types.NVARCHAR) && Integer.parseInt(column.getSize()) > 5000){
+        if ((column.getTypeCode() == Types.NVARCHAR) && Integer.parseInt(column.getSize()) > 5000) {
             return sqlType.append("text").toString();
         }
 
@@ -54,7 +55,7 @@ public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
         return sqlType.toString();
     }
 
-    //ddlutils cannot handle "complex" sizes ootb, therefore adding support here
+    // ddlutils cannot handle "complex" sizes ootb, therefore adding support here
     private String detectSize(Column column) {
         if (this.getPlatformInfo().hasSize(column.getTypeCode())) {
             if (column.getTypeCode() == Types.NVARCHAR) {
@@ -76,15 +77,14 @@ public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
         return column.getSize();
     }
 
-
     @Override
-    public  boolean isValidDefaultValue(String defaultSpec, int typeCode) {
-        return defaultSpec != null && StringUtils.isNumeric(defaultSpec) && (defaultSpec.length() > 0 || !TypeMap.isNumericType(typeCode) && !TypeMap.isDateTimeType(typeCode));
+    public boolean isValidDefaultValue(String defaultSpec, int typeCode) {
+        return defaultSpec != null && StringUtils.isNumeric(defaultSpec)
+                && (defaultSpec.length() > 0 || !TypeMap.isNumericType(typeCode) && !TypeMap.isDateTimeType(typeCode));
     }
 
     @Override
-    public String getColumnName(final Column column)
-    {
+    public String getColumnName(final Column column) {
         return column.getName();
     }
 }

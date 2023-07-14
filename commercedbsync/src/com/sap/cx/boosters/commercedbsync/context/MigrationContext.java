@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -14,7 +14,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The MigrationContext contains all information needed to perform a Source -> Target Migration
+ * The MigrationContext contains all information needed to perform a Source ->
+ * Target Migration
  */
 public interface MigrationContext {
     DataRepository getDataSourceRepository();
@@ -77,84 +78,100 @@ public interface MigrationContext {
 
     Instant getIncrementalTimestamp();
 
-    boolean isBulkCopyEnabled();
-
     int getDataPipeTimeout();
 
     int getDataPipeCapacity();
 
     int getStalledTimeout();
 
-    String getMigrationReportConnectionString();
+    String getFileStorageConnectionString();
 
     int getMaxTargetStagedMigrations();
+
+    boolean isDataExportEnabled();
 
     boolean isDeletionEnabled();
 
     boolean isLpTableMigrationEnabled();
-   
+
+    boolean isSchedulerResumeEnabled();
+
     boolean isFullDatabaseMigration();
-    
+
     void setFullDatabaseMigrationEnabled(boolean enabled);
-    
+
     void refreshSelf();
 
-	/**
-	 * String value which defines name of the view which should be looked up in
-	 * database and check if matches by name. String pattern should be compatible
-	 * with {@code String.format()} pattern.
-	 * E.g.<br>
-	 * <pre>
-	 * String pattern    : "%s_view"
-	 * item type table   :  "products"
-	 * Searched view name: "products_view" 
-	 * </pre>
-	 * 
-	 * @return by default {@code null}. If setting is set in properties, it will return value defined.
-	 */
-	String getItemTypeViewNamePattern();
-	
-	/**
-	 * Returns string value which is table/view name for particular table name,
-	 * which follows ItemType View pattern name.
-	 * 
-	 * @return by default returns view name, as fallback, it will return origin
-	 *         table name
-	 * @throws SQLException when DB error occurs 
-	 */
-	String getItemTypeViewNameByTable(String tableName, DataRepository repository) throws SQLException;
-	
-	/**
-	 * Returns string value which is custom view name for particular table name,
-	 * which follows ItemType View pattern name.
-	 * 
-	 * @return by default returns view name, as fallback, it will return origin
-	 *         table name
-	 * @throws SQLException when DB error occurs 
-	 */
-	String getViewWhereClause(final String tableName);
-	
-	/**
-	 * Returns list of replacements for particular column from table <code>tableName</code>.
-	 * That returns only custom ones. 
-	 * If configuration say:
-	 * 
-	 * <code>
-	 * 	
-	 * </code>
-	 * 
-	 * @param tableName table which should be filtered by from properties
-	 * @return map for original column to what it should return
-	 */
-	Map<String, String> getCustomColumnsForView(final String tableName);
-	
-	/**
-	 * Return list of table names which have enabled view generation
-	 * 
-	 * @return
-	 */
-	Set<String> getTablesForViews();
-	
-	
-	String getViewColumnPrefixFor(String tableName);
+    /**
+     * String value which defines name of the view which should be looked up in
+     * database and check if matches by name. String pattern should be compatible
+     * with {@code String.format()} pattern. E.g.<br>
+     *
+     * <pre>
+     * String pattern    : "%s_view"
+     * item type table   :  "products"
+     * Searched view name: "products_view"
+     * </pre>
+     *
+     * @return by default {@code null}. If setting is set in properties, it will
+     *         return value defined.
+     */
+    String getItemTypeViewNamePattern();
+
+    boolean isLogSql();
+
+    boolean isLogSqlParamsForSource();
+
+    int getSqlStoreMemoryFlushThreshold();
+
+    String getFileStorageContainerName();
+
+    Set<String> getInputProfiles();
+
+    Set<String> getOutputProfiles();
+
+    /**
+     * Returns string value which is table/view name for particular table name,
+     * which follows ItemType View pattern name.
+     *
+     * @return by default returns view name, as fallback, it will return origin
+     *         table name
+     * @throws SQLException
+     *             when DB error occurs
+     */
+    String getItemTypeViewNameByTable(String tableName, DataRepository repository) throws SQLException;
+
+    /**
+     * Returns string value which is custom view name for particular table name,
+     * which follows ItemType View pattern name.
+     *
+     * @return by default returns view name, as fallback, it will return origin
+     *         table name
+     * @throws SQLException
+     *             when DB error occurs
+     */
+    String getViewWhereClause(final String tableName);
+
+    /**
+     * Returns list of replacements for particular column from table
+     * <code>tableName</code>. That returns only custom ones. If configuration say:
+     *
+     * <code>
+     *
+     * </code>
+     *
+     * @param tableName
+     *            table which should be filtered by from properties
+     * @return map for original column to what it should return
+     */
+    Map<String, String> getCustomColumnsForView(final String tableName);
+
+    /**
+     * Return list of table names which have enabled view generation
+     *
+     * @return
+     */
+    Set<String> getTablesForViews();
+
+    String getViewColumnPrefixFor(String tableName);
 }

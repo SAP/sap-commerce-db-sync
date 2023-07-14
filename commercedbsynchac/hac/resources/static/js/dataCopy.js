@@ -7,31 +7,40 @@
 'use strict';
 (function () {
     function setupMigration() {
-        const startButton = document.getElementById("buttonCopyData")
-        const stopButton = document.getElementById("buttonStopCopyData")
-        const startUrl = startButton.dataset.url;
-        const stopUrl = stopButton.dataset.url;
-        const resumeUrl =  startUrl.replace("copyData", "resumeRunning");
         const statusContainer = document.getElementById('copyStatus');
         const summaryContainer = document.getElementById('copySummary');
         const timeContainer = document.getElementById('copyTime');
         const statusUrl = statusContainer.dataset.url;
         const logContainer = document.getElementById("copyLogContainer");
-        const reportButton = document.getElementById("buttonCopyReport")
-        const reportForm = document.getElementById("formCopyReport")
+        const reportButton = document.getElementById("buttonCopyReport");
+        const dataSourceButton = document.getElementById("buttonDataSourceReport");
+        const dataTargetButton = document.getElementById("buttonDataTargetReport") ;
+        const reportForm = document.getElementById("formCopyReport");
+        const timezoneCheckbox = document.getElementById("timezoneCheckbox")
         const token = document.querySelector('meta[name="_csrf"]').content;
-        const switchPrefixButton = document.getElementById("buttonSwitchPrefix")
         let lastUpdateTime = Date.UTC(1970, 0, 1, 0, 0, 0);
         let pollInterval;
         let startButtonContentBefore;
         let currentMigrationID;
+        let startUrl;
+        let stopUrl;
 
-        startButton.disabled = true;
-        startButton.addEventListener('click', copyData);
-        stopButton.disabled = true;
-        stopButton.addEventListener('click', stopCopy);
-        switchPrefixButton.disabled = true;
-        switchPrefixButton.addEventListener('click', switchPrefix);
+        const startButton = document.getElementById("buttonCopyData")
+        const stopButton = document.getElementById("buttonStopCopyData")
+
+        if (startButton && stopButton) {
+            startUrl = startButton.dataset.url;
+            stopUrl = stopButton.dataset.url;
+
+            startButton.disabled = true;
+            startButton.addEventListener('click', copyData);
+            stopButton.disabled = true;
+            stopButton.addEventListener('click', stopCopy);
+
+            ConfigPanel.initPanel($('#configPanel'));
+
+            startButtonContentBefore = startButton.innerHTML;
+        }
 
         resumeRunning();
 
@@ -63,51 +72,59 @@
 
         }
 
-        function switchPrefix() {
-            let switchButtonContentBefore = switchPrefixButton.innerHTML;
-            switchPrefixButton.innerHTML = switchButtonContentBefore + ' ' + hac.global.getSpinnerImg();
-            $.ajax({
-                url: switchPrefixButton.dataset.url,
-                type: 'PUT',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': token
-                },
-                success: function (data) {
-                    switchPrefixButton.innerHTML = switchButtonContentBefore;
-                },
-                error: hac.global.err
-            });
-        }
-
         function resumeRunning() {
             $.ajax({
-                url: resumeUrl,
+                url: '/hac/commercedbsynchac/resumeRunning',
                 type: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': token
                 },
                 success: function (data) {
-                    if(data && (data.status === 'RUNNING' || data.status === 'PROCESSED' || data.status == 'POSTPROCESSING')) {
-                        startButtonContentBefore = startButton.innerHTML;
-                        startButton.innerHTML = startButtonContentBefore + ' ' + hac.global.getSpinnerImg();
-                        startButton.disabled = true;
-                        reportButton.disabled = true;
-                        stopButton.disabled = false;
+                    if (data) {
+                        if (data.status === 'RUNNING' && startButton) {
+                            startButton.innerHTML = startButtonContentBefore + ' ' + hac.global.getSpinnerImg();
+
+                            if (timezoneCheckbox) {
+                                $('#timezoneCheckboxContainer').hide();
+                            }
+                        }
+
+                        configureStartButton(data.status === 'RUNNING')
+
+                        reportButton.disabled = !(data.status === 'RUNNING');
+                        if (dataSourceButton) {
+                            dataSourceButton.disabled = !(data.status === 'RUNNING');
+                        }
+                        if (dataTargetButton) {
+                            dataTargetButton.disabled = !(data.status === 'RUNNING');
+                        }
+                        if (stopButton) {
+                            stopButton.disabled = !(data.status === 'RUNNING');
+                        }
                         currentMigrationID = data.migrationID;
                         empty(logContainer);
                         updateStatus(data);
                         doPoll();
                         pollInterval = setInterval(doPoll, 5000);
                     } else {
-                        startButton.disabled = false;
+                        configureStartButton(false)
                     }
                 },
                 error: function (data) {
-                    startButton.disabled = false;
+                    configureStartButton(false)
                 }
             });
+        }
+
+        function configureStartButton(disable) {
+            if (!startButton) return;
+
+            startButton.disabled = disable;
+
+            if (!disable && timezoneCheckbox) {
+                startButton.disabled = !$(timezoneCheckbox).is(':checked');
+            }
         }
 
         function copyData() {
@@ -115,27 +132,47 @@
             startButton.innerHTML = startButtonContentBefore + ' ' + hac.global.getSpinnerImg();
             startButton.disabled = true;
             reportButton.disabled = true;
+            if (dataSourceButton) {
+                dataSourceButton.disabled = true;
+            }
+            if (dataTargetButton) {
+                dataTargetButton.disabled = true;
+            }
             stopButton.disabled = false;
             $.ajax({
                 url: startUrl,
-                type: 'PUT',
+                type: 'POST',
+                data: ConfigPanel.values(),
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': token
+                    'X-CSRF-TOKEN': token,
                 },
                 success: function (data) {
+                    if(data.customException!=null)
+                    {
+                     hac.global.error(data.customException);
+
+                     stopButton.disabled = true;
+                     startButton.innerHTML = startButtonContentBefore;
+                     startButton.disabled = false;
+                    }
+                    else
+                    {
                     currentMigrationID = data.migrationID;
                     empty(logContainer);
                     updateStatus(data);
                     doPoll();
                     pollInterval = setInterval(doPoll, 5000);
+                    }
+
                 },
                 error: function(xht, textStatus, ex) {
                     hac.global.error("Data migration process failed, please check the logs");
 
                     stopButton.disabled = true;
                     startButton.innerHTML = startButtonContentBefore;
-                    startButton.disabled = false;
+
+                    configureStartButton(false)
                 }
             });
         }
@@ -143,7 +180,8 @@
         function stopCopy() {
             stopButton.disabled = true;
             startButton.innerHTML = startButtonContentBefore;
-            startButton.disabled = false;
+
+            configureStartButton(false)
             $.ajax({
                 url: stopUrl,
                 type: 'PUT',
@@ -225,12 +263,22 @@
                         logContainer.scrollTop = logContainer.scrollHeight - logContainer.clientHeight
                     }
                     updateStatus(status);
-                    if (status.completed || status.failed) {
-                        startButton.innerHTML = startButtonContentBefore
-                        startButton.disabled = false;
-                        stopButton.disabled = true;
+                    if (status.completed) {
+                        if (startButton) {
+                            startButton.innerHTML = startButtonContentBefore
+                            configureStartButton(false)
+                            stopButton.disabled = true;
+                        }
                         $(reportForm).children('input[name=migrationId]').val(currentMigrationID);
                         reportButton.disabled = false;
+                        if (dataSourceButton) {
+                            $(dataSourceButton).siblings('input[name=migrationId]').val(currentMigrationID);
+                            dataSourceButton.disabled = false;
+                        }
+                        if (dataTargetButton) {
+                            $(dataTargetButton).siblings('input[name=migrationId]').val(currentMigrationID);
+                            dataTargetButton.disabled = false;
+                        }
                         clearInterval(pollInterval);
                     }
                 },

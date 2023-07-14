@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -31,10 +31,15 @@ public class ReportMigrationPostProcessor implements MigrationPostProcessor {
 
     @Override
     public void process(CopyContext context) {
+        if (!databaseMigrationReportStorageService.validateConnection()) {
+            LOG.warn("Could not establish connection to report storage. Migration report will not be stored");
+            return;
+        }
+
         try {
-          	final GsonBuilder gsonBuilder = new GsonBuilder();
-           	gsonBuilder.registerTypeAdapter(LocalDateTime.class, new LocalDateTypeAdapter());
-           	Gson gson = gsonBuilder.setPrettyPrinting().create();
+            final GsonBuilder gsonBuilder = new GsonBuilder();
+            gsonBuilder.registerTypeAdapter(LocalDateTime.class, new LocalDateTypeAdapter());
+            Gson gson = gsonBuilder.setPrettyPrinting().create();
             MigrationReport migrationReport = databaseMigrationReportService.getMigrationReport(context);
             InputStream is = new ByteArrayInputStream(gson.toJson(migrationReport).getBytes(StandardCharsets.UTF_8));
             databaseMigrationReportStorageService.store(context.getMigrationId() + ".json", is);
@@ -48,7 +53,8 @@ public class ReportMigrationPostProcessor implements MigrationPostProcessor {
         this.databaseMigrationReportService = databaseMigrationReportService;
     }
 
-    public void setDatabaseMigrationReportStorageService(DatabaseMigrationReportStorageService databaseMigrationReportStorageService) {
+    public void setDatabaseMigrationReportStorageService(
+            DatabaseMigrationReportStorageService databaseMigrationReportStorageService) {
         this.databaseMigrationReportStorageService = databaseMigrationReportStorageService;
     }
 }

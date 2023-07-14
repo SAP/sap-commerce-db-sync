@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,15 +10,16 @@ import java.time.Instant;
 import java.util.Set;
 
 /**
- * The MigrationContext contains all information needed to perform a Source -> Target Migration
+ * The MigrationContext contains all information needed to perform a Source ->
+ * Target Migration
  */
 public interface IncrementalMigrationContext extends MigrationContext {
 
     Instant getIncrementalMigrationTimestamp();
 
-    public void setSchemaMigrationAutoTriggerEnabled(final boolean autoTriggerEnabled);
+    void setSchemaMigrationAutoTriggerEnabled(final boolean autoTriggerEnabled);
 
-    public void setTruncateEnabled(final boolean truncateEnabled);
+    void setTruncateEnabled(final boolean truncateEnabled);
 
     void setIncrementalMigrationTimestamp(final Instant timeStampInstant);
 
@@ -28,7 +29,7 @@ public interface IncrementalMigrationContext extends MigrationContext {
 
     void setIncludedTables(final Set<String> includedTables);
 
-    public void setDeletionEnabled(boolean deletionEnabled);
+    void setDeletionEnabled(boolean deletionEnabled);
 
-    public void setLpTableMigrationEnabled(boolean lpTableMigrationEnabled);
+    void setLpTableMigrationEnabled(boolean lpTableMigrationEnabled);
 }

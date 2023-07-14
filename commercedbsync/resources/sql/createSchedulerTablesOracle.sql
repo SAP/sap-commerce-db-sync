@@ -1,22 +1,3 @@
-/*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
- *  License: Apache-2.0
- *
- */
-
-/*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
- *  License: Apache-2.0
- *
- */
-
-/*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
- *  License: Apache-2.0
- *
- */
-
-
 BEGIN
    EXECUTE IMMEDIATE 'DROP TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS';
 EXCEPTION
@@ -39,11 +20,34 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
     failure char(1) DEFAULT '0' NOT NULL,
     error CLOB NULL,
     published char(1) DEFAULT '0' NOT NULL,
+    truncated char(1) DEFAULT '0' NOT NULL,
     lastupdate Timestamp  NOT NULL,
     avgwriterrowthroughput number(10,2) DEFAULT 0 NULL,
     avgreaderrowthroughput number(10,2) DEFAULT 0 NULL,
+    copymethod NVARCHAR2(255) NULL,
+    keycolumns NVARCHAR2(255) NULL,
     durationinseconds number(10,2) DEFAULT 0 NULL,
     PRIMARY KEY (migrationid, targetnodeid, pipelinename)
+)
+/
+
+
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+
+
+CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES (
+    migrationId NVARCHAR2(255) NOT NULL,
+    batchId number(10) DEFAULT 0 NOT NULL,
+    pipelinename NVARCHAR2(255) NOT NULL,
+    lowerBoundary NVARCHAR2(255) NOT NULL,
+    upperBoundary NVARCHAR2(255) NULL,
+    PRIMARY KEY (migrationid, batchId, pipelinename)
 )
 /
 

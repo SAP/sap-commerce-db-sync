@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -22,10 +22,10 @@ public class MigrationHybrisMSSqlBuilder extends HybrisMSSqlBuilder {
     @Override
     protected String getSqlType(Column column) {
         /*
-           core-advanced-deployment.xml:661
-           TODO implement more generic mapper for special attrs
+         * core-advanced-deployment.xml:661 TODO implement more generic mapper for
+         * special attrs
          */
-        if (column.getName().equalsIgnoreCase("InheritancePathString")) {
+        if ("InheritancePathString".equalsIgnoreCase(column.getName())) {
             return "varchar(1800)";
         }
         String nativeType = this.getNativeType(column);
@@ -55,7 +55,7 @@ public class MigrationHybrisMSSqlBuilder extends HybrisMSSqlBuilder {
         return sqlType.toString();
     }
 
-    //ddlutils cannot handle "complex" sizes ootb, therefore adding support here
+    // ddlutils cannot handle "complex" sizes ootb, therefore adding support here
     private String detectSize(Column column) {
         if (this.getPlatformInfo().hasSize(column.getTypeCode())) {
             if (column.getTypeCode() == Types.NVARCHAR) {

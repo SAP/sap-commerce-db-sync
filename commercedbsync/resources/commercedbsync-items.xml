@@ -50,6 +50,30 @@
                     <modifiers optional="true"/>
                     <defaultvalue>false</defaultvalue>
                 </attribute>
+                <attribute qualifier="maxParallelTableCopy" type="int">
+                    <description>maximum number of table that can be copied in parallel within a single node in the cluster</description>
+                    <modifiers optional="false"/>
+                    <persistence type="property" />
+                    <defaultvalue>2</defaultvalue>
+                </attribute>
+                <attribute qualifier="maxReaderWorkers" type="int">
+                    <description>maximum number of reader workers per table that can be executed in parallel within a single node in the cluster</description>
+                    <modifiers optional="false"/>
+                    <persistence type="property" />
+                    <defaultvalue>3</defaultvalue>
+                </attribute>
+                <attribute qualifier="maxWriterWorkers" type="int">
+                    <description>maximum number of writer workers per table that can be executed in parallel within a single node in the cluster</description>
+                    <modifiers optional="false"/>
+                    <persistence type="property" />
+                    <defaultvalue>10</defaultvalue>
+                </attribute>
+                <attribute qualifier="batchSize" type="int">
+                    <description>the number of rows read per iteration</description>
+                    <modifiers optional="false"/>
+                    <persistence type="property" />
+                    <defaultvalue>1000</defaultvalue>
+                </attribute>
             </attributes>
         </itemtype>
         <itemtype code="IncrementalMigrationCronJob" autocreate="true" generate="true" extends="MigrationCronJob"

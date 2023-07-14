@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -12,6 +12,7 @@ import com.google.common.util.concurrent.AtomicDouble;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -19,11 +20,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class PerformanceRecorder {
 
-    private ConcurrentHashMap<PerformanceUnit, PerformanceAggregation> records = new ConcurrentHashMap<>();
+    private final ConcurrentMap<PerformanceUnit, PerformanceAggregation> records = new ConcurrentHashMap<>();
 
-    private Stopwatch timer;
-    private PerformanceCategory category;
-    private String name;
+    private final Stopwatch timer;
+    private final PerformanceCategory category;
+    private final String name;
 
     public PerformanceRecorder(PerformanceCategory category, String name) {
         this(category, name, false);
@@ -65,7 +66,7 @@ public class PerformanceRecorder {
         }
     }
 
-    public ConcurrentHashMap<PerformanceUnit, PerformanceAggregation> getRecords() {
+    public ConcurrentMap<PerformanceUnit, PerformanceAggregation> getRecords() {
         return records;
     }
 
@@ -81,13 +82,13 @@ public class PerformanceRecorder {
     @ThreadSafe
     public static class PerformanceAggregation {
 
-        private Stopwatch timer;
-        private PerformanceUnit performanceUnit;
-        private TimeUnit timeUnit = TimeUnit.SECONDS;
-        private AtomicDouble sum = new AtomicDouble(0);
-        private AtomicDouble max = new AtomicDouble(0);
-        private AtomicDouble min = new AtomicDouble(0);
-        private AtomicDouble avg = new AtomicDouble(0);
+        private final Stopwatch timer;
+        private final PerformanceUnit performanceUnit;
+        private final TimeUnit timeUnit = TimeUnit.SECONDS;
+        private final AtomicDouble sum = new AtomicDouble(0);
+        private final AtomicDouble max = new AtomicDouble(0);
+        private final AtomicDouble min = new AtomicDouble(0);
+        private final AtomicDouble avg = new AtomicDouble(0);
 
         public PerformanceAggregation(Stopwatch timer, PerformanceUnit performanceUnit) {
             this.performanceUnit = performanceUnit;
@@ -97,7 +98,7 @@ public class PerformanceRecorder {
         protected void submit(double value) {
             getTotalThroughput().addAndGet(value);
             long elapsed = timer.elapsed(TimeUnit.MILLISECONDS);
-            float elapsedToSeconds = elapsed / 1000f;
+            double elapsedToSeconds = elapsed / 1000d;
             if (elapsedToSeconds > 0) {
                 getAvgThroughput().set(getTotalThroughput().get() / elapsedToSeconds);
                 getMaxThroughput().set(Math.max(getMaxThroughput().get(), getAvgThroughput().get()));
@@ -131,13 +132,9 @@ public class PerformanceRecorder {
 
         @Override
         public String toString() {
-            return "PerformanceAggregation{" +
-                    "performanceUnit=" + performanceUnit +
-                    ", sum=" + sum +
-                    ", max=" + max + " " + performanceUnit + "/" + timeUnit +
-                    ", min=" + min + " " + performanceUnit + "/" + timeUnit +
-                    ", avg=" + avg + " " + performanceUnit + "/" + timeUnit +
-                    '}';
+            return "PerformanceAggregation{" + "performanceUnit=" + performanceUnit + ", sum=" + sum + ", max=" + max
+                    + " " + performanceUnit + "/" + timeUnit + ", min=" + min + " " + performanceUnit + "/" + timeUnit
+                    + ", avg=" + avg + " " + performanceUnit + "/" + timeUnit + '}';
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -11,7 +11,7 @@ package com.sap.cx.boosters.commercedbsync.events;
  */
 public class CopyCompleteEvent extends CopyEvent {
 
-    private Boolean copyResult = false;
+    private final Boolean copyResult = false;
 
     public CopyCompleteEvent(final Integer sourceNodeId, final String migrationId) {
         super(sourceNodeId, migrationId);

@@ -14,6 +14,11 @@ IF tablename = 'MIGRATIONTOOLKIT_TABLECOPYSTATUS' AND :found > 0
 	THEN
 DROP TABLE MIGRATIONTOOLKIT_TABLECOPYSTATUS;
 END IF;
+
+IF tablename = 'MIGRATIONTOOLKIT_TABLECOPYBATCHES' AND :found > 0
+	THEN
+DROP TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES;
+END IF;
 END;
 #
 CALL MIGRATION_PROCEDURE('MIGRATIONTOOLKIT_TABLECOPYTASKS');
@@ -32,11 +37,28 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
                                                  failure char(1) NOT NULL DEFAULT '0',
                                                  error NVARCHAR(5000) NULL,
                                                  published char(1) NOT NULL DEFAULT '0',
+                                                 truncated char(1) NOT NULL DEFAULT '0',
                                                  lastupdate Timestamp NOT NULL DEFAULT '0001-01-01 00:00:00',
                                                  avgwriterrowthroughput numeric(10,2) NULL DEFAULT 0,
                                                  avgreaderrowthroughput numeric(10,2) NULL DEFAULT 0,
+                                                 copymethod NVARCHAR(255) NULL,
+                                                 keycolumns NVARCHAR(255) NULL,
                                                  durationinseconds numeric(10,2) NULL DEFAULT 0,
                                                  PRIMARY KEY (migrationid, targetnodeid, pipelinename)
+);
+
+#
+
+CALL MIGRATION_PROCEDURE('MIGRATIONTOOLKIT_TABLECOPYBATCHES');
+#
+
+CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES (
+                                                 migrationId NVARCHAR(255) NOT NULL,
+                                                 batchId int NOT NULL DEFAULT 0,
+                                                 pipelinename NVARCHAR(255) NOT NULL,
+                                                 lowerBoundary NVARCHAR(255) NOT NULL,
+                                                 upperBoundary NVARCHAR(255) NULL,
+                                                 PRIMARY KEY (migrationid, batchId, pipelinename)
 );
 
 #

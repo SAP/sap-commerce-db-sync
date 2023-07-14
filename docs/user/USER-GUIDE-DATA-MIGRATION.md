@@ -54,6 +54,11 @@ Make sure you add the source db driver to **commercedbsync/lib** if necessary.
 ## Configure the extensions
 Configure the extensions as needed in your **local.properties**. See the [Property Configuration Reference](../configuration/CONFIGURATION-REFERENCE.md).
 
+Make sure that data replication mode is disabled:
+```
+migration.data.export.enabled=false
+```
+
 At least you have to configure the connection to your source database. Here is an example for mysql:
 
 ```

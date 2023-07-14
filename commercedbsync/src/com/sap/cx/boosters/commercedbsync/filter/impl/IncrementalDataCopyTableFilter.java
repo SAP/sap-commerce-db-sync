@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -24,7 +24,8 @@ public class IncrementalDataCopyTableFilter implements DataCopyTableFilter {
         }
         Set<String> incrementalTables = context.getIncrementalTables();
         if (incrementalTables == null || incrementalTables.isEmpty()) {
-            throw new IllegalStateException("At least one table for incremental copy must be specified. Check property " + CommercedbsyncConstants.MIGRATION_DATA_INCREMENTAL_TABLES);
+            throw new IllegalStateException("At least one table for incremental copy must be specified. Check property "
+                    + CommercedbsyncConstants.MIGRATION_DATA_INCREMENTAL_TABLES);
         }
         return p -> incrementalTables.stream().anyMatch(e -> StringUtils.equalsIgnoreCase(e, p));
     }

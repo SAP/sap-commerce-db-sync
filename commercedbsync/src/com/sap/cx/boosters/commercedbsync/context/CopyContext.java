@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -8,6 +8,8 @@ package com.sap.cx.boosters.commercedbsync.context;
 
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceProfiler;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -19,16 +21,19 @@ import java.util.TreeMap;
  */
 public class CopyContext {
 
-    private String migrationId;
-    private MigrationContext migrationContext;
-    private Set<DataCopyItem> copyItems;
-    private PerformanceProfiler performanceProfiler;
+    private final String migrationId;
+    private final MigrationContext migrationContext;
+    private final Set<DataCopyItem> copyItems;
+    private final PerformanceProfiler performanceProfiler;
+    private final Map<String, Serializable> propertyOverrideMap;
 
-    public CopyContext(String migrationId, MigrationContext migrationContext, Set<DataCopyItem> copyItems, PerformanceProfiler performanceProfiler) {
+    public CopyContext(String migrationId, MigrationContext migrationContext, Set<DataCopyItem> copyItems,
+            PerformanceProfiler performanceProfiler) {
         this.migrationId = migrationId;
         this.migrationContext = migrationContext;
         this.copyItems = copyItems;
         this.performanceProfiler = performanceProfiler;
+        this.propertyOverrideMap = new HashMap<>();
     }
 
     public IdCopyContext toIdCopyContext() {
@@ -56,6 +61,10 @@ public class CopyContext {
         return performanceProfiler;
     }
 
+    public Map<String, Serializable> getPropertyOverrideMap() {
+        return propertyOverrideMap;
+    }
+
     public static class DataCopyItem {
         private String sourceItem;
         private final String targetItem;
@@ -79,12 +88,12 @@ public class CopyContext {
         public String getSourceItem() {
             return sourceItem;
         }
-        
-        public void setSourceItem(String sourceItem) {
-			this.sourceItem = sourceItem;
-		}
 
-		public String getTargetItem() {
+        public void setSourceItem(String sourceItem) {
+            this.sourceItem = sourceItem;
+        }
+
+        public String getTargetItem() {
             return targetItem;
         }
 
@@ -103,18 +112,17 @@ public class CopyContext {
         @Override
         public String toString() {
             return new StringJoiner(", ", DataCopyItem.class.getSimpleName() + "[", "]")
-                    .add("sourceItem='" + sourceItem + "'")
-                    .add("targetItem='" + targetItem + "'")
-                    .toString();
+                    .add("sourceItem='" + sourceItem + "'").add("targetItem='" + targetItem + "'").toString();
         }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
             DataCopyItem that = (DataCopyItem) o;
-            return getSourceItem().equals(that.getSourceItem()) &&
-                    getTargetItem().equals(that.getTargetItem());
+            return getSourceItem().equals(that.getSourceItem()) && getTargetItem().equals(that.getTargetItem());
         }
 
         @Override
@@ -125,7 +133,8 @@ public class CopyContext {
 
     public static class IdCopyContext extends CopyContext {
 
-        public IdCopyContext(String migrationId, MigrationContext migrationContext, PerformanceProfiler performanceProfiler) {
+        public IdCopyContext(String migrationId, MigrationContext migrationContext,
+                PerformanceProfiler performanceProfiler) {
             super(migrationId, migrationContext, null, performanceProfiler);
         }
 

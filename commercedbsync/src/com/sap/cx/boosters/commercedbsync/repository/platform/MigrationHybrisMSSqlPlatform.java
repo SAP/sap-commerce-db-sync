@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -23,14 +23,12 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements HybrisPlatform {
 
     private static final Logger LOG = LoggerFactory.getLogger(MigrationHybrisMSSqlPlatform.class);
-
 
     private MigrationHybrisMSSqlPlatform() {
     }
@@ -39,14 +37,15 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
         MigrationHybrisMSSqlPlatform instance = new MigrationHybrisMSSqlPlatform();
         instance.provideCustomMapping();
         instance.setSqlBuilder(new MigrationHybrisMSSqlBuilder(instance, databaseSettings));
-        MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader reader = new MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader(instance);
+        MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader reader = new MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader(
+                instance);
         reader.setDefaultTablePattern(databaseSettings.getTablePrefix() + '%');
         instance.setModelReader(reader);
         return instance;
     }
 
     public Database readModelFromDatabase(String name) throws DatabaseOperationException {
-        return this.readModelFromDatabase(name, (String) null, (String) null, (String[]) null);
+        return this.readModelFromDatabase(name, null, null, null);
     }
 
     private void provideCustomMapping() {
@@ -79,7 +78,8 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
     }
 
     @Override
-    public void alterTables(Connection connection, Database desiredModel, boolean continueOnError) throws DatabaseOperationException {
+    public void alterTables(Connection connection, Database desiredModel, boolean continueOnError)
+            throws DatabaseOperationException {
         String sql = this.getAlterTablesSql(connection, desiredModel);
         LOG.info(sql);
         this.evaluateBatch(connection, sql, continueOnError);
@@ -87,12 +87,8 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
 
     private static class HybrisMSSqlModelReader extends MSSqlModelReader {
         private static final String TABLE_NAME_KEY = "TABLE_NAME";
-        private final Set<String> tablesToExclude = new HashSet<String>() {
-            {
-                this.add("trace_xe_action_map");
-                this.add("trace_xe_event_map");
-            }
-        };
+
+        private final Set<String> tablesToExclude = Set.of("trace_xe_action_map", "trace_xe_event_map");
 
         public HybrisMSSqlModelReader(Platform platform) {
             super(platform);
@@ -108,7 +104,7 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
         }
 
         private String getTableNameFrom(Map values) {
-            return (String) values.get("TABLE_NAME");
+            return (String) values.get(TABLE_NAME_KEY);
         }
     }
 }

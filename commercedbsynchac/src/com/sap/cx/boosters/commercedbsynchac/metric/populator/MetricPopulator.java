@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,10 +10,10 @@ import de.hybris.platform.commercedbsynchac.data.MetricData;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 
 public interface MetricPopulator {
-    static String PRIMARY_STANDARD_COLOR = "#92cae4";
-    static String PRIMARY_CRITICAL_COLOR = "#de5d70";
-    static String SECONDARY_STANDARD_COLOR = "#d5edf8";
-    static String SECONDARY_CRITICAL_COLOR = "#e8acb5";
+    String PRIMARY_STANDARD_COLOR = "#92cae4";
+    String PRIMARY_CRITICAL_COLOR = "#de5d70";
+    String SECONDARY_STANDARD_COLOR = "#d5edf8";
+    String SECONDARY_CRITICAL_COLOR = "#e8acb5";
 
     MetricData populate(MigrationContext context) throws Exception;
 

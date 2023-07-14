@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -24,9 +24,8 @@ public class DefaultDataWorkerExecutor<T> implements DataWorkerExecutor<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultDataWorkerExecutor.class);
 
-    private AsyncTaskExecutor executor;
-    private Queue<Future<T>> futures = new ArrayDeque<>();
-
+    private final AsyncTaskExecutor executor;
+    private final Queue<Future<T>> futures = new ArrayDeque<>();
 
     public DefaultDataWorkerExecutor(AsyncTaskExecutor executor) {
         this.executor = executor;

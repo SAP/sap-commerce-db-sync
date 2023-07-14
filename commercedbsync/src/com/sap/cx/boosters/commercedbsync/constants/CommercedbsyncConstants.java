@@ -1,14 +1,14 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
+
 package com.sap.cx.boosters.commercedbsync.constants;
 
-import com.sap.cx.boosters.commercedbsync.constants.GeneratedCommercedbsyncConstants;
-
 /**
- * Global class for all Commercedbsync constants. You can add global constants for your extension into this class.
+ * Global class for all Commercedbsync constants. You can add global constants
+ * for your extension into this class.
  */
 public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConstants {
     public static final String EXTENSIONNAME = "commercedbsync";
@@ -20,6 +20,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADD_ENABLED = "migration.schema.target.columns.add.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED = "migration.schema.target.columns.remove.enabled";
     public static final String MIGRATION_TARGET_MAX_STAGE_MIGRATIONS = "migration.ds.target.db.max.stage.migrations";
+    public static final String MIGRATION_DATA_EXPORT_ENABLED = "migration.data.export.enabled";
     public static final String MIGRATION_SCHEMA_AUTOTRIGGER_ENABLED = "migration.schema.autotrigger.enabled";
     public static final String MIGRATION_DATA_FULLDATABASE = "migration.data.fulldatabase.enabled";
     public static final String MIGRATION_DATA_READER_BATCHSIZE = "migration.data.reader.batchsize";
@@ -43,20 +44,34 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_INCREMENTAL_ENABLED = "migration.data.incremental.enabled";
     public static final String MIGRATION_DATA_INCREMENTAL_TABLES = "migration.data.incremental.tables";
     public static final String MIGRATION_DATA_INCREMENTAL_TIMESTAMP = "migration.data.incremental.timestamp";
-    public static final String MIGRATION_DATA_BULKCOPY_ENABLED = "migration.data.bulkcopy.enabled";
     public static final String MIGRATION_DATA_PIPE_TIMEOUT = "migration.data.pipe.timeout";
     public static final String MIGRATION_DATA_PIPE_CAPACITY = "migration.data.pipe.capacity";
     public static final String MIGRATION_STALLED_TIMEOUT = "migration.stalled.timeout";
-    public static final String MIGRATION_DATA_REPORT_CONNECTIONSTRING = "migration.data.report.connectionstring";
+    public static final String MIGRATION_FILE_STORAGE_CONNECTIONSTRING = "migration.data.report.connectionstring";
     public static final String MIGRATION_DATATYPE_CHECK = "migration.datatype.check";
     public static final String MIGRATION_TABLESPREFIX = "MIGRATIONTOOLKIT_";
+    public static final String MIGRATION_SCHEDULER_RESUME_ENABLED = "migration.scheduler.resume.enabled";
+    public static final String MIGRATION_LOG_SQL = "migration.log.sql";
+    public static final String MIGRATION_LOG_SQL_PARAMS_SOURCE = "migration.log.sql.source.showparameters";
+    public static final String MIGRATION_SQL_STORE_FLUSH_THRESHOLD = "migration.log.sql.memory.flush.threshold.nbentries";
+    public static final String MIGRATION_FILE_STORAGE_CONTAINER_NAME = "migration.data.filestorage.container.name";
+    public static final String MIGRATION_INPUT_PROFILES = "migration.input.profiles";
+    public static final String MIGRATION_OUTPUT_PROFILES = "migration.output.profiles";
+
+    public static final String MIGRATION_DATA_READTASK_KEEPALIVE_SECONDS = "migration.data.readtask.keepaliveseconds";
+    public static final String MIGRATION_DATA_READTASK_QUEUE_CAPACITY = "migration.data.readtask.queuecapacity";
+    public static final String MIGRATION_DATA_READTASK_ALLOWTIMEOUT = "migration.data.readtask.allowtimeout";
+    public static final String MIGRATION_DATA_WRITETASK_KEEPALIVE_SECONDS = "migration.data.writetask.keepaliveseconds";
+    public static final String MIGRATION_DATA_WRITETASK_ALLOWTIMEOUT = "migration.data.writetask.allowtimeout";
+
+    public static final String MIGRATION_DATA_WORKERS_READER_KEEPALIVESECONDS = "migration.data.workers.reader.keepaliveseconds";
+    public static final String MIGRATION_DATA_WORKERS_WRITER_KEEPALIVESECONDS = "migration.data.workers.writer.keepaliveseconds";
 
     public static final String MDC_MIGRATIONID = "migrationID";
     public static final String MDC_PIPELINE = "pipeline";
     public static final String MDC_CLUSTERID = "clusterID";
 
     public static final String DEPLOYMENTS_TABLE = "ydeployments";
-
 
     // Masking
     public static final String MIGRATION_REPORT_MASKED_PROPERTIES = "migration.properties.masked";
@@ -70,30 +85,23 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_INCREMENTAL_DELETIONS_TYPECODES = "migration.data.incremental.deletions.typecodes";
     public static final String MIGRATION_DATA_INCREMENTAL_DELETIONS_ITEMTYPES_ENABLED = "migration.data.incremental.deletions.itemtypes.enabled";
     public static final String MIGRATION_DATA_INCREMENTAL_DELETIONS_TYPECODES_ENABLED = "migration.data.incremental.deletions.typecodes.enabled";
-    public static final String MIGRATION_DATA_DELETION_ENABLED = "migration.data.incremental.deletions.enabled";
-    public static final String MIGRATION_DATA_DELETION_TABLE = "migration.data.incremental.deletions.table";
 
-	// ORACLE_TARGET -- START
-	public static final String MIGRATION_ORACLE_MAX = "VARCHAR2\\(2147483647\\)";
-	public static final String MIGRATION_ORACLE_CLOB = "CLOB";
-	public static final String MIGRATION_ORACLE_VARCHAR24k = "VARCHAR2(4000)";
+    public static final String MIGRATION_ORACLE_MAX = "VARCHAR2\\(2147483647\\)";
+    public static final String MIGRATION_ORACLE_CLOB = "CLOB";
+    public static final String MIGRATION_ORACLE_VARCHAR24k = "VARCHAR2(4000)";
 
-	// ORACLE_TARGET -- END
-	
-	// DB View support
-	public static final String MIGRATION_DB_VIEW_NAME_PATTERN = 		"migration.data.view.name.pattern";
+    // DB View support
+    public static final String MIGRATION_DB_VIEW_NAME_PATTERN = "migration.data.view.name.pattern";
 
-	// DDL View Generation
-	// property
-	
-	public static final String MIGRATION_DATA_VIEW_TBL_GENERATION = 	"migration.data.view.t.{table}.enabled";
-	public static final String MIGRATION_DATA_VIEW_TBL_JOIN_WHERE = 	"migration.data.view.t.{table}.joinWhereClause";
-	public static final String MIGRATION_DATA_VIEW_COL_REPLACEMENT = 	"migration.data.view.t.{table}.columnTransformation.{column}";    
-	
+    // DDL View Generation
+    // property
 
-	private CommercedbsyncConstants() {
-		// empty to avoid instantiating this constant class
-	}
+    public static final String MIGRATION_DATA_VIEW_TBL_GENERATION = "migration.data.view.t.{table}.enabled";
+    public static final String MIGRATION_DATA_VIEW_TBL_JOIN_WHERE = "migration.data.view.t.{table}.joinWhereClause";
+    public static final String MIGRATION_DATA_VIEW_COL_REPLACEMENT = "migration.data.view.t.{table}.columnTransformation.{column}";
 
+    private CommercedbsyncConstants() {
+        // empty to avoid instantiating this constant class
+    }
 
 }

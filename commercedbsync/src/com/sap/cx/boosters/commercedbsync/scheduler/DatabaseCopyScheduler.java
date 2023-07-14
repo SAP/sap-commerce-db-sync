@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -16,6 +16,8 @@ import java.time.OffsetDateTime;
  */
 public interface DatabaseCopyScheduler {
     void schedule(CopyContext context) throws Exception;
+
+    void resumeUnfinishedItems(CopyContext copyContext) throws Exception;
 
     MigrationStatus getCurrentState(CopyContext context, OffsetDateTime since) throws Exception;
 

@@ -1,8 +1,9 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
+
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import com.google.common.io.ByteStreams;
@@ -29,13 +30,13 @@ public class DefaultDatabaseMigrationDataTypeMapperService implements DatabaseMi
     private static final Logger LOG = LoggerFactory.getLogger(DefaultDatabaseMigrationDataTypeMapperService.class);
 
     @Override
-    public Object dataTypeMapper(final Object sourceColumnValue, final int jdbcType)
-            throws IOException, SQLException {
+    public Object dataTypeMapper(final Object sourceColumnValue, final int jdbcType) throws IOException, SQLException {
         Object targetColumnValue = sourceColumnValue;
         if (sourceColumnValue == null) {
             // do nothing
         } else if (jdbcType == Types.BLOB) {
-            targetColumnValue = new ByteArrayInputStream(ByteStreams.toByteArray(((Blob) sourceColumnValue).getBinaryStream()));
+            targetColumnValue = new ByteArrayInputStream(
+                    ByteStreams.toByteArray(((Blob) sourceColumnValue).getBinaryStream()));
         } else if (jdbcType == Types.NCLOB) {
             targetColumnValue = getValue((NClob) sourceColumnValue);
         } else if (jdbcType == Types.CLOB) {

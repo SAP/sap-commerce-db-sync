@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -30,7 +30,7 @@ public abstract class HikariConnectionMetricPopulator implements MetricPopulator
         data.setPrimaryValue(activeConnections);
         data.setPrimaryValueLabel("Active");
         data.setPrimaryValueUnit("#");
-        data.setPrimaryValueThreshold((double) maxConnections);
+        data.setPrimaryValueThreshold(maxConnections);
         data.setSecondaryValue(maxConnections - activeConnections);
         data.setSecondaryValueLabel("Idle");
         data.setSecondaryValueUnit("#");

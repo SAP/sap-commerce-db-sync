@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -17,8 +17,7 @@ import java.util.stream.Collectors;
 
 public class DefaultPerformanceProfiler implements PerformanceProfiler {
 
-    private ConcurrentHashMap<String, PerformanceRecorder> recorders = new ConcurrentHashMap<>();
-
+    private final ConcurrentHashMap<String, PerformanceRecorder> recorders = new ConcurrentHashMap<>();
 
     @Override
     public PerformanceRecorder createRecorder(PerformanceCategory category, String name) {
@@ -45,9 +44,8 @@ public class DefaultPerformanceProfiler implements PerformanceProfiler {
     @Override
     public double getAverageByCategoryAndUnit(PerformanceCategory category, PerformanceUnit unit) {
         Collection<PerformanceRecorder> recordersByCategory = getRecordersByCategory(category);
-        return recordersByCategory.stream().filter(r -> r.getRecords().get(unit) != null).mapToDouble(r ->
-                r.getRecords().get(unit).getAvgThroughput().get()
-        ).average().orElse(0);
+        return recordersByCategory.stream().filter(r -> r.getRecords().get(unit) != null)
+                .mapToDouble(r -> r.getRecords().get(unit).getAvgThroughput().get()).average().orElse(0);
     }
 
     @Override

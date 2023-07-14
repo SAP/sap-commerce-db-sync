@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -14,12 +14,12 @@ import org.apache.ddlutils.model.Table;
 import org.apache.ddlutils.platform.postgresql.PostgreSqlPlatform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.sql.Types;
 
 public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implements HybrisPlatform {
 
     private static final Logger LOG = LoggerFactory.getLogger(MigrationHybrisPostGresPlatform.class);
-
 
     private MigrationHybrisPostGresPlatform() {
         super();
@@ -32,13 +32,12 @@ public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implemen
         return instance;
     }
 
-
     private void provideCustomMapping() {
         PlatformInfo platformInfo = this.getPlatformInfo();
         platformInfo.setMaxColumnNameLength(31);
         platformInfo.addNativeTypeMapping(Types.NVARCHAR, "VARCHAR", Types.VARCHAR);
-         platformInfo.addNativeTypeMapping(Types.NCHAR, "int2", Types.TINYINT);
-         platformInfo.addNativeTypeMapping(Types.CHAR, "int2", Types.TINYINT);
+        platformInfo.addNativeTypeMapping(Types.NCHAR, "int2", Types.TINYINT);
+        platformInfo.addNativeTypeMapping(Types.CHAR, "int2", Types.TINYINT);
         platformInfo.setHasSize(Types.CHAR, false);
         platformInfo.setHasSize(Types.NCHAR, false);
         platformInfo.setHasSize(Types.NVARCHAR, true);

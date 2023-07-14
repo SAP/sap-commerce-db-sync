@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -15,7 +15,7 @@ import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
  */
 public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
 
-    private String profile;
+    private final String profile;
     private String driver;
     private String connectionString;
     private String connectionStringPrimary;
@@ -55,7 +55,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     public String getConnectionStringPrimary() {
         return connectionStringPrimary;
     }
-    
+
     @Override
     public String getUserName() {
         return userName;
@@ -125,7 +125,8 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         this.maxActive = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.active.max"));
         this.maxIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.max"));
         this.minIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.min"));
-        this.removedAbandoned = Boolean.parseBoolean(getProfileProperty(profile, configuration, "db.connection.removeabandoned"));
+        this.removedAbandoned = Boolean
+                .parseBoolean(getProfileProperty(profile, configuration, "db.connection.removeabandoned"));
     }
 
     protected String getNormalProperty(Configuration configuration, String key) {
@@ -140,19 +141,18 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         }
     }
 
-    protected String getProfileProperty(final String profile, final Configuration configuration, final String key)
-    {
-   	 return getProfileProperty(profile, configuration, key, true);
+    protected String getProfileProperty(final String profile, final Configuration configuration, final String key) {
+        return getProfileProperty(profile, configuration, key, true);
     }
-    
+
     protected String getProfileProperty(String profile, Configuration configuration, String key, boolean checkPropery) {
         String profilePropertyKey = createProfilePropertyKey(key, profile);
         String property = configuration.getString(profilePropertyKey);
         if (StringUtils.startsWith(property, "${")) {
             property = configuration.getString(StringUtils.substringBetween(property, "{", "}"));
         }
-        if(checkPropery) {
-      	  return checkProperty(property, profilePropertyKey);
+        if (checkPropery) {
+            return checkProperty(property, profilePropertyKey);
         }
         return property;
     }
@@ -161,8 +161,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         if (property != null) {
             return property;
         } else {
-            throw new IllegalArgumentException(String.format(
-                    "property %s doesn't exist", key));
+            throw new IllegalArgumentException(String.format("property %s doesn't exist", key));
         }
     }
 

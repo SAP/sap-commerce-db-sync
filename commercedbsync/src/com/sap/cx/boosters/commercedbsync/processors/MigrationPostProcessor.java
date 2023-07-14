@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -14,4 +14,8 @@ import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 public interface MigrationPostProcessor {
 
     void process(CopyContext context);
+
+    default boolean shouldExecute(CopyContext context) {
+        return true;
+    }
 }
