@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Map;
 import java.util.Set;
 
@@ -51,22 +52,22 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
     private void provideCustomMapping() {
         PlatformInfo platformInfo = this.getPlatformInfo();
         platformInfo.setMaxColumnNameLength(30);
-        platformInfo.addNativeTypeMapping(12002, "BIGINT", -5);
-        platformInfo.addNativeTypeMapping(12000, "NVARCHAR(MAX)", -1);
-        platformInfo.addNativeTypeMapping(12003, "NVARCHAR(MAX)", -1);
-        platformInfo.addNativeTypeMapping(12001, "NVARCHAR(MAX)", -1);
-        platformInfo.addNativeTypeMapping(-5, "BIGINT");
-        platformInfo.addNativeTypeMapping(12, "NVARCHAR");
-        platformInfo.addNativeTypeMapping(-7, "TINYINT");
-        platformInfo.addNativeTypeMapping(4, "INTEGER");
-        platformInfo.addNativeTypeMapping(5, "INTEGER");
-        platformInfo.addNativeTypeMapping(-6, "TINYINT", -6);
-        platformInfo.addNativeTypeMapping(8, "FLOAT", 8);
-        platformInfo.addNativeTypeMapping(6, "FLOAT", 8);
-        platformInfo.addNativeTypeMapping(-9, "NVARCHAR", -9);
-        platformInfo.addNativeTypeMapping(92, "DATETIME2", 93);
-        platformInfo.addNativeTypeMapping(93, "DATETIME2");
-        platformInfo.addNativeTypeMapping(2004, "VARBINARY(MAX)");
+        platformInfo.addNativeTypeMapping(12002, "BIGINT", Types.BIGINT);
+        platformInfo.addNativeTypeMapping(12000, "NVARCHAR(MAX)", Types.LONGVARCHAR);
+        platformInfo.addNativeTypeMapping(12003, "NVARCHAR(MAX)", Types.LONGVARCHAR);
+        platformInfo.addNativeTypeMapping(12001, "NVARCHAR(MAX)", Types.LONGVARCHAR);
+        platformInfo.addNativeTypeMapping(Types.BIGINT, "BIGINT");
+        platformInfo.addNativeTypeMapping(Types.VARCHAR, "NVARCHAR");
+        platformInfo.addNativeTypeMapping(Types.BIT, "TINYINT");
+        platformInfo.addNativeTypeMapping(Types.INTEGER, "INTEGER");
+        platformInfo.addNativeTypeMapping(Types.SMALLINT, "INTEGER");
+        platformInfo.addNativeTypeMapping(Types.TINYINT, "TINYINT", Types.TINYINT);
+        platformInfo.addNativeTypeMapping(Types.DOUBLE, "FLOAT", Types.DOUBLE);
+        platformInfo.addNativeTypeMapping(Types.FLOAT, "FLOAT", Types.DOUBLE);
+        platformInfo.addNativeTypeMapping(Types.NVARCHAR, "NVARCHAR", Types.NVARCHAR);
+        platformInfo.addNativeTypeMapping(Types.TIME, "DATETIME2", Types.TIMESTAMP);
+        platformInfo.addNativeTypeMapping(Types.TIMESTAMP, "DATETIME2");
+        platformInfo.addNativeTypeMapping(Types.BLOB, "VARBINARY(MAX)");
     }
 
     public String getTableName(Table table) {

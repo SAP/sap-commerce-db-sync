@@ -1,5 +1,5 @@
-# SAP Commerce DB Sync - Configuration Reference
 
+# SAP Commerce DB Sync - Configuration Reference
 
 
 | Property | Description | Default   | values      | optional    | dependency   |

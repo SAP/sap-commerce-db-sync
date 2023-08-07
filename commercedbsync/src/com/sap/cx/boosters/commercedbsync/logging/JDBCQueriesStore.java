@@ -9,6 +9,7 @@ package com.sap.cx.boosters.commercedbsync.logging;
 import com.microsoft.azure.storage.CloudStorageAccount;
 import com.microsoft.azure.storage.blob.CloudAppendBlob;
 import com.microsoft.azure.storage.blob.CloudBlobClient;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlobDirectory;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 
@@ -106,9 +107,7 @@ public class JDBCQueriesStore {
     public Pair<byte[], String> getLogFile(final String migrationId) {
         final String logFileName = getLogFileName(migrationId, true);
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            CloudBlobClient blobClient = getCloudBlobClient();
-            CloudBlobDirectory jdbcLogsDirectory = blobClient
-                    .getContainerReference(context.getFileStorageContainerName()).getDirectoryReference("jdbclogs");
+            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference("jdbclogs");
             CloudBlockBlob zippedLogBlobFile = jdbcLogsDirectory.getBlockBlobReference(logFileName);
             zippedLogBlobFile.download(baos);
             return Pair.of(baos.toByteArray(), logFileName);
@@ -128,10 +127,7 @@ public class JDBCQueriesStore {
 
     private void flushQueryLogsToAppendingFile() {
         try {
-            CloudBlobClient blobClient = getCloudBlobClient();
-            CloudBlobDirectory jdbcLogsDirectory = blobClient
-                    .getContainerReference(context.getFileStorageContainerName())
-                    .getDirectoryReference(JDBCLOGS_DIRECTORY);
+            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference(JDBCLOGS_DIRECTORY);
             CloudAppendBlob sharedStoreLogFile = jdbcLogsDirectory.getAppendBlobReference(sharedStoreLogFileName);
             byte[] queryLogsBytes = getQueryLogsAsString().getBytes(StandardCharsets.UTF_8.name());
             try (InputStream is = new ByteArrayInputStream(queryLogsBytes)) {
@@ -152,10 +148,7 @@ public class JDBCQueriesStore {
 
     private void compressAppendingFileContent(final String migrationId) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            CloudBlobClient blobClient = getCloudBlobClient();
-            CloudBlobDirectory jdbcLogsDirectory = blobClient
-                    .getContainerReference(context.getFileStorageContainerName())
-                    .getDirectoryReference(JDBCLOGS_DIRECTORY);
+            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference(JDBCLOGS_DIRECTORY);
             CloudAppendBlob sharedStoreLogFile = jdbcLogsDirectory.getAppendBlobReference(this.sharedStoreLogFileName);
             sharedStoreLogFile.download(baos);
             byte[] zippedLogBytes = FileUtils.zipBytes(getLogFileName(migrationId, false), baos.toByteArray());
@@ -190,6 +183,15 @@ public class JDBCQueriesStore {
         }
         CloudStorageAccount account = CloudStorageAccount.parse(context.getFileStorageConnectionString());
         return account.createCloudBlobClient();
+    }
+
+    private CloudBlobContainer getContainer() throws Exception {
+        CloudBlobContainer containerReference = getCloudBlobClient()
+                .getContainerReference(context.getFileStorageContainerName());
+
+        containerReference.createIfNotExists();
+
+        return containerReference;
     }
 
     private String getLogFileName(final String migrationId, final boolean isZipped) {

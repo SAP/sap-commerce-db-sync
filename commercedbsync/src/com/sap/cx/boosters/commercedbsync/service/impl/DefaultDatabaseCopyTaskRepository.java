@@ -23,6 +23,7 @@ import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyBatch;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,14 +65,14 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     @Override
     public String getMostRecentMigrationID(MigrationContext context) {
         String query = "SELECT migrationId FROM " + TABLECOPYSTATUS;
-        try (Connection conn = context.getDataTargetRepository().getConnection();
+        try (Connection conn = getConnection(context);
                 PreparedStatement stmt = conn.prepareStatement(query);
                 ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
                 return rs.getString("migrationId");
             }
         } catch (final Exception e) {
-            LOG.error("Couldn't fetch migrationId", e);
+            LOG.error("Couldn't fetch `migrationId` due to: {}", ExceptionUtils.getRootCauseMessage(e));
         }
         return null;
     }
