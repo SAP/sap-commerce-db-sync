@@ -28,7 +28,7 @@ There are two main use cases:
 
 ## Release v1.2
 
-Features and changes [presentation video](https://video.sap.com/media/t/1_sipgb1l8). 
+Features and changes [presentation video](https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_sipgb1l8). 
 
 # Features Overview
 
