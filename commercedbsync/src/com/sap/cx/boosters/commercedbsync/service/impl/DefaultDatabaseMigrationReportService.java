@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -44,8 +44,9 @@ public class DefaultDatabaseMigrationReportService implements DatabaseMigrationR
         final SortedMap<String, String> configuration = new TreeMap<>();
         final Configuration config = configurationService.getConfiguration();
         final Configuration subset = config.subset(CommercedbsyncConstants.PROPERTIES_PREFIX);
-        final Set<String> maskedProperties = Arrays.stream(config.getString(CommercedbsyncConstants.MIGRATION_REPORT_MASKED_PROPERTIES)
-                .split(",")).collect(Collectors.toSet());
+        final Set<String> maskedProperties = Arrays
+                .stream(config.getString(CommercedbsyncConstants.MIGRATION_REPORT_MASKED_PROPERTIES).split(","))
+                .collect(Collectors.toSet());
 
         final Iterator<String> keys = subset.getKeys();
 
@@ -57,7 +58,10 @@ public class DefaultDatabaseMigrationReportService implements DatabaseMigrationR
                 continue;
             }
 
-            configuration.put(prefixedKey, maskedProperties.contains(prefixedKey) ? CommercedbsyncConstants.MASKED_VALUE : MaskUtil.stripJdbcPassword(subset.getString(key)));
+            configuration.put(prefixedKey,
+                    maskedProperties.contains(prefixedKey)
+                            ? CommercedbsyncConstants.MASKED_VALUE
+                            : MaskUtil.stripJdbcPassword(subset.getString(key)));
         }
 
         migrationReport.setConfiguration(configuration);

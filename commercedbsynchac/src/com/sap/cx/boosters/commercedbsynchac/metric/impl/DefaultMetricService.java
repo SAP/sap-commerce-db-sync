@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -20,7 +20,7 @@ public class DefaultMetricService implements MetricService {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultMetricService.class);
 
-    private List<MetricPopulator> populators;
+    private final List<MetricPopulator> populators;
 
     public DefaultMetricService(List<MetricPopulator> populators) {
         this.populators = populators;

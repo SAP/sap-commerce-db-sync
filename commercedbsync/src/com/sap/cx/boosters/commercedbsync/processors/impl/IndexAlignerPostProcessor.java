@@ -1,3 +1,9 @@
+/*
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  License: Apache-2.0
+ *
+ */
+
 package com.sap.cx.boosters.commercedbsync.processors.impl;
 
 import java.util.Arrays;
@@ -19,97 +25,74 @@ import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 
 import de.hybris.platform.servicelayer.config.ConfigurationService;
 
+public class IndexAlignerPostProcessor implements MigrationPostProcessor {
 
-public class IndexAlignerPostProcessor implements MigrationPostProcessor
-{
+    private static final Logger LOG = LoggerFactory.getLogger(IndexAlignerPostProcessor.class);
 
-	private static final Logger LOG = LoggerFactory.getLogger(IndexAlignerPostProcessor.class);
+    private ConfigurationService configurationService;
 
-	private ConfigurationService configurationService;
+    @Override
+    public void process(final CopyContext context) {
+        LOG.info("Aligning indexes on target...");
+        final MigrationContext migrationContext = context.getMigrationContext();
+        final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
+        final String indiciesSQL = generateAlterTablesSql(migrationContext);
+        indiciesSQL.lines().forEach(indexSQL -> {
+            if (StringUtils.isNotBlank(indexSQL)) {
+                LOG.info("Executing {}", indexSQL);
+                try {
+                    dataTargetRepository.executeUpdateAndCommit(indexSQL);
+                } catch (Exception e) {
+                    LOG.error("Execution failed for " + indexSQL, e);
+                }
+            }
+        });
+        LOG.info("Index alignment on target is completed.");
+    }
 
-	@Override
-	public void process(final CopyContext context)
-	{
-		final MigrationContext migrationContext = context.getMigrationContext();
-		if (migrationContext.isDropAllIndexesEnabled())
-		{
-			LOG.info("Aligning indexes on target...");
-			final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
-			final String indiciesSQL = generateAlterTablesSql(migrationContext);
-			indiciesSQL.lines().forEach(indexSQL -> {
-				if (StringUtils.isNotBlank(indexSQL))
-				{
-					LOG.info("Executing {}", indexSQL);
-					try
-					{
-						dataTargetRepository.executeUpdateAndCommit(indexSQL);
-					}
-					catch (Exception e)
-					{
-						LOG.error("Execution failed for " + indexSQL, e);
-					}
-				}
-			});
-			LOG.info("Index alignment on target is completed.");
-		}
-	}
+    @Override
+    public boolean shouldExecute(CopyContext context) {
+        return context.getMigrationContext().isDropAllIndexesEnabled();
+    }
 
-	private String generateAlterTablesSql(final MigrationContext migrationContext)
-	{
-		String alterTablesSql = "";
-		try
-		{
-			final Database sourceDatabase = migrationContext.getDataSourceRepository().asDatabase();
-			final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
-			final Database targetDatabase = dataTargetRepository.asDatabase();
-			final Set<String> excludedIndices = getExcludedIndicies();
+    private String generateAlterTablesSql(final MigrationContext migrationContext) {
+        final Database sourceDatabase = migrationContext.getDataSourceRepository().asDatabase();
+        final DataRepository dataTargetRepository = migrationContext.getDataTargetRepository();
+        final Database targetDatabase = dataTargetRepository.asDatabase();
+        final Set<String> excludedIndices = getExcludedIndicies();
 
-			for (final String copiedTable : migrationContext.getIncludedTables())
-			{
-				final Table sourceTable = sourceDatabase.findTable(copiedTable);
-				final Table targetTable = targetDatabase.findTable(copiedTable);
-				if (sourceTable != null && targetTable != null)
-				{
-					final Index[] sourceTableIndices = sourceTable.getIndices();
-					final Index[] targetTableIndices = targetTable.getIndices();
-					for (final Index sourceTableIndex : sourceTableIndices)
-					{
-						if (!ArrayUtils.contains(targetTableIndices, sourceTableIndex)
-								&& !excludedIndices.contains((sourceTable.getName() + "." + sourceTableIndex.getName()).toLowerCase()))
-						{
-							LOG.debug("Found missing index {} for {}", sourceTableIndex, copiedTable);
-							targetTable.addIndex(sourceTableIndex);
-						}
-					}
-				}
-				else
-				{
-					LOG.warn("Table {} is not found one of the databases: source[{}], target[{}]", copiedTable, sourceTable,
-							targetTable);
-				}
-			}
+        for (final String copiedTable : migrationContext.getIncludedTables()) {
+            final Table sourceTable = sourceDatabase.findTable(copiedTable);
+            final Table targetTable = targetDatabase.findTable(copiedTable);
+            if (sourceTable != null && targetTable != null) {
+                final Index[] sourceTableIndices = sourceTable.getIndices();
+                final Index[] targetTableIndices = targetTable.getIndices();
+                for (final Index sourceTableIndex : sourceTableIndices) {
+                    if (!ArrayUtils.contains(targetTableIndices, sourceTableIndex) && !excludedIndices
+                            .contains((sourceTable.getName() + "." + sourceTableIndex.getName()).toLowerCase())) {
+                        LOG.debug("Found missing index {} for {}", sourceTableIndex, copiedTable);
+                        targetTable.addIndex(sourceTableIndex);
+                    }
+                }
+            } else {
+                LOG.warn("Table {} is not found one of the databases: source[{}], target[{}]", copiedTable, sourceTable,
+                        targetTable);
+            }
+        }
 
-			alterTablesSql = dataTargetRepository.asPlatform().getAlterTablesSql(targetDatabase);
-			LOG.debug("Generated alter table sql for missing indexes: {}", alterTablesSql);
-		}
-		catch (final Exception e)
-		{
-			LOG.error("Alter table generation failed", e);
-		}
+        final String alterTablesSql = dataTargetRepository.asPlatform().getAlterTablesSql(targetDatabase);
+        LOG.debug("Generated alter table sql for missing indexes: {}", alterTablesSql);
+        return alterTablesSql;
+    }
 
-		return alterTablesSql;
-	}
+    private Set<String> getExcludedIndicies() {
+        final String excludedIndiciesStr = configurationService.getConfiguration()
+                .getString("migration.data.indices.drop.recreate.exclude");
 
-	private Set<String> getExcludedIndicies()
-	{
-		final String excludedIndiciesStr = configurationService.getConfiguration()
-				.getString("migration.data.indices.drop.recreate.exclude");
+        return Arrays.stream(excludedIndiciesStr.split(",")).map(String::toLowerCase).collect(Collectors.toSet());
+    }
 
-		return Arrays.stream(excludedIndiciesStr.split(",")).map(String::toLowerCase).collect(Collectors.toSet());
-	}
-
-	public void setConfigurationService(final ConfigurationService configurationService)
-	{
-		this.configurationService = configurationService;
-	}
+    public void setConfigurationService(final ConfigurationService configurationService) {
+        this.configurationService = configurationService;
+    }
 }

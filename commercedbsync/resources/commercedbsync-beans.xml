@@ -29,6 +29,7 @@
         <property name="failure" type="boolean"/>
         <property name="duration" type="String"/>
         <property name="error" type="String"/>
+        <property name="truncated" type="boolean"/>
         <property name="lastUpdate" type="java.time.LocalDateTime"/>
         <!-- workaround for hac json serializer; it is not configured to handle java.time.* -->
         <property name="lastUpdateEpoch" type="Long"/>
@@ -36,6 +37,16 @@
         <property name="avgReaderRowThroughput" type="double"/>
         <!-- ORACLE_TARGET -->
         <property name="durationinseconds" type="double"/>
+        <property name="copyMethod" type="String"/>
+        <property name="keyColumns" type="java.util.List&lt;String&gt;"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyBatch">
+        <property name="migrationId" type="String"/>
+        <property name="batchId" type="String"/>
+        <property name="pipelinename" type="String"/>
+        <property name="lowerBoundary" type="Object"/>
+        <property name="upperBoundary" type="Object"/>
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.MigrationStatus">
@@ -48,11 +59,13 @@
         <property name="lastUpdateEpoch" type="Long"/>
         <property name="completed" type="boolean"/>
         <property name="failed" type="boolean"/>
+        <property name="aborted" type="boolean"/>
         <property name="totalTasks" type="int"/>
         <property name="completedTasks" type="int"/>
         <property name="failedTasks" type="int"/>
         <property name="status" type="com.sap.cx.boosters.commercedbsync.MigrationProgress"/>
         <property name="statusUpdates" type="java.util.List&lt;com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask&gt;"/>
+        <property name="customException" type="String"/>
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.MigrationReport">
@@ -108,6 +121,7 @@
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.SeekQueryDefinition">
+        <property name="batchId" type="int" />
         <property name="table" type="String" />
         <property name="column" type="String" />
         <property name="lastColumnValue" type="Object" />
@@ -116,16 +130,20 @@
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition">
+        <property name="batchId" type="int" />
         <property name="table" type="String" />
+        <property name="allColumns" type="java.util.Set&lt;String&gt;" />
         <property name="batchSize" type="long" />
         <property name="offset" type="long" />
-		<property name="orderByColumns" type="String" />
+        <property name="orderByColumns" type="String" />
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition">
         <property name="table" type="String" />
         <property name="column" type="String" />
         <property name="batchSize" type="long" />
+        <property name="lowerColumnBoundary" type="Object" />
+        <property name="upperColumnBoundary" type="Object" />
     </bean>
 
      <bean class="com.sap.cx.boosters.commercedbsync.SeekQueryDefinition">
@@ -146,4 +164,8 @@
     <property name="deletionEnabled" type="boolean" />
     <property name="lpTableEnabled" type="boolean" />
   </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.DataThreadPoolConfig">
+        <property name="poolSize" type="Integer" />
+    </bean>
 </beans>

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -12,20 +12,17 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-
 /**
  * Factory to create the DataSources used for Migration
  */
-public interface MigrationDataSourceFactory
-{
-	DataSource create(DataSourceConfiguration dataSourceConfiguration);
+public interface MigrationDataSourceFactory {
+    DataSource create(DataSourceConfiguration dataSourceConfiguration);
 
-
-	/**
-	 * Generates DataSource configuration with a configuration map
-	 * 
-	 * @param dataSourceConfigurationMap
-	 * @return
-	 */
-	DataSource create(Map<String, Object> dataSourceConfigurationMap);
+    /**
+     * Generates DataSource configuration with a configuration map
+     *
+     * @param dataSourceConfigurationMap
+     * @return
+     */
+    DataSource create(Map<String, Object> dataSourceConfigurationMap);
 }

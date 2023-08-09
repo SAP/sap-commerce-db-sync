@@ -66,6 +66,7 @@ function validateSource()
 		        $('#buttonDsSourceValidate').html("Valid!");
 			} else {
                 $('#buttonDsSourceValidate').html("Not valid!!");
+                $('#connectionException').html(data.exception);
 			}
 		},
 		error: hac.global.err
@@ -92,6 +93,7 @@ function validateTarget()
 		        $('#buttonDsTargetValidate').html("Valid!");
 			} else {
                 $('#buttonDsTargetValidate').html("Not valid!!");
+                $('#connectionExceptionTarget').html(data.exception);
 			}
 		},
 		error: hac.global.err

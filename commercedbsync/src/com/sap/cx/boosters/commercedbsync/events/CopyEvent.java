@@ -1,14 +1,14 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
+
 package com.sap.cx.boosters.commercedbsync.events;
 
 import de.hybris.platform.servicelayer.event.ClusterAwareEvent;
 import de.hybris.platform.servicelayer.event.PublishEventContext;
 import de.hybris.platform.servicelayer.event.events.AbstractEvent;
-
 
 /**
  * ClusterAwareEvent to notify other Nodes to start the migration
@@ -36,7 +36,6 @@ public abstract class CopyEvent extends AbstractEvent implements ClusterAwareEve
     public int getSourceNodeId() {
         return sourceNodeId;
     }
-
 
     /**
      * @return the migrationId

@@ -1,7 +1,9 @@
 # SAP Commerce DB Sync - Performance Guide
 
 
-## AWS Mysql to SAP Commerce Cloud Benchmark
+## Benchmarks
+
+### AWS to SAP Commerce Cloud
 
 Source Database:
 
@@ -24,38 +26,11 @@ Results:
 
 > **NOTE**: DB size differs in source and target due to different storage concepts (indexes).
 
-## SAP Commerce Cloud to Azure SQL Benchmark
-
-* Source Database: P15 (4000 DTUs)
-* Destination Database: P15 (4000 DTUs)
-* Dataset: 524 tables, 242 M records
-
-Tuning parameters:
-* 6 read threads
-* 20 write threads
-* 10 parallel tables
-
-Results:
-* Full duration: 151 min
-* Throughput: 1.6M rows per min
-
-|         TABLE NAME         |     ROW COUNT     |    THROUGHPUT (rows per min) | DURATION (min) |
-|:--------------------------:|:-----------------:|:----------------------------:|:--------------:|
-|     PAYMENTTRANSACTIONS    |     24,424,355    |            266,158           |        92      |
-|         PAYMENTINFOS       |     24,388,012    |            270,588           |        90      |
-|     PAYMNTTRNSCTENTRIES    |     24,452,182    |            251,359           |        97      |
-|         CARTENTRIES        |     23,514,465    |            284,748           |        83      |
-|         ORDERENTRIES       |     21,049,356    |            265,716           |        79      |
-|          ADDRESSES         |     61,659,137    |            410,341           |       150      |
-|            CARTS           |     12,410,584    |            208,847           |        59      |
-|            ORDERS          |     10,397,869    |            254,734           |        41      |
-|          PROCESSES         |      7,038,088    |            211,540           |        33      |
-|       PROMOTIONRESULT      |      6,958,400    |            254,327           |        27      |
-|       PROMOTIONACTION      |      7,503,149    |            213,532           |        35      |
-
 ## Technical Concept
 
+
 ![performance technical concept](performance_architecture.png)
+
 
 ### Scheduler
 
@@ -149,7 +124,7 @@ The amount of database connections can be defined as follows:
 ### Disabling Indexes
 
 Indexes can be a bottleneck when inserting batches.
-MS SQL Server offers a way to temporarily disable indexes during the copy process.
+MsSQL offers a way to temporarily disable indexes during the copy process.
 This can be done using the property:
 
 `migration.data.indices.disable.enabled`

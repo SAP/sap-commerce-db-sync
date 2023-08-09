@@ -1,14 +1,14 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
+
 package de.hybris.platform.core;
 
 import de.hybris.bootstrap.ddl.PropertiesLoader;
 
 import java.util.Objects;
-
 
 public class TenantPropertiesLoader implements PropertiesLoader {
     private final Tenant tenant;

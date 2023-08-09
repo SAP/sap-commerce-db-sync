@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -27,31 +27,32 @@ import java.util.List;
 
 public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrationReportStorageService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BlobDatabaseMigrationReportStorageService.class.getName());
-
-    private static final String ROOT_CONTAINER = "migration";
+    private static final Logger LOG = LoggerFactory
+            .getLogger(BlobDatabaseMigrationReportStorageService.class.getName());
 
     private CloudBlobClient cloudBlobClient;
 
     private MigrationContext migrationContext;
 
     protected void init() throws Exception {
-        CloudStorageAccount account = CloudStorageAccount.parse(migrationContext.getMigrationReportConnectionString());
+        LOG.info("Connecting to blob storage {}", migrationContext.getFileStorageConnectionString());
+        CloudStorageAccount account = CloudStorageAccount.parse(migrationContext.getFileStorageConnectionString());
         this.cloudBlobClient = account.createCloudBlobClient();
     }
 
     @Override
     public void store(String fileName, InputStream inputStream) throws Exception {
-        String path = fileName;
+        final String containerName = migrationContext.getFileStorageContainerName();
         if (inputStream != null) {
-            CloudBlockBlob blob = getContainer(ROOT_CONTAINER, true).getBlockBlobReference(path);
+            CloudBlockBlob blob = getContainer(containerName, true).getBlockBlobReference(fileName);
             byte[] bytes = IOUtils.toByteArray(inputStream);
             ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
             blob.upload(bis, bytes.length);
             bis.close();
-            LOG.info("File {} written to blob storage at {}/{}", path, ROOT_CONTAINER, path);
+            LOG.info("File {} written to blob storage at {}/{}", fileName, containerName, fileName);
         } else {
-            throw new IllegalArgumentException(String.format("Input Stream is null for root '%s' and path '%s'", ROOT_CONTAINER, path));
+            throw new IllegalArgumentException(
+                    String.format("Input Stream is null for root '%s' and path '%s'", containerName, fileName));
         }
     }
 
@@ -65,17 +66,21 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
 
     public List<CloudBlockBlob> listAllReports() throws Exception {
         getCloudBlobClient();
-        Iterable<ListBlobItem> migrationBlobs = cloudBlobClient.getContainerReference(ROOT_CONTAINER).listBlobs();
+        final String containerName = migrationContext.getFileStorageContainerName();
+        Iterable<ListBlobItem> migrationBlobs = cloudBlobClient.getContainerReference(containerName).listBlobs();
         List<CloudBlockBlob> result = new ArrayList<>();
         migrationBlobs.forEach(blob -> {
-            result.add((CloudBlockBlob) blob);
+            if (blob instanceof CloudBlockBlob && ((CloudBlockBlob) blob).getName().endsWith(".json")) {
+                result.add((CloudBlockBlob) blob);
+            }
         });
         return result;
     }
 
     public byte[] getReport(String reportId) throws Exception {
         checkReportIdValid(reportId);
-        CloudBlob blob = cloudBlobClient.getContainerReference(ROOT_CONTAINER).getBlobReferenceFromServer(reportId);
+        final String containerName = migrationContext.getFileStorageContainerName();
+        CloudBlob blob = cloudBlobClient.getContainerReference(containerName).getBlobReferenceFromServer(reportId);
         byte[] output = new byte[blob.getStreamWriteSizeInBytes()];
         blob.downloadToByteArray(output, 0);
         return output;

@@ -26,11 +26,14 @@ There are two main use cases:
 
 [![Watch the video](docs/user/commerce-db-sync-demo.png)](https://video.sap.com/embed/secure/iframe/entryId/1_7bhihtlz/uiConfId/30317401/st/0)
 
+## Release v1.2
+
+Features and changes [presentation video](https://sapvideoa35699dc5.hana.ondemand.com/?entry_id=1_sipgb1l8). 
 
 # Features Overview
 
 - Database Connectivity
-  - Multipe supported databases: Oracle, MySQL, HANA, MSSQL
+  - Multipe supported databases: Oracle, MySQL, HANA, MSSQL, PostgreSQL
   - UI based connection validation
 - Schema Differences
   - UI based schema differences detector
@@ -49,6 +52,7 @@ There are two main use cases:
   - Table exclusions/inclusions
   - Incremental mode (delta)
   - Custom tables
+  - Resume failed migration
   - Staged approach using table prefix
   - View usage instead of table
 - Reporting / Audit
@@ -56,6 +60,7 @@ There are two main use cases:
   - Automated reporting for copy processes
   - Stored on blob storage
   - Logging of all actions triggered from the UI
+  - JDBC logging
 
 # Requirements
 
@@ -63,20 +68,22 @@ There are two main use cases:
 - Tested with source databases:
   - Azure SQL
   - MySQL (5.7)
-  - Oracle (XE 11g)
+  - Oracle (XE 11g, XE 18c)
   - HANA (express 2.0) and HANA Cloud
+  - PostgreSQL 15.x
 - Tested with target databases:
   - Azure SQL
-  - Oracle (XE 11g)
+  - Oracle (XE 11g, XE 18c)
   - HANA (express 2.0) and HANA Cloud
+  - PostgreSQL 15.x
 
 # Performance
 
 Commerce DB Sync has been built to offer reasonable performance with large amount of data using the following design:
 
 - Table to table replication using JDBC (low level)
-- Selection of tables so we do not need a full synchronization in particular for large technical table (task logs, audit logs...)​
-- Multi-threaded and can manage multiple tables at the same time ​
+- Selection of tables so we do not need a full synchronization in particular for large technical table (task logs, audit logs...)
+- Multi-threaded and can manage multiple tables at the same time 
 - Using UPSERT (INSERT/UPDATE)
 - Use read replica Commerce database as a source database
 

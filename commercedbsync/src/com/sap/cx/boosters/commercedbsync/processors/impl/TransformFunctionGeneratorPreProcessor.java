@@ -1,3 +1,9 @@
+/*
+ *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  License: Apache-2.0
+ *
+ */
+
 package com.sap.cx.boosters.commercedbsync.processors.impl;
 
 import org.apache.commons.lang.StringUtils;
@@ -12,51 +18,34 @@ import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 
 import de.hybris.bootstrap.ddl.DataBaseProvider;
 
+public class TransformFunctionGeneratorPreProcessor implements MigrationPreProcessor {
 
-public class TransformFunctionGeneratorPreProcessor implements MigrationPreProcessor
-{
+    private static final Logger LOG = LoggerFactory.getLogger(TransformFunctionGeneratorPreProcessor.class);
 
-	private static final Logger LOG = LoggerFactory.getLogger(TransformFunctionGeneratorPreProcessor.class);
+    @Override
+    public void process(final CopyContext context) {
+        final MigrationContext migrationContext = context.getMigrationContext();
+        final DataRepository dataSourceRepository = migrationContext.getDataSourceRepository();
+        final String platformSpecificSQL = getPlatformSpecificSQL(dataSourceRepository.getDatabaseProvider());
+        if (StringUtils.isNotBlank(platformSpecificSQL)) {
+            dataSourceRepository.runSqlScriptOnPrimary(
+                    new ClassPathResource("/sql/transformationFunctions/" + platformSpecificSQL));
+        }
+    }
 
-	@Override
-	public void process(final CopyContext context)
-	{
-		final MigrationContext migrationContext = context.getMigrationContext();
-		final DataRepository dataSourceRepository = migrationContext.getDataSourceRepository();
-		final String platformSpecificSQL = getPlatformSpecificSQL(dataSourceRepository.getDatabaseProvider());
-		if (StringUtils.isNotBlank(platformSpecificSQL))
-		{
-			dataSourceRepository.runSqlScriptOnPrimary(new ClassPathResource("/sql/transformationFunctions/" + platformSpecificSQL));
-		}
-	}
+    private String getPlatformSpecificSQL(final DataBaseProvider databaseProvider) {
+        String platformSpecificSQL = "mssql-general.sql";
+        if (databaseProvider.isHanaUsed() || databaseProvider.isOracleUsed() || databaseProvider.isPostgreSqlUsed()) {
+            platformSpecificSQL = null;
+        }
 
-	private String getPlatformSpecificSQL(final DataBaseProvider databaseProvider)
-	{
-		String platformSpecificSQL = "-general.sql";
-		switch (databaseProvider.getDbName().toLowerCase())
-		{
-			case "sqlserver":
-				platformSpecificSQL = "mssql" + platformSpecificSQL;
-				break;
-			case "mysql":
-				platformSpecificSQL = "mysql" + platformSpecificSQL;
-				break;
-			case "oracle":
-				platformSpecificSQL = "oracle" + platformSpecificSQL;
-				break;
-			case "postgresql":
-				platformSpecificSQL = "postgresql" + platformSpecificSQL;
-				break;
-			case "sap":
-				platformSpecificSQL = "sap" + platformSpecificSQL;
-				break;
-			default:
-				platformSpecificSQL = "hsqldb" + platformSpecificSQL;
-				
-		}
+        LOG.info("Identified platform specific transformation function SQL {}", platformSpecificSQL);
 
-		LOG.info("Identified platform specific transformation function SQL {}", platformSpecificSQL);
+        return platformSpecificSQL;
+    }
 
-		return platformSpecificSQL;
-	}
+    @Override
+    public boolean shouldExecute(CopyContext context) {
+        return context.getMigrationContext().isDataExportEnabled();
+    }
 }
