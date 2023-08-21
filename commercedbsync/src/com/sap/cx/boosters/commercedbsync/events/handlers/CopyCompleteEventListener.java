@@ -82,8 +82,8 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
             });
         } catch (final Exception e) {
             LOG.error("Error during PostProcessor execution", e);
-            if (e instanceof RuntimeException re) {
-                throw re;
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
             } else {
                 throw new RuntimeException(e);
             }

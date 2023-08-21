@@ -197,7 +197,8 @@ class CopyPipeWriterTask extends RetriableTask {
                                                                 + sourceColumnValue.getClass().getTypeName());
                                                         printedClobLog = true;
                                                     }
-                                                    if (sourceColumnValue instanceof String clobString) {
+                                                    if (sourceColumnValue instanceof String) {
+                                                        String clobString = (String) sourceColumnValue;
                                                         if (!clobString.isEmpty()) {
                                                             LOG.debug(" reading CLOB");
                                                             bulkWriterStatement.setClob(paramIdx,
@@ -224,11 +225,12 @@ class CopyPipeWriterTask extends RetriableTask {
                                                 + ", targetColumnType =" + targetColumnType + ", source type = "
                                                 + sourceColumnValue.getClass().getTypeName());
                                         if (dbProvider.isOracleUsed()) {
-                                            if (targetColumnType == NUMERIC
-                                                    && sourceColumnValue instanceof String stringValue
-                                                    && !stringValue.isEmpty()) {
-                                                final int character = Character.codePointAt(stringValue, 0);
-                                                bulkWriterStatement.setInt(paramIdx, character);
+                                            if (targetColumnType == NUMERIC && sourceColumnValue instanceof String) {
+                                                final String stringValue = (String) sourceColumnValue;
+                                                if (!stringValue.isEmpty()) {
+                                                    final int character = Character.codePointAt(stringValue, 0);
+                                                    bulkWriterStatement.setInt(paramIdx, character);
+                                                }
                                             }
                                         }
                                     } catch (final Exception e) {
