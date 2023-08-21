@@ -175,9 +175,9 @@ public class HanaDataRepository extends AbstractDataRepository {
             List<String> upsertIDs) {
         final String upsertID = upsertIDs.get(0); // TODO handle multiple upsert IDs if needed
         final List<String> columnsToCopyMinusPK = columnsToCopy.stream().filter(s -> !s.equalsIgnoreCase(upsertID))
-                .toList();
+                .collect(Collectors.toList());
         final List<String> columnsToCopyValuesMinusPK = columnsToCopyValues.stream()
-                .filter(s -> !s.equalsIgnoreCase("s." + upsertID)).toList();
+                .filter(s -> !s.equalsIgnoreCase("s." + upsertID)).collect(Collectors.toList());
         LOG.debug("getBulkUpdateStatementParamList - columnsToCopyMinusPK =" + columnsToCopyMinusPK);
         return "SET " + IntStream.range(0, columnsToCopyMinusPK.size()).mapToObj(
                 idx -> String.format("%s = %s", columnsToCopyMinusPK.get(idx), columnsToCopyValuesMinusPK.get(idx)))

@@ -88,10 +88,12 @@ public class MigrationHybrisHANABuilder extends HanaSqlBuilder {
     public void processTableStructureChanges(Database currentModel, Database desiredModel, Table sourceTable,
             Table targetTable, Map parameters, List changes) throws IOException {
         Iterator changeIt = changes.iterator();
+        Object change;
 
         while (changeIt.hasNext()) {
-            if (changeIt.next()instanceof RemoveColumnChange removeColumnChange) {
-                processChange(currentModel, desiredModel, removeColumnChange);
+            change = changeIt.next();
+            if (change instanceof RemoveColumnChange) {
+                processChange(currentModel, desiredModel, (RemoveColumnChange) change);
                 changeIt.remove();
             }
         }

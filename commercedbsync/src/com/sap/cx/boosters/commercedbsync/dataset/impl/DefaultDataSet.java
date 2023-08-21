@@ -16,6 +16,7 @@ import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import javax.annotation.concurrent.Immutable;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.sql.Types.CHAR;
 import static java.sql.Types.SMALLINT;
@@ -32,7 +33,7 @@ public class DefaultDataSet implements DataSet {
         this.batchId = batchId;
         this.columnCount = columnCount;
         this.columnOrder = Collections.unmodifiableList(columnOrder);
-        this.result = result.stream().map(Collections::unmodifiableList).toList();
+        this.result = result.stream().map(Collections::unmodifiableList).collect(Collectors.toList());
     }
 
     @Override
