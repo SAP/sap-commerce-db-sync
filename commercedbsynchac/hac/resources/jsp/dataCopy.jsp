@@ -38,7 +38,7 @@
                 </hac:note>
                 <span id="timezoneCheckboxContainer"><input type="checkbox" id="timezoneCheckbox" name="timezoneCheckbox"  onchange="document.getElementById('buttonCopyData').disabled=!this.checked"> I am aware of timezone differences, proceed with migration</span>
             </c:if>
-            <div class="clearfix">
+            <div class="clearfix" id="buttonsContainer" data-resumeUrl="<c:url value="/commercedbsynchac/resumeRunning"/>">
                 <button id="buttonCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/copyData"/>">Start</button>
                 <button id="buttonStopCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/abortCopy"/>">Stop</button>
             </div>

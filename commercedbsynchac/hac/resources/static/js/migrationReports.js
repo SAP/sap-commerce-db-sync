@@ -18,8 +18,8 @@ $(document).ready(function () {
 function loadMigrationReports() {
     $('#logsWrapper').fadeOut();
     reportsTable.fnClearTable();
-    var token = $("meta[name='_csrf']").attr("content");
-    var url = "/hac/commercedbsynchac/loadMigrationReports";
+    const token = $("meta[name='_csrf']").attr("content");
+    const url = $('#reportsWrapper').attr('data-url');
     $.ajax({
         url: url,
         type: 'GET',
@@ -44,8 +44,8 @@ function loadMigrationReports() {
 }
 
 function downloadReport(migrationId) {
-    var token = $("meta[name='_csrf']").attr("content");
-    var url = "/hac/commercedbsynchac/downloadLogsReport?migrationId="+migrationId;
+    const token = $("meta[name='_csrf']").attr("content");
+    const url = $('#reportsWrapper').attr('data-downloadUrl') + '?migrationId=' + migrationId;
     $.ajax({
         url: url,
         type: 'GET',
