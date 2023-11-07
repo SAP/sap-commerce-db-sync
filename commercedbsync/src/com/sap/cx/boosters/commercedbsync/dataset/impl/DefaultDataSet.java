@@ -70,8 +70,9 @@ public class DefaultDataSet implements DataSet {
                     }
                     break;
                 case SMALLINT :
-                    if (targetColumnType == CHAR && StringUtils.isNumeric(String.valueOf(columnValue))) {
-                        columnValue = Character.toString((char) ((Integer) columnValue).intValue());
+                    if (targetColumnType == CHAR && StringUtils.isNumeric(String.valueOf(columnValue))
+                            && columnValue instanceof Number) {
+                        columnValue = Character.toString((char) ((Number) columnValue).intValue());
                     }
                     break;
                 default :
