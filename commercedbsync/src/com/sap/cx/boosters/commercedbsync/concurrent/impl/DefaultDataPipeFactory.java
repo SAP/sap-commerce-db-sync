@@ -107,7 +107,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 context.getMigrationContext().getDataSourceRepository());
         String table = copyItem.getSourceItem();
         long totalRows = copyItem.getRowCount();
-        long pageSize = context.getMigrationContext().getReaderBatchSize();
+        long pageSize = getReaderBatchSizeForTable(context, table);
         try {
             PerformanceRecorder recorder = context.getPerformanceProfiler().createRecorder(PerformanceCategory.DB_READ,
                     table);
@@ -236,5 +236,10 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             }
             throw new RuntimeException("Exception while preparing reader tasks", ex);
         }
+    }
+
+    private static int getReaderBatchSizeForTable(final CopyContext context, final String tableName) {
+        Integer tableBatchSize = context.getMigrationContext().getReaderBatchSize(tableName);
+        return tableBatchSize == null ? context.getMigrationContext().getReaderBatchSize() : tableBatchSize;
     }
 }

@@ -49,9 +49,10 @@ How many reader workers a table can have is defined by the following property:
 
 `migration.data.workers.reader.maxtasks`
 
-The size of the batches each reader will query depends on the following property:
+The size of the batches each reader will query depends on the following properties:
 
 `migration.data.reader.batchsize`
+`migration.data.reader.batchsize.{table}`
 
 ### Blocking Pipe
 
@@ -97,7 +98,16 @@ By increasing the parallelization degree you can easily overload the system, whi
 Have a close look at the memory metrics and make sure it is in a healthy range throughout the copy process.
 To solve memory issues, either decrease the degree of parallelization or reduce the capacity of the data pipe as such.
 
+In here also the configured batch size can have big influence on memory usage and execution time. While having a bigger batch size can improve the copy process significantly it can also easy lead to OutOfMemory situations. Due to the data related memory usage, single tables can easily handle a batch size of 40000 (e.g. productlp or attributedescriptorslp) while others are already at the limit with 3000 (e.g. medias). So may try to play around a bit with individual table batch sizes by using migration.data.reader.batchsize.{table} attribute. A good indication for candidates are tables that need longer then 5min to be copied, but during that process the memory and CPU are not already at their limits. Below you can see a real-live example how speed was improved by just set the batch size for "productslp" to 40k and leave the default at 5k.   
 
+table | rows | readers | writers | batch size | copy time | avg. rows/s | comment
+-- | -- | -- | -- | -- | -- | -- | --
+productslp | 1816000 | 3 | 10 | 1000 | 10h+ | never finished → 5 rows/s | reader limited
+productslp | 6354342 | 6 | 10 | 10000 | 67min | 1580 rows/s | reader limited
+productslp | 6354342 | 6 | 10 | 20000 | 28min | 3782 rows/s | reader limited
+productslp | 6354342 | 6 | 10 | 40000 | 13min | 8140 rows/s | reader and writer are nearly equal
+
+                                       
 ### DB Connections
 
 Some properties may impact each other which can lead to side effects.

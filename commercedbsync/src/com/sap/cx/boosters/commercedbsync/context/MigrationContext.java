@@ -38,6 +38,14 @@ public interface MigrationContext {
 
     int getReaderBatchSize();
 
+    /**
+     * Retrieves the batch size for an individual table if available.
+     *
+     * @param tableName
+     * @return int if configured or null if not defined for the given tableName
+     */
+    Integer getReaderBatchSize(final String tableName);
+
     boolean isTruncateEnabled();
 
     boolean isAuditTableMigrationEnabled();
