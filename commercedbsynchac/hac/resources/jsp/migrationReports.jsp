@@ -26,7 +26,7 @@
     <button id="toggleSidebarButton">&gt;</button>
     <div class="marginLeft marginBottom">
         <h2>Migration Reports</h2>
-        <div id="reportsWrapper">
+        <div id="reportsWrapper" data-url="<c:url value="/commercedbsynchac/loadMigrationReports"/>" data-downloadUrl="<c:url value="/commercedbsynchac/downloadLogsReport"/>">
             <table id="reportsTable">
                 <thead>
                 <tr>

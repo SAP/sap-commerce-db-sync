@@ -68,9 +68,9 @@ function migrateSchemaPreview()
 	sourceSchemaDiffTable.fnClearTable();
 
 	$('#buttonMigrateSchemaPreview').html(buttonMigrateSchemaPreview + ' ' +  hac.global.getSpinnerImg());
-    var token = $("meta[name='_csrf']").attr("content");
 
-    var url = $('#buttonMigrateSchemaPreview').attr('data-url');
+    const token = $("meta[name='_csrf']").attr("content");
+    const url = $('#buttonMigrateSchemaPreview').attr('data-url');
 
 	$.ajax({
 		url:url,

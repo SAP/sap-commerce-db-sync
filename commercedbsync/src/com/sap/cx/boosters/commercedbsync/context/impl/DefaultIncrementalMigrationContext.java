@@ -120,6 +120,7 @@ public class DefaultIncrementalMigrationContext extends DefaultMigrationContext 
     @Override
     public void refreshSelf() {
         LOG.info("Refreshing Context");
+        super.refreshSelf();
         // lists
         this.setIncludedTables(Collections.emptySet());
         this.setIncrementalTables(Collections.emptySet());

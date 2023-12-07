@@ -27,6 +27,7 @@
 .textarea-container {
 	position: relative;
 	border: 1px dashed #666 !important;
+	min-height: 300px;
 }
 
 textarea {

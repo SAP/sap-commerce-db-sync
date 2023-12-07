@@ -74,7 +74,7 @@
 
         function resumeRunning() {
             $.ajax({
-                url: '/hac/commercedbsynchac/resumeRunning',
+                url: $('#buttonsContainer').attr('data-resumeUrl'),
                 type: 'GET',
                 headers: {
                     'Accept': 'application/json',

@@ -12,15 +12,16 @@
     <title>Copy Schema To SAP Commerce Cloud</title>
     <link rel="stylesheet" href="<c:url value="/static/css/table.css"/>" type="text/css" media="screen, projection" />
     <link rel="stylesheet" href="<c:url value="/static/css/database.css"/>" type="text/css" media="screen, projection" />
-    <link rel="stylesheet" href="<c:url value="/static/css/codemirror3/codemirror.css"/>" type="text/css" media="screen, projection" />
     <link rel="stylesheet" href="<c:url value="/static/css/schemaCopy.css"/>" type="text/css" media="screen, projection" />
+    <link rel="stylesheet" href="<c:url value="/static/css/console/codemirror3-custom.css"/>" type="text/css" media="screen, projection" />
+    <link rel="stylesheet" href="<c:url value="${useCodeMirrorWebJar ? '/webjars/codemirror/lib' : '/static/css/codemirror3'}/codemirror.css"/>" type="text/css" media="screen, projection" />
 
 
     <script type="text/javascript" src="<c:url value="/static/js/jquery.dataTables.min.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/history.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/schemaCopy.js"/>"></script>
-    <script type="text/javascript" src="<c:url value="/static/js/codemirror3/codemirror.js"/>"></script>
-    <script type="text/javascript" src="<c:url value="/static/js/codemirror3/sql.js"/>"></script>
+    <script type="text/javascript" src="<c:url value="${useCodeMirrorWebJar ? '/webjars/codemirror/lib' : '/static/js/codemirror3'}/codemirror.js"/>"></script>
+    <script type="text/javascript" src="<c:url value="${useCodeMirrorWebJar ? '/webjars/codemirror/mode/sql' : '/static/js/codemirror3'}/sql.js"/>"></script>
 </head>
     <body>
             <div class="prepend-top span-17 colborder" id="content">

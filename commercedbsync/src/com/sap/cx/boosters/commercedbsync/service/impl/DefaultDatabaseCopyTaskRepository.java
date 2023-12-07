@@ -78,7 +78,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void createMigrationStatus(CopyContext context) throws Exception {
+    public synchronized void createMigrationStatus(CopyContext context) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYSTATUS + " (migrationId, total) VALUES (?, ?)";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, context.getMigrationId());
@@ -88,7 +88,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void resetMigration(CopyContext context) throws Exception {
+    public synchronized void resetMigration(CopyContext context) throws Exception {
         String update = "UPDATE " + TABLECOPYSTATUS
                 + " SET completed = total - failed, status = ?, failed=?, lastUpdate=? WHERE migrationId = ?";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(update)) {
@@ -106,7 +106,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public boolean setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to)
+    public synchronized boolean setMigrationStatus(CopyContext context, MigrationProgress from, MigrationProgress to)
             throws Exception {
         final String update = "UPDATE " + TABLECOPYSTATUS + " SET status = ? WHERE status = ? AND migrationId = ?";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(update)) {
@@ -177,7 +177,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount,
+    public synchronized void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount,
             int targetNode) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYTASKS
                 + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, lastupdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -195,7 +195,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void rescheduleTask(CopyContext context, String pipelineName, int targetNode) throws Exception {
+    public synchronized void rescheduleTask(CopyContext context, String pipelineName, int targetNode) throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
                 + " SET failure='0', duration=NULL, error='',  targetnodeid=?, lastupdate=? WHERE migrationId=? AND pipelinename=? ";
         try (Connection connection = getConnection(context);
@@ -209,8 +209,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void scheduleBatch(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId, Object lowerBoundary,
-            Object upperBoundary) throws Exception {
+    public synchronized void scheduleBatch(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId,
+            Object lowerBoundary, Object upperBoundary) throws Exception {
         LOG.debug("Schedule Batch for {} with ID {}", copyItem.getPipelineName(), batchId);
         String insert = "INSERT INTO " + TABLECOPYBATCHES
                 + " (migrationId, batchId, pipelinename, lowerBoundary, upperBoundary) VALUES (?, ?, ?, ?, ?)";
@@ -225,7 +225,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void markBatchCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId)
+    public synchronized void markBatchCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId)
             throws Exception {
         LOG.debug("Mark batch completed for {} with ID {}", copyItem.getPipelineName(), batchId);
         String insert = "DELETE FROM " + TABLECOPYBATCHES + " WHERE migrationId=? AND batchId=? AND pipelinename=?";
@@ -241,7 +241,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void resetPipelineBatches(CopyContext context, CopyContext.DataCopyItem copyItem) throws Exception {
+    public synchronized void resetPipelineBatches(CopyContext context, CopyContext.DataCopyItem copyItem)
+            throws Exception {
         String insert = "DELETE FROM " + TABLECOPYBATCHES + " WHERE migrationId=? AND pipelinename=?";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, context.getMigrationId());
@@ -335,7 +336,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void updateTaskProgress(CopyContext context, CopyContext.DataCopyItem copyItem, long itemCount)
+    public synchronized void updateTaskProgress(CopyContext context, CopyContext.DataCopyItem copyItem, long itemCount)
             throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
                 + " SET targetrowcount=?, lastupdate=?, avgwriterrowthroughput=?, avgreaderrowthroughput=? WHERE targetnodeid=? AND migrationid=? AND pipelinename=?";
@@ -362,7 +363,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void markTaskCompleted(final CopyContext context, final CopyContext.DataCopyItem copyItem,
+    public synchronized void markTaskCompleted(final CopyContext context, final CopyContext.DataCopyItem copyItem,
             final String duration, final float durationseconds) throws Exception {
         Objects.requireNonNull(duration, "duration must not be null");
         // spotless:off
@@ -384,7 +385,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void markTaskFailed(CopyContext context, CopyContext.DataCopyItem copyItem, Exception error)
+    public synchronized void markTaskFailed(CopyContext context, CopyContext.DataCopyItem copyItem, Exception error)
             throws Exception {
         // spotless:off
         String sql = "UPDATE " + TABLECOPYTASKS + " SET failure='1', duration='-1', error=?, lastupdate=? WHERE targetnodeid=? AND migrationId=? AND pipelinename=? AND failure = '0'";
@@ -406,7 +407,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void markTaskTruncated(CopyContext context, CopyContext.DataCopyItem copyItem) throws Exception {
+    public synchronized void markTaskTruncated(CopyContext context, CopyContext.DataCopyItem copyItem)
+            throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
                 + " SET truncated = '1' WHERE targetnodeid=? AND migrationId=? AND pipelinename=? ";
         try (Connection connection = getConnection(context);
@@ -419,8 +421,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void updateTaskCopyMethod(CopyContext context, CopyContext.DataCopyItem copyItem, String copyMethod)
-            throws Exception {
+    public synchronized void updateTaskCopyMethod(CopyContext context, CopyContext.DataCopyItem copyItem,
+            String copyMethod) throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
                 + " SET copymethod=? WHERE targetnodeid=? AND migrationId=? AND pipelinename=? ";
         try (Connection connection = getConnection(context);
@@ -434,7 +436,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public void updateTaskKeyColumns(CopyContext context, CopyContext.DataCopyItem copyItem,
+    public synchronized void updateTaskKeyColumns(CopyContext context, CopyContext.DataCopyItem copyItem,
             Collection<String> keyColumns) throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
                 + " SET keycolumns=? WHERE targetnodeid=? AND migrationId=? AND pipelinename=? ";

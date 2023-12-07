@@ -34,6 +34,7 @@ import com.sap.cx.boosters.commercedbsynchac.metric.MetricService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -87,6 +88,18 @@ public class CommercemigrationhacController {
 
     @Autowired
     BlobDatabaseMigrationReportStorageService blobDatabaseMigrationReportStorageService;
+
+    private final boolean useCodeMirrorWebJar;
+
+    public CommercemigrationhacController() {
+        useCodeMirrorWebJar = (new ClassPathResource("META-INF/maven/org.webjars.npm/codemirror/pom.properties"))
+                .isReadable();
+    }
+
+    @ModelAttribute("useCodeMirrorWebJar")
+    public boolean isUseCodeMirrorWebJar() {
+        return useCodeMirrorWebJar;
+    }
 
     @RequestMapping(value = {"/migrationSchema"}, method = {org.springframework.web.bind.annotation.RequestMethod.GET})
     public String schema(final Model model) {

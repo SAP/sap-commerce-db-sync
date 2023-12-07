@@ -24,6 +24,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_AUTOTRIGGER_ENABLED = "migration.schema.autotrigger.enabled";
     public static final String MIGRATION_DATA_FULLDATABASE = "migration.data.fulldatabase.enabled";
     public static final String MIGRATION_DATA_READER_BATCHSIZE = "migration.data.reader.batchsize";
+    public static final String MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE = "migration.data.reader.batchsize.{table}";
     public static final String MIGRATION_DATA_TRUNCATE_ENABLED = "migration.data.truncate.enabled";
     public static final String MIGRATION_DATA_TRUNCATE_EXCLUDED = "migration.data.truncate.excluded";
     public static final String MIGRATION_DATA_WORKERS_READER_MAXTASKS = "migration.data.workers.reader.maxtasks";

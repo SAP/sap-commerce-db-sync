@@ -21,7 +21,8 @@
 | migration.data.maxparalleltablecopy | Specifies the number of tables that are copied over in parallel.|  `2`    | integer value      | true    |    |
 | migration.data.pipe.capacity | Specifies the capacity of the data pipe.|  `100`    | integer value      | true    |    |
 | migration.data.pipe.timeout | Specifies the timeout of the data pipe.|  `7200`    | integer value      | true    |    |
-| migration.data.reader.batchsize | |  `1000`    |       |     |    |
+| migration.data.reader.batchsize | Specifies the batch size for reading data from source. |  `1000`    |   integer value    |  true   |    |
+| migration.data.reader.batchsize.{table} | Table individual batch size for reading data from source enabling tuning on read speed vs. memory usage. Replace the {table} with the source table name without prefix. |     |   integer value    |  true   |    |
 | migration.data.report.connectionstring | Specifies blob storage connection string for storing reporting files.|  `${media.globalSettings.cloudAzureBlobStorageStrategy.connection}`    | any azure blob storage connection string      | true    |    |
 | migration.data.tables.audit.enabled | Flag to enable the migration of audit tables.|  `true`    | true or false      | true    |    |
 | migration.data.tables.custom | Specifies a list of custom tables to migrate. Custom tables are tables that are not part of the commerce type system.|    | comma separated list of table names.      | true    |    |

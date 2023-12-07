@@ -41,6 +41,8 @@ public class DefaultMigrationContext implements MigrationContext {
 
     protected final Configuration configuration;
 
+    protected Set<String> tableViewNames;
+
     public DefaultMigrationContext(final DataRepositoryFactory dataRepositoryFactory,
             final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration)
             throws Exception {
@@ -108,6 +110,13 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public int getReaderBatchSize() {
         return getNumericProperty(CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE);
+    }
+
+    @Override
+    public Integer getReaderBatchSize(final String tableName) {
+        String tblConfKey = CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE.replace("{table}",
+                tableName);
+        return configuration.getInteger(tblConfKey, null);
     }
 
     @Override
@@ -295,7 +304,9 @@ public class DefaultMigrationContext implements MigrationContext {
 
     @Override
     public void refreshSelf() {
-
+        // resetting "cached" view names as they may have changed when reusing a context
+        // in job iterations.
+        this.tableViewNames = null;
     }
 
     @Override
@@ -357,9 +368,11 @@ public class DefaultMigrationContext implements MigrationContext {
 
     @Override
     public String getItemTypeViewNameByTable(String tableName, DataRepository repository) throws SQLException {
-        Set<String> views = repository.getAllViewNames();
+        if (tableViewNames == null) {
+            tableViewNames = repository.getAllViewNames();
+        }
         String possibleVieName = String.format(StringUtils.trimToEmpty(getItemTypeViewNamePattern()), tableName);
-        return views.contains(possibleVieName) ? possibleVieName : tableName;
+        return tableViewNames.contains(possibleVieName) ? possibleVieName : tableName;
     }
 
     @Override
