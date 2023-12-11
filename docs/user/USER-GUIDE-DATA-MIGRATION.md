@@ -29,7 +29,7 @@ Before you begin, ensure you have met the following requirements:
 * The connectivity to the source database from SAP Commerce Cloud happens via a secured channel, such as the self-serviced VPN that can be created in SAP Commerce Cloud Portal. It is obligatory, and the customer's responsibility, to secure the data transmission
 * Old type systems have been deleted in the source system
 * A check for duplicates has been performed and existing duplicates in the source database have been removed
-* The task engine has been disabled in all target nodes (cronjob.timertask.loadonstartup=false)
+* The task engine has been disabled in all target nodes (task.engine.loadonstartup=false)
 
 
 # Limitations
@@ -49,7 +49,7 @@ Add the following extensions to your localextensions.xml:
 
 > **NOTE**: For SAP Commerce Cloud make sure the extensions are actually being loaded by the manifest.json
 
-Make sure you add the source db driver to **commercedbsync/lib** if necessary.
+Make sure you add the source/target DB driver to **commercedbsync/lib** if necessary. Use _external-dependencies.xml_ file for this, as 3rd party dependencies are managed by Maven.  
 
 ## Configure the extensions
 Configure the extensions as needed in your **local.properties**. See the [Property Configuration Reference](../configuration/CONFIGURATION-REFERENCE.md).
