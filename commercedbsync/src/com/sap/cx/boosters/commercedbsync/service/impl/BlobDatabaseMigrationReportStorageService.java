@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,9 +82,9 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
         checkReportIdValid(reportId);
         final String containerName = migrationContext.getFileStorageContainerName();
         CloudBlob blob = cloudBlobClient.getContainerReference(containerName).getBlobReferenceFromServer(reportId);
-        byte[] output = new byte[blob.getStreamWriteSizeInBytes()];
-        blob.downloadToByteArray(output, 0);
-        return output;
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        blob.download(result);
+        return result.toByteArray();
     }
 
     private void checkReportIdValid(String reportId) {
