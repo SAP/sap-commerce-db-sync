@@ -324,11 +324,10 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     @Override
     public Set<DatabaseCopyTask> findFailedTasks(CopyContext context) throws Exception {
         String sql = "SELECT * FROM " + TABLECOPYTASKS
-                + " WHERE targetnodeid=? AND migrationid=? AND (duration = '-1' AND failure = '1') ORDER BY sourcerowcount";
+                + " WHERE migrationid=? AND duration = '-1' AND failure = '1' ORDER BY sourcerowcount";
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setObject(1, getTargetNodeId());
-            stmt.setObject(2, context.getMigrationId());
+            stmt.setObject(1, context.getMigrationId());
             try (ResultSet resultSet = stmt.executeQuery()) {
                 return convertToTask(resultSet);
             }

@@ -84,7 +84,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     try {
                         pipe.put(MaybeFinished.poison());
                     } catch (Exception p) {
-                        LOG.error("Cannot contaminate pipe ", p);
+                        LOG.error("Could not close contaminated pipe ", p);
                     }
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
@@ -143,25 +143,29 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.OFFSET.toString());
                     taskRepository.updateTaskKeyColumns(context, copyItem, batchColumns);
 
-                    List<Long> batches = null;
+                    List<Pair<Long, Long>> batches;
                     if (context.getMigrationContext().isSchedulerResumeEnabled()) {
                         Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                                 .findPendingBatchesForPipeline(context, copyItem);
                         batches = pendingBatchesForPipeline.stream()
-                                .map(b -> Long.valueOf(b.getLowerBoundary().toString())).collect(Collectors.toList());
+                                .map(b -> Pair.of(Long.valueOf(b.getLowerBoundary().toString()),
+                                        Long.valueOf(b.getUpperBoundary().toString())))
+                                .collect(Collectors.toList());
                         taskRepository.resetPipelineBatches(context, copyItem);
                     } else {
                         batches = new ArrayList<>();
                         for (long offset = 0; offset < totalRows; offset += pageSize) {
-                            batches.add(offset);
+                            batches.add(Pair.of(offset, offset + pageSize));
                         }
                     }
 
+                    Pair<Long, Long> boundaries;
                     for (int batchId = 0; batchId < batches.size(); batchId++) {
-                        long offset = batches.get(batchId);
-                        DataReaderTask dataReaderTask = new BatchOffsetDataReaderTask(pipeTaskContext, batchId, offset,
-                                batchColumns);
-                        taskRepository.scheduleBatch(context, copyItem, batchId, offset, offset + pageSize);
+                        boundaries = batches.get(batchId);
+                        DataReaderTask dataReaderTask = new BatchOffsetDataReaderTask(pipeTaskContext, batchId,
+                                boundaries.getLeft(), batchColumns);
+                        taskRepository.scheduleBatch(context, copyItem, batchId, boundaries.getLeft(),
+                                boundaries.getRight());
                         workerExecutor.safelyExecute(dataReaderTask);
                     }
                 } else {

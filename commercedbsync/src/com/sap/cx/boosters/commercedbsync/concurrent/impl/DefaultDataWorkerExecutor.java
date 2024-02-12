@@ -47,7 +47,7 @@ public class DefaultDataWorkerExecutor<T> implements DataWorkerExecutor<T> {
             for (int i = 0; i < rejections; i++) {
                 waitInterval = backOff.nextBackOff();
             }
-            LOG.trace("worker rejected. Retrying in {}ms...", waitInterval);
+            LOG.trace("Could not fetch new worker, because all are busy. Retrying again in {}ms...", waitInterval);
             Thread.sleep(waitInterval);
             return internalSafelyExecute(callable, rejections + 1);
         }

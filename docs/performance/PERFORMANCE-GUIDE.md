@@ -54,6 +54,8 @@ The size of the batches each reader will query depends on the following properti
 `migration.data.reader.batchsize`
 `migration.data.reader.batchsize.{table}`
 
+**NOTE** Table specific batch size change will be not respected when resuming migration. In this case restarted pipeline will keep initially defined batch boundaries, based on batch size set during migration initial startup.
+
 ### Blocking Pipe
 
 The batches read by the reader workers will be written to a blocking pipe as wrapped datasets.

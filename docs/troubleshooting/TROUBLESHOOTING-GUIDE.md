@@ -2,14 +2,14 @@
 
 ## Duplicate values for indexes
 
-Symptom:
+#### Symptom:
 
 Pipeline aborts during copy process with message like:
 ```
 FAILED! Reason: The CREATE UNIQUE INDEX statement terminated because a duplicate key was found for the object name 'dbo.cmtmedias' and the index name 'cmtcodeVersionIDX_30'. The duplicate key value is (DefaultCronJobFinishNotificationTemplate_de, <NULL>).
 ```
 
-Solution:
+#### Solution:
 
 This can happen if you are using a case sensitive collation on the source database either at database level or table/column level.
 The commerce cloud target database is case insensitive by default and will treat values like 'ABC'/'abc' as equal during index creation.
@@ -19,12 +19,12 @@ If possible, remove the duplicate rows before any migration activities. In case 
 
 ## Migration fails for unknown reason
 
-Symptom:
+#### Symptom:
 
 If you were overloading the system for a longer period of time, you may encounted one of the nodes was restarting in the background without notice.
 
 
-Solution:
+#### Solution:
 
 In any case, check the logs (Kibana).
 Check in dynatrace whether a process crash log exists for the node.
@@ -33,12 +33,12 @@ In case the process crashed, throttle the performance by changing the respective
 
 ## MySQL: xy table does not exist error
 
-Symptom:
+#### Symptom:
 
 `java.sql.SQLSyntaxErrorException: Table '<schema.table>' doesn't exist`
 even though the table should exist.
 
-Solution:
+#### Solution:
 
 This is a changed behaviour in the driver 8x vs 5x used before. In case there are multiple catalogs in the database, the driver distorts the reading of the table information...
 
@@ -50,7 +50,7 @@ This is a changed behaviour in the driver 8x vs 5x used before. In case there ar
 
 ## MySQL: java.sql.SQLException: HOUR_OF_DAY ...
 
-Symptom:
+#### Symptom:
 
 
 ```
@@ -65,7 +65,7 @@ at com.mysql.cj.jdbc.result.ResultSetImpl.getTimestamp(ResultSetImpl.java:903) ~
 at com.mysql.cj.jdbc.result.ResultSetImpl.getObject(ResultSetImpl.java:1243) ~[mysql-connector-java-8.0.19.jar:8.0.19]
 ```
 
-Solution:
+#### Solution:
 
 Known issue on MySQL when dealing with time/date objects. Workaround is to add...
 
@@ -76,22 +76,22 @@ Known issue on MySQL when dealing with time/date objects. Workaround is to add..
 
 ## Backoffice does not load
 
-Symptom: 
+#### Symptom: 
 
 Backoffice does not load properly after the migration.
 
-Solution:
+#### Solution:
 
 - use F4 mode (admin user) and reset the backoffice settings on the fly.
 - browser cache reload
 
 ## Proxy error in Hac
 
-Symptom: 
+#### Symptom: 
 
-Hac throws / displays proxy errors when using migration features.
+HAC throws / displays proxy errors when using migration features.
 
-Solution:
+#### Solution:
 
 Change the default proxy value in the Commerce Cloud Portal to a higher value.
 This can be done on the edit view of the respective endpoint.
@@ -103,11 +103,11 @@ In case you were using queries including TRUE/FALSE values, you may have to chan
 
 ## Sudden increase of memory
 
-Symptom:
+#### Symptom:
 
 The memory consumption is more or less stable throughout the copy process, but then suddenly increases for certain table(s).
 
-Solution:
+#### Solution:
 
 If batching of reading and writing is not possible due to the definition of the source table, the copy process falls back to a non-batched mechanism.
 This requires loading the full table in memory at once which, depending on the table size, may lead to unhealthy memory consumption.
@@ -115,12 +115,12 @@ For small tables this is typically not an issue, but for large tables it should 
 
 ## Some tables are copied over very slowly
 
-Symptom:
+#### Symptom:
 
 While some tables are running smoothly, others seem to suffer from low throughput.
 This may happen for the props table for example.
 
-Solution:
+#### Solution:
 
 The copy process tries to apply batching for reading and writing where possible.
 For this, the source table is scanned for either a 'PK' column (normal Commerce table) or an 'ID' column (audit tables).
@@ -133,3 +133,17 @@ If a table is slow, check the following:
 If the smallest compound unique index consists of too many columns, the reading may impose high processing load on the source database due to the sort buffer running full.
 Depending on the source database, you may have to tweak some db settings to efficiently process the query.
 Alternatively you may have to think about adding a custom unique index manually.
+
+## Unable to dowload migration report
+
+#### Symptom:
+
+Action _"Download Report"_ with request to `/hac/commercedbsynchac/copyReport` endpoint ends up with HTTP 500 error (visible as: `ERR_INVALID_RESPONSE`).
+
+Error visible in logs includes message: _Unable to make field private final java.time.LocalDate java.time.LocalDateTime.date accessible: module java.base does not "opens java.time" to unnamed module_ 
+
+#### Solution:
+
+Ensure that JVM property includes: `--add-opens=java.base/java.time=ALL-UNNAMED`
+
+This can be configured via `ccv2.additional.catalina.opts` on SAP Commerce Cloud services property
