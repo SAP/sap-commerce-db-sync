@@ -185,7 +185,7 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     @Override
-    public float getDatabaseUtilization() throws SQLException {
+    public float getDatabaseUtilization() {
         throw new UnsupportedOperationException("Must be added in the specific repository implementation");
     }
 

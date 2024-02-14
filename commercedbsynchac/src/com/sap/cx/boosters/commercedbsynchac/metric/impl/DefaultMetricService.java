@@ -30,10 +30,12 @@ public class DefaultMetricService implements MetricService {
     public List<MetricData> getMetrics(MigrationContext context) {
         List<MetricData> dataList = new ArrayList<>();
         for (MetricPopulator populator : populators) {
-            try {
-                dataList.add(populator.populate(context));
-            } catch (Exception e) {
-                LOG.error("Error while populating metric. Populator: " + e.getMessage());
+            if (populator.canHandle(context)) {
+                try {
+                    dataList.add(populator.populate(context));
+                } catch (Exception e) {
+                    LOG.error("Error while populating metric. Populator: " + e.getMessage());
+                }
             }
         }
         return dataList;

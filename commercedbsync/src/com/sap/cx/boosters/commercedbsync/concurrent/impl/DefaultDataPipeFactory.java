@@ -107,7 +107,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 context.getMigrationContext().getDataSourceRepository());
         String table = copyItem.getSourceItem();
         long totalRows = copyItem.getRowCount();
-        long pageSize = getReaderBatchSizeForTable(context, table);
+        int pageSize = copyItem.getBatchSize();
         try {
             PerformanceRecorder recorder = context.getPerformanceProfiler().createRecorder(PerformanceCategory.DB_READ,
                     table);
@@ -186,13 +186,12 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.SEEK.toString());
                 taskRepository.updateTaskKeyColumns(context, copyItem, Lists.newArrayList(batchColumn));
 
-                List<List<Object>> batchMarkersList = null;
+                List<List<Object>> batchMarkersList;
                 if (context.getMigrationContext().isSchedulerResumeEnabled()) {
-                    batchMarkersList = new ArrayList<>();
                     Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                             .findPendingBatchesForPipeline(context, copyItem);
-                    batchMarkersList.addAll(pendingBatchesForPipeline.stream()
-                            .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList()));
+                    batchMarkersList = pendingBatchesForPipeline.stream()
+                            .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList());
                     taskRepository.resetPipelineBatches(context, copyItem);
                 } else {
                     MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
@@ -240,10 +239,5 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             }
             throw new RuntimeException("Exception while preparing reader tasks", ex);
         }
-    }
-
-    private static int getReaderBatchSizeForTable(final CopyContext context, final String tableName) {
-        Integer tableBatchSize = context.getMigrationContext().getReaderBatchSize(tableName);
-        return tableBatchSize == null ? context.getMigrationContext().getReaderBatchSize() : tableBatchSize;
     }
 }

@@ -238,7 +238,9 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
         final String targetTableName = targetTable.getFullTableName();
         DataRepository sds = context.getDataSourceRepository();
         String sTableName = context.getItemTypeViewNameByTable(sourceTableName, sds);
-        final CopyContext.DataCopyItem dataCopyItem = new CopyContext.DataCopyItem(sTableName, targetTableName);
+        int batchSize = context.getReaderBatchSize(sourceTableName);
+        final CopyContext.DataCopyItem dataCopyItem = new CopyContext.DataCopyItem(sTableName, targetTableName,
+                batchSize);
         addColumnMappingsIfNecessary(context, sourceTable, dataCopyItem);
         return dataCopyItem;
     }

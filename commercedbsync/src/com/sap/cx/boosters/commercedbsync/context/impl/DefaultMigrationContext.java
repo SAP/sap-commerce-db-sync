@@ -116,7 +116,7 @@ public class DefaultMigrationContext implements MigrationContext {
     public Integer getReaderBatchSize(final String tableName) {
         String tblConfKey = CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE.replace("{table}",
                 tableName);
-        return configuration.getInteger(tblConfKey, null);
+        return configuration.getInteger(tblConfKey, getReaderBatchSize());
     }
 
     @Override

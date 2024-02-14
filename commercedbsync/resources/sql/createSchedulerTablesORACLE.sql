@@ -27,6 +27,7 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
     copymethod NVARCHAR2(255) NULL,
     keycolumns NVARCHAR2(255) NULL,
     durationinseconds number(10,2) DEFAULT 0 NULL,
+    batchsize number(10) DEFAULT 1000 NOT NULL,
     PRIMARY KEY (migrationid, targetnodeid, pipelinename)
 )
 /

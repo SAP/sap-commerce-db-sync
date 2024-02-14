@@ -180,7 +180,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     public synchronized void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount,
             int targetNode) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYTASKS
-                + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, lastupdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, batchsize, lastupdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, targetNode);
             stmt.setObject(2, copyItem.getPipelineName());
@@ -189,7 +189,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             stmt.setObject(5, new Gson().toJson(copyItem.getColumnMap()));
             stmt.setObject(6, context.getMigrationId());
             stmt.setObject(7, sourceRowCount);
-            setTimestamp(stmt, 8, now());
+            stmt.setObject(8, copyItem.getBatchSize());
+            setTimestamp(stmt, 9, now());
             stmt.executeUpdate();
         }
     }
@@ -511,9 +512,20 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             copyTask.setCopyMethod(rs.getString("copymethod"));
             copyTask.setKeyColumns(Splitter.on(",")
                     .splitToList(StringUtils.defaultIfEmpty(rs.getString("keycolumns"), StringUtils.EMPTY)));
+            setBatchSizeSafely(copyTask, rs);
             copyTasks.add(copyTask);
         }
         return copyTasks;
+    }
+
+    // just a temporary fallback to handle ongoing migrations, where this column is
+    // not yet available
+    private void setBatchSizeSafely(final DatabaseCopyTask copyTask, ResultSet rs) {
+        try {
+            copyTask.setBatchsize(rs.getInt("batchsize"));
+        } catch (SQLException e) {
+            copyTask.setBatchsize(1000);
+        }
     }
 
     private Set<DatabaseCopyBatch> convertToBatch(ResultSet rs) throws Exception {

@@ -77,7 +77,7 @@ public interface DataRepository {
 
     void runSqlScriptOnPrimary(final Resource resource);
 
-    float getDatabaseUtilization() throws SQLException;
+    float getDatabaseUtilization();
 
     int truncateTable(String table) throws Exception;
 

@@ -8,7 +8,6 @@ package com.sap.cx.boosters.commercedbsync.repository.impl;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.List;
@@ -186,7 +185,7 @@ public class AzureDataRepository extends AbstractDataRepository {
     }
 
     @Override
-    public float getDatabaseUtilization() throws SQLException {
+    public float getDatabaseUtilization() {
         String query = "SELECT TOP 1 end_time, (SELECT Max(v) FROM (VALUES (avg_cpu_percent),(avg_data_io_percent),(avg_log_write_percent)) AS value(v)) AS [avg_DTU_percent] FROM sys.dm_db_resource_stats ORDER by end_time DESC;";
         try (Connection connection = getConnection();
                 Statement stmt = connection.createStatement();

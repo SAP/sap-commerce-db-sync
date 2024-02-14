@@ -70,16 +70,20 @@ public class CopyContext {
         private final String targetItem;
         private final Map<String, String> columnMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         private final Long rowCount;
+        private final Integer batchSize;
 
-        public DataCopyItem(String sourceItem, String targetItem) {
+        public DataCopyItem(String sourceItem, String targetItem, Integer batchSize) {
             this.sourceItem = sourceItem;
             this.targetItem = targetItem;
+            this.batchSize = batchSize;
             this.rowCount = null;
         }
 
-        public DataCopyItem(String sourceItem, String targetItem, Map<String, String> columnMap, Long rowCount) {
+        public DataCopyItem(String sourceItem, String targetItem, Map<String, String> columnMap, Long rowCount,
+                Integer batchSize) {
             this.sourceItem = sourceItem;
             this.targetItem = targetItem;
+            this.batchSize = batchSize;
             this.columnMap.clear();
             this.columnMap.putAll(columnMap);
             this.rowCount = rowCount;
@@ -107,6 +111,10 @@ public class CopyContext {
 
         public Long getRowCount() {
             return rowCount;
+        }
+
+        public Integer getBatchSize() {
+            return batchSize;
         }
 
         @Override

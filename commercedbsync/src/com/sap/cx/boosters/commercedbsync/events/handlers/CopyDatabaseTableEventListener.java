@@ -56,9 +56,9 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
             CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),
                     performanceProfiler);
             Set<DatabaseCopyTask> copyTableTasks = databaseCopyTaskRepository.findPendingTasks(copyContext);
-            Set<CopyContext.DataCopyItem> items = copyTableTasks
-                    .stream().map(task -> new CopyContext.DataCopyItem(task.getSourcetablename(),
-                            task.getTargettablename(), task.getColumnmap(), task.getSourcerowcount()))
+            Set<CopyContext.DataCopyItem> items = copyTableTasks.stream()
+                    .map(task -> new CopyContext.DataCopyItem(task.getSourcetablename(), task.getTargettablename(),
+                            task.getColumnmap(), task.getSourcerowcount(), task.getBatchsize()))
                     .collect(Collectors.toSet());
             copyContext.getCopyItems().addAll(items);
             databaseMigrationCopyService.copyAllAsync(copyContext);
