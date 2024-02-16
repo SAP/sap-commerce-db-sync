@@ -407,6 +407,19 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
+    public synchronized void markRemainingTasksAborted(CopyContext context) throws Exception {
+        // spotless:off
+        String sql = "UPDATE " + TABLECOPYTASKS + " SET failure='1', duration='-1', error='Aborted', lastupdate=? WHERE migrationId=? AND duration IS NULL AND failure = '0'";
+        // spotless:on
+        try (Connection connection = getConnection(context);
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            setTimestamp(stmt, 1, now());
+            stmt.setObject(2, context.getMigrationId());
+            stmt.executeUpdate();
+        }
+    }
+
+    @Override
     public synchronized void markTaskTruncated(CopyContext context, CopyContext.DataCopyItem copyItem)
             throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS

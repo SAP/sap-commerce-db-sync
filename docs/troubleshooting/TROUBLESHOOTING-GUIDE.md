@@ -134,7 +134,7 @@ If the smallest compound unique index consists of too many columns, the reading 
 Depending on the source database, you may have to tweak some db settings to efficiently process the query.
 Alternatively you may have to think about adding a custom unique index manually.
 
-## Unable to dowload migration report
+## Unable to download migration report
 
 #### Symptom:
 
@@ -147,3 +147,15 @@ Error visible in logs includes message: _Unable to make field private final java
 Ensure that JVM property includes: `--add-opens=java.base/java.time=ALL-UNNAMED`
 
 This can be configured via `ccv2.additional.catalina.opts` on SAP Commerce Cloud services property
+
+## Application crashed or was restarted during ongoing migration
+
+#### Symptom:
+
+After application crashed or for example k8s pod was restarted during ongoing migration, when accessing _Data Migration_ view in HAC, on "Migration Log" area, some table copy tasks are visibile as "_In progress..._", however actutally no migration thread is active and no more new updates are provided.
+
+#### Solution:
+
+Investigate root cause of application crash/restart, afterwards mark all hanging tasks as aborted to be able to restart migration. To do so, get ID of current migration and execute following Groovy snippet in HAC _Console_ -> _Scripting Languages_:
+
+`databaseMigrationService.markRemainingTasksAborted(migrationContext, 'MIGRATION_ID')`

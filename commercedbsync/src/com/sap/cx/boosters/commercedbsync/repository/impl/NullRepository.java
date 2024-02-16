@@ -240,7 +240,6 @@ public class NullRepository implements DataRepository {
 
     @Override
     public String getDatabaseTimezone() {
-
         return null;
     }
 

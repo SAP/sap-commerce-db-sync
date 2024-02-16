@@ -100,7 +100,18 @@
                     <persistence type="property"/>
                     <modifiers optional="false"/>
                     <defaultvalue>false</defaultvalue>
-                </attribute>            
+                </attribute>
+                <attribute qualifier="resumeMigration" type="boolean">
+                    <description>Resume a failed migration</description>
+                    <persistence type="property" />
+                    <modifiers optional="true"/>
+                    <defaultvalue>false</defaultvalue>
+                </attribute>
+                <attribute qualifier="migrationId" type="java.lang.String" >
+                    <description>Migration Id for the job</description>
+                    <persistence type="property" />
+                    <modifiers optional="true"/>
+                </attribute>
             </attributes>
         </itemtype>
 

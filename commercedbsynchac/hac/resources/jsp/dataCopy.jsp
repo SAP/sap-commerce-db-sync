@@ -24,7 +24,7 @@
 </head>
 <body>
 <div class="prepend-top span-24" id="content">
-    <div id="migrationPanel" class="marginLeft colborder span-17">
+    <div id="migrationPanel" class="marginLeft colborder span-17" data-resumeUrl="<c:url value="/commercedbsynchac/resumeRunning"/>">
         <h2>Data Migration</h2>
         <c:if test="${!isDataExportEnabled}">
             <c:if test="${isIncremental}">
@@ -38,7 +38,7 @@
                 </hac:note>
                 <span id="timezoneCheckboxContainer"><input type="checkbox" id="timezoneCheckbox" name="timezoneCheckbox"  onchange="document.getElementById('buttonCopyData').disabled=!this.checked"> I am aware of timezone differences, proceed with migration</span>
             </c:if>
-            <div class="clearfix" id="buttonsContainer" data-resumeUrl="<c:url value="/commercedbsynchac/resumeRunning"/>">
+            <div class="clearfix" id="buttonsContainer">
                 <button id="buttonCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/copyData"/>">Start</button>
                 <button id="buttonStopCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/abortCopy"/>">Stop</button>
             </div>

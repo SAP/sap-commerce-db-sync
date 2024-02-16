@@ -96,7 +96,7 @@ public class HanaDataRepository extends AbstractDataRepository {
                 return rs.getString("VALUE");
             }
         } catch (Exception e) {
-            e.getMessage();
+            LOG.warn("Failed to check database timezone", e);
         }
         return null;
     }

@@ -122,16 +122,19 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
     @Override
     public void resumeUnfinishedItems(CopyContext copyContext) throws Exception {
         databaseCopySchedulerAlgorithm.reset();
-        int ownNodeId = databaseCopySchedulerAlgorithm.getOwnNodeId();
         Set<DatabaseCopyTask> failedTasks = databaseCopyTaskRepository.findFailedTasks(copyContext);
+        if (failedTasks.isEmpty()) {
+            throw new IllegalStateException("No pending failed table copy tasks found to be resumed");
+        }
+
         for (DatabaseCopyTask failedTask : failedTasks) {
             databaseCopyTaskRepository.rescheduleTask(copyContext, failedTask.getPipelinename(),
                     databaseCopySchedulerAlgorithm.next());
         }
         databaseCopyTaskRepository.resetMigration(copyContext);
         startMonitorThread(copyContext);
-        final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(ownNodeId, copyContext.getMigrationId(),
-                copyContext.getPropertyOverrideMap());
+        final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(databaseCopySchedulerAlgorithm.getOwnNodeId(),
+                copyContext.getMigrationId(), copyContext.getPropertyOverrideMap());
         eventService.publishEvent(event);
     }
 

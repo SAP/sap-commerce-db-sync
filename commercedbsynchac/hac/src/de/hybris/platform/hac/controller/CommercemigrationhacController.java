@@ -557,13 +557,19 @@ public class CommercemigrationhacController {
     }
 
     private boolean checkTimeZoneDifferences(MigrationContext context) {
-        TimeZone source = TimeZone.getTimeZone(context.getDataSourceRepository().getDatabaseTimezone());
+        String databaseTimezone = context.getDataSourceRepository().getDatabaseTimezone();
+
+        if (StringUtils.isEmpty(databaseTimezone)) {
+            LOG.info("Database timezone for source not available!");
+            return false;
+        }
+
+        TimeZone source = TimeZone.getTimeZone(databaseTimezone);
         if (TimeZone.getTimeZone("UTC").getRawOffset() == source.getRawOffset()) {
             LOG.info("The timezone on source and target are the same!!");
             return true;
         }
         LOG.info("The timezone on source and target are different!!");
         return false;
-
     }
 }

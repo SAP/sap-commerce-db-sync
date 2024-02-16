@@ -315,6 +315,7 @@
 
   <bean id="fullMigrationJob" class="com.sap.cx.boosters.commercedbsync.jobs.FullMigrationJob"
     parent="abstractMigrationJobPerformable">
+      <property name="modelService" ref="modelService"/>
   </bean>
 
 <!--  <bean id="defaultCMTRemoveInterceptor"-->

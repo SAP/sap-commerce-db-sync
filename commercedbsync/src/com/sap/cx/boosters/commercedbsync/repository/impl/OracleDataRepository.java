@@ -275,7 +275,7 @@ public class OracleDataRepository extends AbstractDataRepository {
                     return "Different timezone";
             }
         } catch (Exception e) {
-            e.getMessage();
+            LOG.warn("Failed to check database timezone", e);
         }
         return null;
     }

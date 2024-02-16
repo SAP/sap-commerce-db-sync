@@ -143,6 +143,15 @@ public interface DatabaseCopyTaskRepository {
      */
     void markTaskCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, String duration) throws Exception;
 
+    /**
+     * Mark all remaining table copy tasks as aborted, should be used when migration
+     * was stopped unexpectedly (for example after application crashed)
+     *
+     * @param context
+     * @throws Exception
+     */
+    void markRemainingTasksAborted(CopyContext context) throws Exception;
+
     void markTaskTruncated(CopyContext context, CopyContext.DataCopyItem copyItem) throws Exception;
 
     /**
