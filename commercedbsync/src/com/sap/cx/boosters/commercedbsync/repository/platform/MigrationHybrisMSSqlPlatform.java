@@ -10,26 +10,31 @@ import de.hybris.bootstrap.ddl.DatabaseSettings;
 import de.hybris.bootstrap.ddl.HybrisPlatform;
 import de.hybris.bootstrap.ddl.sql.HybrisMSSqlBuilder;
 import org.apache.ddlutils.DatabaseOperationException;
+import org.apache.ddlutils.DdlUtilsException;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.PlatformInfo;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
+import org.apache.ddlutils.model.Index;
 import org.apache.ddlutils.model.Table;
 import org.apache.ddlutils.platform.DatabaseMetaDataWrapper;
+import org.apache.ddlutils.platform.JdbcModelReader;
 import org.apache.ddlutils.platform.mssql.MSSqlModelReader;
 import org.apache.ddlutils.platform.mssql.MSSqlPlatform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements HybrisPlatform {
 
     private static final Logger LOG = LoggerFactory.getLogger(MigrationHybrisMSSqlPlatform.class);
+
+    private static final String[] KNOWN_SYSTEM_TABLES = new String[]{"dtproperties"};
 
     private MigrationHybrisMSSqlPlatform() {
     }
@@ -96,7 +101,139 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
         }
 
         protected Table readTable(DatabaseMetaDataWrapper metaData, Map values) throws SQLException {
-            return this.tableShouldBeExcluded(values) ? null : super.readTable(metaData, values);
+            if (this.tableShouldBeExcluded(values)) {
+                return null;
+            } else {
+                String tableName = (String)values.get("TABLE_NAME");
+
+                for(int idx = 0; idx < KNOWN_SYSTEM_TABLES.length; ++idx) {
+                    if (KNOWN_SYSTEM_TABLES[idx].equals(tableName)) {
+                        return null;
+                    }
+                }
+
+                Table table = superReadTable(metaData, values);
+                if (table != null) {
+                    determineAutoIncrementFromResultSetMetaData(table, table.getColumns());
+                    int idx = 0;
+
+                    while(true) {
+                        while(idx < table.getIndexCount()) {
+                            Index index = table.getIndex(idx);
+                            if (index.isUnique() && this.existsPKWithName(metaData, table, index.getName())) {
+                                table.removeIndex(idx);
+                            } else {
+                                ++idx;
+                            }
+                        }
+
+                        return table;
+                    }
+                } else {
+                    return table;
+                }
+            }
+        }
+
+        private Table superReadTable(DatabaseMetaDataWrapper metaData, Map values) throws SQLException {
+            String tableName = (String)values.get("TABLE_NAME");
+            Table table = null;
+            if (tableName != null && tableName.length() > 0) {
+                table = new Table();
+                table.setName(tableName);
+                table.setType((String)values.get("TABLE_TYPE"));
+                table.setCatalog((String)values.get("TABLE_CAT"));
+                table.setSchema((String)values.get("TABLE_SCHEM"));
+                table.setDescription((String)values.get("REMARKS"));
+                table.addColumns(this.readColumns(metaData, tableName));
+                table.addForeignKeys(this.readForeignKeys(metaData, tableName));
+                table.addIndices(this.readIndices(metaData, tableName));
+                Collection primaryKeys = this.readPrimaryKeyNames(metaData, tableName);
+                Iterator it = primaryKeys.iterator();
+
+                while(it.hasNext()) {
+                    table.findColumn((String)it.next(), true).setPrimaryKey(true);
+                }
+
+                if (this.getPlatformInfo().isSystemIndicesReturned()) {
+                    this.removeSystemIndices(metaData, table);
+                }
+            }
+
+            return table;
+        }
+
+        private boolean existsPKWithName(DatabaseMetaDataWrapper metaData, Table table, String name) {
+            try {
+                ResultSet pks = metaData.getPrimaryKeys(table.getName());
+                boolean found = false;
+
+                while(pks.next() && !found) {
+                    if (name.equals(pks.getString("PK_NAME"))) {
+                        found = true;
+                    }
+                }
+
+                pks.close();
+                return found;
+            } catch (SQLException var6) {
+                throw new DdlUtilsException(var6);
+            }
+        }
+
+        protected void determineAutoIncrementFromResultSetMetaData(Table table, Column[] columnsToCheck) throws SQLException {
+            if (columnsToCheck != null && columnsToCheck.length != 0) {
+                StringBuffer query = new StringBuffer();
+                query.append("SELECT ");
+
+                for(int idx = 0; idx < columnsToCheck.length; ++idx) {
+                    if (idx > 0) {
+                        query.append(",");
+                    }
+
+                    if (this.getPlatform().isDelimitedIdentifierModeOn()) {
+                        query.append(this.getPlatformInfo().getDelimiterToken());
+                    }
+
+                    query.append(this.getPlatformInfo().getValueQuoteToken());
+                    query.append(columnsToCheck[idx].getName());
+                    query.append(this.getPlatformInfo().getValueQuoteToken());
+                    if (this.getPlatform().isDelimitedIdentifierModeOn()) {
+                        query.append(this.getPlatformInfo().getDelimiterToken());
+                    }
+                }
+
+                query.append(" FROM ");
+                if (this.getPlatform().isDelimitedIdentifierModeOn()) {
+                    query.append(this.getPlatformInfo().getDelimiterToken());
+                }
+
+                query.append(table.getName());
+                if (this.getPlatform().isDelimitedIdentifierModeOn()) {
+                    query.append(this.getPlatformInfo().getDelimiterToken());
+                }
+
+                query.append(" WHERE 1 = 0");
+                Statement stmt = null;
+
+                try {
+                    stmt = this.getConnection().createStatement();
+                    ResultSet rs = stmt.executeQuery(query.toString());
+                    ResultSetMetaData rsMetaData = rs.getMetaData();
+
+                    for(int idx = 0; idx < columnsToCheck.length; ++idx) {
+                        if (rsMetaData.isAutoIncrement(idx + 1)) {
+                            columnsToCheck[idx].setAutoIncrement(true);
+                        }
+                    }
+                } finally {
+                    if (stmt != null) {
+                        stmt.close();
+                    }
+
+                }
+
+            }
         }
 
         private boolean tableShouldBeExcluded(Map values) {
