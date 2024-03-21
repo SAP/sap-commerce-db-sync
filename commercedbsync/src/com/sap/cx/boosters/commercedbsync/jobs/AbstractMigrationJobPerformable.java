@@ -74,12 +74,41 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
     @Override
     public boolean isPerformable() {
         for (CronJobModel cronJob : getCronJobService().getRunningOrRestartedCronJobs()) {
+            currentMigrationId = databaseMigrationService.getMigrationID(migrationContext);
+
             if ((cronJob instanceof IncrementalMigrationCronJobModel || cronJob instanceof FullMigrationCronJobModel)) {
-                LOG.info("Previous migrations job already running {} and Type {} ", cronJob.getCode(),
-                        cronJob.getItemtype());
+                if (isJobStateAborted(cronJob)) {
+                    try {
+                        abortCurrentMigration();
+                        databaseMigrationService.markRemainingTasksAborted(migrationContext, currentMigrationId);
+                        clearAbortRequestedIfNeeded(cronJob);
+
+                        LOG.info("Migration with ID: {} was marked as aborted", currentMigrationId);
+                    } catch (Exception e) {
+                        LOG.warn("Failed to abort current migration");
+                        LOG.debug("Migration abort failed", e);
+                    }
+                } else {
+                    LOG.info("Previous migration job already running {} and type {}", cronJob.getCode(),
+                            cronJob.getItemtype());
+                }
                 return false;
             }
         }
+
+        if (StringUtils.isNotEmpty(currentMigrationId)) {
+            try {
+                if (databaseMigrationService.getMigrationState(migrationContext, currentMigrationId)
+                        .getStatus() == MigrationProgress.RUNNING) {
+                    LOG.info("Previous migration already running, ID: {}", currentMigrationId);
+                    return false;
+                }
+            } catch (Exception e) {
+                LOG.warn("Unable to fetch current migration status");
+                LOG.debug("Migration status fetch failed", e);
+            }
+        }
+
         return true;
     }
 
@@ -199,13 +228,12 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
         } while (StringUtils.equalsAnyIgnoreCase(status.getStatus().toString(), RUNNING_MIGRATION));
 
         if (aborted) {
-            LOG.info(" Aborted ...STOPPING migration ");
-            databaseMigrationService.stopMigration(migrationContext, currentMigrationId);
+            abortCurrentMigration();
+            clearAbortRequestedIfNeeded(cronJobModel);
             LOG.error("Database migration has been ABORTED, Migration State= " + status + ", Total Tasks "
                     + status.getTotalTasks() + ", migration id =" + status.getMigrationID() + ", Completed Tasks "
                     + status.getCompletedTasks());
-            clearAbortRequestedIfNeeded(cronJobModel);
-            throw new AbortCronJobException("CronJOB ABORTED");
+            throw new AbortCronJobException("Cronjob ABORTED");
         }
 
         if (status.isFailed()) {
@@ -216,6 +244,11 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
         }
 
         return status;
+    }
+
+    private void abortCurrentMigration() throws Exception {
+        LOG.info("Aborted ...STOPPING migration");
+        databaseMigrationService.stopMigration(migrationContext, currentMigrationId);
     }
 
     protected LaunchOptions createLaunchOptions(MigrationCronJobModel migrationCronJob) {
@@ -240,8 +273,8 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
 
     protected boolean isJobStateAborted(final CronJobModel cronJobModel) {
         this.modelService.refresh(cronJobModel);
-        LOG.info("cron job status = " + cronJobModel.getStatus());
-        LOG.info("cron job request to abort =" + cronJobModel.getRequestAbort());
+        LOG.info("Cron job status: {}", cronJobModel.getStatus());
+        LOG.info("Cron job request to abort: {}", BooleanUtils.isTrue(cronJobModel.getRequestAbort()));
         return ((cronJobModel.getStatus() == CronJobStatus.ABORTED)
                 || (cronJobModel.getRequestAbort() != null && cronJobModel.getRequestAbort()));
     }

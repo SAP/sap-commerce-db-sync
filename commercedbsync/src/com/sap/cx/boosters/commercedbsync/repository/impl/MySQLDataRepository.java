@@ -18,6 +18,8 @@ import de.hybris.bootstrap.ddl.DataBaseProvider;
 import de.hybris.bootstrap.ddl.DatabaseSettings;
 import de.hybris.bootstrap.ddl.HybrisPlatform;
 import org.apache.ddlutils.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
@@ -28,6 +30,8 @@ import java.sql.ResultSet;
 import java.util.List;
 
 public class MySQLDataRepository extends AbstractDataRepository {
+    private static final Logger LOG = LoggerFactory.getLogger(MySQLDataRepository.class);
+
     public MySQLDataRepository(MigrationContext migrationContext, DataSourceConfiguration dataSourceConfiguration,
             DatabaseMigrationDataTypeMapperService databaseMigrationDataTypeMapperService) {
         super(migrationContext, dataSourceConfiguration, databaseMigrationDataTypeMapperService);
@@ -149,7 +153,7 @@ public class MySQLDataRepository extends AbstractDataRepository {
                 return rs.getString("timezone");
             }
         } catch (Exception e) {
-            e.getMessage();
+            LOG.warn("Failed to check database timezone", e);
         }
         return null;
     }

@@ -153,7 +153,7 @@ public class NullRepository implements DataRepository {
     }
 
     @Override
-    public float getDatabaseUtilization() throws SQLException {
+    public float getDatabaseUtilization() {
         throw new InvalidDataSourceConfigurationException(this.message, this.dataSourceConfiguration);
     }
 
@@ -240,7 +240,6 @@ public class NullRepository implements DataRepository {
 
     @Override
     public String getDatabaseTimezone() {
-
         return null;
     }
 

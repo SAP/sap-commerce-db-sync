@@ -34,18 +34,21 @@ public class TransformFunctionGeneratorPreProcessor implements MigrationPreProce
     }
 
     private String getPlatformSpecificSQL(final DataBaseProvider databaseProvider) {
-        String platformSpecificSQL = "mssql-general.sql";
-        if (databaseProvider.isHanaUsed() || databaseProvider.isOracleUsed() || databaseProvider.isPostgreSqlUsed()) {
-            platformSpecificSQL = null;
+        String platformSpecificSQL = null;
+
+        if (databaseProvider.isMssqlUsed()) {
+            platformSpecificSQL = "mssql-general.sql";
         }
 
-        LOG.info("Identified platform specific transformation function SQL {}", platformSpecificSQL);
+        LOG.info("Identified platform specific transformation function SQL: {}",
+                StringUtils.defaultIfEmpty(platformSpecificSQL, "<none>"));
 
         return platformSpecificSQL;
     }
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return context.getMigrationContext().isDataExportEnabled();
+        return context.getMigrationContext().isDataExportEnabled()
+                && context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isMssqlUsed();
     }
 }

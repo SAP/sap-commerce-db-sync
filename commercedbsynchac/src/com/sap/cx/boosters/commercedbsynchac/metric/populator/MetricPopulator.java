@@ -23,4 +23,8 @@ public interface MetricPopulator {
         data.setSecondaryValueStandardColor(SECONDARY_STANDARD_COLOR);
         data.setSecondaryValueCriticalColor(SECONDARY_CRITICAL_COLOR);
     }
+
+    default boolean canHandle(MigrationContext context) {
+        return true;
+    }
 }

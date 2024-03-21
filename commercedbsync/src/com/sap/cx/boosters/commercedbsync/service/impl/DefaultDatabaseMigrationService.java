@@ -109,12 +109,18 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
         databaseCopyScheduler.abort(copyContext);
     }
 
+    @Override
+    public void markRemainingTasksAborted(MigrationContext context, String migrationID) throws Exception {
+        CopyContext copyContext = buildIdContext(context, migrationID);
+        databaseCopyTaskRepository.markRemainingTasksAborted(copyContext);
+    }
+
     private CopyContext buildCopyContext(MigrationContext context, String migrationID) throws Exception {
         Set<CopyContext.DataCopyItem> dataCopyItems = copyItemProvider.get(context);
         return new CopyContext(migrationID, context, dataCopyItems, performanceProfiler);
     }
 
-    private CopyContext buildIdContext(MigrationContext context, String migrationID) throws Exception {
+    private CopyContext buildIdContext(MigrationContext context, String migrationID) {
         // we use a lean implementation of the copy context to avoid calling the
         // provider which is not required for task management.
         return new CopyContext.IdCopyContext(migrationID, context, performanceProfiler);

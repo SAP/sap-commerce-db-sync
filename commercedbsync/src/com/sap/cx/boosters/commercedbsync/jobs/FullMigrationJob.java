@@ -7,13 +7,16 @@
 package com.sap.cx.boosters.commercedbsync.jobs;
 
 import com.google.common.base.Preconditions;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.context.IncrementalMigrationContext;
+import com.sap.cx.boosters.commercedbsync.context.LaunchOptions;
 import de.hybris.platform.cronjob.enums.CronJobResult;
 import de.hybris.platform.cronjob.enums.CronJobStatus;
 import de.hybris.platform.cronjob.jalo.AbortCronJobException;
 import de.hybris.platform.cronjob.model.CronJobModel;
 import de.hybris.platform.servicelayer.cronjob.PerformResult;
 import com.sap.cx.boosters.commercedbsync.model.cron.FullMigrationCronJobModel;
+import de.hybris.platform.servicelayer.model.ModelService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +26,12 @@ import org.slf4j.LoggerFactory;
 public class FullMigrationJob extends AbstractMigrationJobPerformable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FullMigrationJob.class);
+
+    private final ModelService modelService;
+
+    public FullMigrationJob(final ModelService modelService) {
+        this.modelService = modelService;
+    }
 
     @Override
     public PerformResult perform(final CronJobModel cronJobModel) {
@@ -54,9 +63,24 @@ public class FullMigrationJob extends AbstractMigrationJobPerformable {
             incrementalMigrationContext.setIncrementalModeEnabled(false);
             incrementalMigrationContext
                     .setFullDatabaseMigrationEnabled(fullMigrationCronJobModel.isFullDatabaseMigration());
-            currentMigrationId = databaseMigrationService.startMigration(incrementalMigrationContext,
-                    createLaunchOptions(fullMigrationCronJobModel));
+            final LaunchOptions launchOptions = createLaunchOptions(fullMigrationCronJobModel);
 
+            if (fullMigrationCronJobModel.isResumeMigration()) {
+                currentMigrationId = fullMigrationCronJobModel.getMigrationId();
+                Preconditions.checkNotNull(currentMigrationId,
+                        "Migration ID must be present to resume failed migration job");
+                launchOptions.getPropertyOverrideMap().put(CommercedbsyncConstants.MIGRATION_SCHEDULER_RESUME_ENABLED,
+                        true);
+                databaseMigrationService.resumeUnfinishedMigration(incrementalMigrationContext, launchOptions,
+                        currentMigrationId);
+                LOG.info("Resumed Migration {}", currentMigrationId);
+            } else {
+                currentMigrationId = databaseMigrationService.startMigration(incrementalMigrationContext,
+                        launchOptions);
+                LOG.info("Started Migration {}", currentMigrationId);
+                fullMigrationCronJobModel.setMigrationId(currentMigrationId);
+                modelService.save(fullMigrationCronJobModel);
+            }
             waitForFinishCronjobs(incrementalMigrationContext, currentMigrationId, cronJobModel);
         } catch (final AbortCronJobException e) {
             return new PerformResult(CronJobResult.ERROR, CronJobStatus.ABORTED);

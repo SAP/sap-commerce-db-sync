@@ -39,6 +39,7 @@
         <property name="durationinseconds" type="double"/>
         <property name="copyMethod" type="String"/>
         <property name="keyColumns" type="java.util.List&lt;String&gt;"/>
+        <property name="batchsize" type="int"/>
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyBatch">

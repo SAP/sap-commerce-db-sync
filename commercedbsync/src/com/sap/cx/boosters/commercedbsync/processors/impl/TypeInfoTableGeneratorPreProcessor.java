@@ -68,16 +68,19 @@ public class TypeInfoTableGeneratorPreProcessor implements MigrationPreProcessor
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return context.getMigrationContext().isDataExportEnabled();
+        return context.getMigrationContext().isDataExportEnabled()
+                && context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isMssqlUsed();
     }
 
     private String getPlatformSpecificSQL(final DataBaseProvider databaseProvider) {
-        String platformSpecificSQL = "mssql-typeinfotable.sql";
-        if (databaseProvider.isHanaUsed() || databaseProvider.isOracleUsed() || databaseProvider.isPostgreSqlUsed()) {
-            platformSpecificSQL = null;
+        String platformSpecificSQL = null;
+
+        if (databaseProvider.isMssqlUsed()) {
+            platformSpecificSQL = "mssql-typeinfotable.sql";
         }
 
-        LOG.info("Identified platform specific typeinfo table SQL {}", platformSpecificSQL);
+        LOG.info("Identified platform specific typeinfo table SQL: {}",
+                StringUtils.defaultIfEmpty(platformSpecificSQL, "<none>"));
 
         return platformSpecificSQL;
     }

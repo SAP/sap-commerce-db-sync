@@ -9,7 +9,6 @@ package com.sap.cx.boosters.commercedbsync.repository.impl;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Collections;
 import java.util.List;
@@ -181,7 +180,7 @@ public class OracleDataRepository extends AbstractDataRepository {
     }
 
     @Override
-    public float getDatabaseUtilization() throws SQLException {
+    public float getDatabaseUtilization() {
         return (float) 1.00;
     }
 
@@ -276,7 +275,7 @@ public class OracleDataRepository extends AbstractDataRepository {
                     return "Different timezone";
             }
         } catch (Exception e) {
-            e.getMessage();
+            LOG.warn("Failed to check database timezone", e);
         }
         return null;
     }

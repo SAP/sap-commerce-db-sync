@@ -6,15 +6,19 @@
 
 package com.sap.cx.boosters.commercedbsynchac.metric.populator.impl;
 
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.repository.impl.AzureDataRepository;
 import com.sap.cx.boosters.commercedbsynchac.metric.populator.MetricPopulator;
 import de.hybris.platform.commercedbsynchac.data.MetricData;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 
+import java.util.Optional;
+
 public class DTUMetricPopulator implements MetricPopulator {
     @Override
     public MetricData populate(MigrationContext context) throws Exception {
-        MetricData data = new MetricData();
-        int primaryValue = (int) context.getDataTargetRepository().getDatabaseUtilization();
+        int primaryValue = getAzureDataRepository(context).map(DataRepository::getDatabaseUtilization).orElse(-1f)
+                .intValue();
         if (primaryValue > 100) {
             primaryValue = 100;
         }
@@ -23,6 +27,8 @@ public class DTUMetricPopulator implements MetricPopulator {
             primaryValue = -1;
             secondaryValue = -1;
         }
+
+        MetricData data = new MetricData();
 
         data.setMetricId("dtu");
         data.setName("DTU");
@@ -36,7 +42,22 @@ public class DTUMetricPopulator implements MetricPopulator {
         data.setSecondaryValueUnit("%");
         data.setSecondaryValueThreshold(0d);
         populateColors(data);
+
         return data;
     }
 
+    private Optional<DataRepository> getAzureDataRepository(MigrationContext context) {
+        if (context.getDataTargetRepository() instanceof AzureDataRepository) {
+            return Optional.of(context.getDataTargetRepository());
+        } else if (context.getDataSourceRepository() instanceof AzureDataRepository) {
+            return Optional.of(context.getDataSourceRepository());
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
+    public boolean canHandle(MigrationContext context) {
+        return getAzureDataRepository(context).isPresent();
+    }
 }

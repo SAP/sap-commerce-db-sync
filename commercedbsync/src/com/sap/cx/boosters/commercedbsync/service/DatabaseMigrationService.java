@@ -58,6 +58,18 @@ public interface DatabaseMigrationService {
     void stopMigration(MigrationContext context, String migrationID) throws Exception;
 
     /**
+     * Mark all remaining table copy tasks as aborted, should be used when migration
+     * was stopped unexpectedly (for example after application crashed)
+     *
+     * @param context
+     *            Migration configuration
+     * @param migrationID
+     *            ID of the migration process tasks that should be marked as aborted
+     * @throws Exception
+     */
+    void markRemainingTasksAborted(MigrationContext context, String migrationID) throws Exception;
+
+    /**
      * Get current overall state without details
      *
      * @param context

@@ -84,7 +84,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     try {
                         pipe.put(MaybeFinished.poison());
                     } catch (Exception p) {
-                        LOG.error("Cannot contaminate pipe ", p);
+                        LOG.error("Could not close contaminated pipe ", p);
                     }
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
@@ -107,7 +107,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 context.getMigrationContext().getDataSourceRepository());
         String table = copyItem.getSourceItem();
         long totalRows = copyItem.getRowCount();
-        long pageSize = getReaderBatchSizeForTable(context, table);
+        int pageSize = copyItem.getBatchSize();
         try {
             PerformanceRecorder recorder = context.getPerformanceProfiler().createRecorder(PerformanceCategory.DB_READ,
                     table);
@@ -143,25 +143,29 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.OFFSET.toString());
                     taskRepository.updateTaskKeyColumns(context, copyItem, batchColumns);
 
-                    List<Long> batches = null;
+                    List<Pair<Long, Long>> batches;
                     if (context.getMigrationContext().isSchedulerResumeEnabled()) {
                         Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                                 .findPendingBatchesForPipeline(context, copyItem);
                         batches = pendingBatchesForPipeline.stream()
-                                .map(b -> Long.valueOf(b.getLowerBoundary().toString())).collect(Collectors.toList());
+                                .map(b -> Pair.of(Long.valueOf(b.getLowerBoundary().toString()),
+                                        Long.valueOf(b.getUpperBoundary().toString())))
+                                .collect(Collectors.toList());
                         taskRepository.resetPipelineBatches(context, copyItem);
                     } else {
                         batches = new ArrayList<>();
                         for (long offset = 0; offset < totalRows; offset += pageSize) {
-                            batches.add(offset);
+                            batches.add(Pair.of(offset, offset + pageSize));
                         }
                     }
 
+                    Pair<Long, Long> boundaries;
                     for (int batchId = 0; batchId < batches.size(); batchId++) {
-                        long offset = batches.get(batchId);
-                        DataReaderTask dataReaderTask = new BatchOffsetDataReaderTask(pipeTaskContext, batchId, offset,
-                                batchColumns);
-                        taskRepository.scheduleBatch(context, copyItem, batchId, offset, offset + pageSize);
+                        boundaries = batches.get(batchId);
+                        DataReaderTask dataReaderTask = new BatchOffsetDataReaderTask(pipeTaskContext, batchId,
+                                boundaries.getLeft(), batchColumns);
+                        taskRepository.scheduleBatch(context, copyItem, batchId, boundaries.getLeft(),
+                                boundaries.getRight());
                         workerExecutor.safelyExecute(dataReaderTask);
                     }
                 } else {
@@ -182,13 +186,12 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.SEEK.toString());
                 taskRepository.updateTaskKeyColumns(context, copyItem, Lists.newArrayList(batchColumn));
 
-                List<List<Object>> batchMarkersList = null;
+                List<List<Object>> batchMarkersList;
                 if (context.getMigrationContext().isSchedulerResumeEnabled()) {
-                    batchMarkersList = new ArrayList<>();
                     Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                             .findPendingBatchesForPipeline(context, copyItem);
-                    batchMarkersList.addAll(pendingBatchesForPipeline.stream()
-                            .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList()));
+                    batchMarkersList = pendingBatchesForPipeline.stream()
+                            .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList());
                     taskRepository.resetPipelineBatches(context, copyItem);
                 } else {
                     MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
@@ -236,10 +239,5 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             }
             throw new RuntimeException("Exception while preparing reader tasks", ex);
         }
-    }
-
-    private static int getReaderBatchSizeForTable(final CopyContext context, final String tableName) {
-        Integer tableBatchSize = context.getMigrationContext().getReaderBatchSize(tableName);
-        return tableBatchSize == null ? context.getMigrationContext().getReaderBatchSize() : tableBatchSize;
     }
 }

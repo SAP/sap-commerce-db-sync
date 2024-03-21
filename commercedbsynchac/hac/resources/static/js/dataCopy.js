@@ -74,7 +74,7 @@
 
         function resumeRunning() {
             $.ajax({
-                url: $('#buttonsContainer').attr('data-resumeUrl'),
+                url: $('#migrationPanel').attr('data-resumeUrl'),
                 type: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -104,6 +104,9 @@
                         }
                         currentMigrationID = data.migrationID;
                         empty(logContainer);
+
+                        if (!currentMigrationID)  return;
+
                         updateStatus(data);
                         doPoll();
                         pollInterval = setInterval(doPoll, 5000);
@@ -214,6 +217,9 @@
             if (status.failed) {
                 dd.innerText = "Failed";
                 dd.classList.add("failed");
+            } else if (status.aborted) {
+                dd.innerText = "Aborted";
+                dd.classList.add("failed")
             } else if (status.completed) {
                 dd.innerText = "Completed";
                 dd.classList.add("completed")
@@ -242,7 +248,7 @@
         }
 
         function doPoll() {
-            console.log(new Date(lastUpdateTime).toISOString());
+            // console.log(new Date(lastUpdateTime).toISOString());
             $.ajax({
                 url: statusUrl,
                 type: 'GET',
