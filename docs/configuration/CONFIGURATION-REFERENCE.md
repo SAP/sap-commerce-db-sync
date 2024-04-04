@@ -77,3 +77,7 @@
 | migration.schema.target.tables.remove.enabled | Specifies if extra tables in target (compared to source schema) should be removed by schema migration.|  `false`    | true or false      | true    | migration.schema.enabled   |
 | migration.stalled.timeout | Specifies the timeout of the migration monitor.  If there was no activity for too long the migration will be marked as 'stalled' and aborted.|  `7200`    | integer value      | true    |    |
 | migration.trigger.updatesystem | Specifies whether the data migration shall be triggered by the 'update running system' operation.|  `false`    | true or false      | true    |    |
+| migration.profiling | If set to true, logs the memory usage of each Batch | false |  true or false | true  | |
+| migration.memory.min | If free memory is below this threshold, the Reader Task will wait | 5000000 | integer value | true  | |
+| migration.memory.attempts | If not enough free memory is available, the reader task will wait the specified amount of attempts. | 300 | integer value | true | migration.memory.min  |
+| migration.memory.wait | Amount of milliseconds to wait for free memory | 2000 | integer value | true | migration.memory.min  |

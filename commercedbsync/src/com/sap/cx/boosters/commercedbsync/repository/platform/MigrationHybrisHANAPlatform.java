@@ -120,6 +120,8 @@ public class MigrationHybrisHANAPlatform extends HybrisHanaPlatform implements H
                 return null;
             }
 
+            LOG.debug("Reading table model for: {}", values.get("TABLE_NAME"));
+
             return super.readTable(metaData, values);
         }
     }

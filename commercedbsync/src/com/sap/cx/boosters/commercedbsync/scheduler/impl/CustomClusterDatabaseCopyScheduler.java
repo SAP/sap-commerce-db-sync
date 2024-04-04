@@ -297,7 +297,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                     databaseCopyTaskRepository.setMigrationStatus(context, MigrationProgress.STALLED);
                 }
                 Thread.sleep(5000);
-            } while (!currentState.isCompleted());
+            } while (!currentState.isCompleted() && !currentState.isAborted());
         }
 
         /**

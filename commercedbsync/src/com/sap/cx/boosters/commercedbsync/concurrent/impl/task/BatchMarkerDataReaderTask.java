@@ -33,6 +33,7 @@ public class BatchMarkerDataReaderTask extends DataReaderTask {
 
     @Override
     protected Boolean internalRun() throws Exception {
+        waitForFreeMemory();
         process(batchMarkersPair.getLeft(), batchMarkersPair.getRight());
         return Boolean.TRUE;
     }
@@ -56,6 +57,9 @@ public class BatchMarkerDataReaderTask extends DataReaderTask {
                     lastValue, nextValue, pageSize);
         }
         DataSet page = adapter.getBatchOrderedByColumn(ctx.getMigrationContext(), queryDefinition);
+
+        profileData(ctx, batchId, table, pageSize, page);
+
         getPipeTaskContext().getRecorder().record(PerformanceUnit.ROWS, pageSize);
         getPipeTaskContext().getPipe().put(MaybeFinished.of(page));
     }

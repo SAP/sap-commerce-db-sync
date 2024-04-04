@@ -58,6 +58,10 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_FILE_STORAGE_CONTAINER_NAME = "migration.data.filestorage.container.name";
     public static final String MIGRATION_INPUT_PROFILES = "migration.input.profiles";
     public static final String MIGRATION_OUTPUT_PROFILES = "migration.output.profiles";
+    public static final String MIGRATION_PROFILING = "migration.profiling";
+    public static final String MIGRATION_PROFILING_MEMORY_MIN = "migration.memory.min";
+    public static final String MIGRATION_PROFILING_MEMORY_ATTEMPTS = "migration.memory.attempts";
+    public static final String MIGRATION_PROFILING_MEMORY_WAIT = "migration.memory.wait";
 
     public static final String MIGRATION_DATA_READTASK_KEEPALIVE_SECONDS = "migration.data.readtask.keepaliveseconds";
     public static final String MIGRATION_DATA_READTASK_QUEUE_CAPACITY = "migration.data.readtask.queuecapacity";

@@ -152,7 +152,7 @@ This can be configured via `ccv2.additional.catalina.opts` on SAP Commerce Cloud
 
 #### Symptom:
 
-After application crashed or for example k8s pod was restarted during ongoing migration, when accessing _Data Migration_ view in HAC, on "Migration Log" area, some table copy tasks are visibile as "_In progress..._", however actutally no migration thread is active and no more new updates are provided.
+After application crashed or for example k8s pod was restarted during ongoing migration, when accessing _Data Migration_ view in HAC, on "Migration Log" area, some table copy tasks are visible as "_In progress..._", however actually no migration thread is active and no more new updates are provided.
 
 #### Solution:
 

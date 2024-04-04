@@ -38,8 +38,6 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultDataCopyItemProvider.class);
 
-    private static final String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributeDescriptors",
-            "collectiontypes", "composedtypes", "enumerationvalues", "maptypes"};
     private final Comparator<TableCandidate> tableCandidateComparator = (o1, o2) -> o1.getCommonTableName()
             .compareToIgnoreCase(o2.getCommonTableName());
     private DataCopyTableFilter dataCopyTableFilter;
