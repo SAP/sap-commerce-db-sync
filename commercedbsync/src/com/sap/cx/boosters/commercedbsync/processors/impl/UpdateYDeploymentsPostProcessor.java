@@ -27,6 +27,16 @@ import java.util.stream.Stream;
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.DEPLOYMENTS_TABLE;
 import static com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider.TYPE_SYSTEM_PROPS_TABLE;
 
+/**
+ * <b>Deployments table adjustment post processor</b> <br/>
+ * <br/>
+ * In case of selecting custom target database tables prefix
+ * (`migration.ds.target.db.tableprefix`), or when migrated type system is
+ * "above" first one (with suffix, via
+ * `migration.ds.target.db.typesystemsuffix`), it is mandatory to update
+ * references in `ydeployments` entires, to point to proper database tables,
+ * instead of original values migrated from source system
+ */
 public class UpdateYDeploymentsPostProcessor implements MigrationPostProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(UpdateYDeploymentsPostProcessor.class.getName());
