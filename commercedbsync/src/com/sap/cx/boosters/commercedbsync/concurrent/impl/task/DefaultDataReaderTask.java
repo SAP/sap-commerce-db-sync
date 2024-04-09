@@ -19,6 +19,7 @@ public class DefaultDataReaderTask extends DataReaderTask {
 
     @Override
     protected Boolean internalRun() throws Exception {
+        waitForFreeMemory();
         process();
         return Boolean.TRUE;
     }
@@ -27,6 +28,8 @@ public class DefaultDataReaderTask extends DataReaderTask {
         MigrationContext migrationContext = getPipeTaskContext().getContext().getMigrationContext();
         DataSet all = getPipeTaskContext().getDataRepositoryAdapter().getAll(migrationContext,
                 getPipeTaskContext().getTable());
+        profileData(getPipeTaskContext().getContext(), -1, getPipeTaskContext().getTable(),
+                getPipeTaskContext().getPageSize(), all);
         getPipeTaskContext().getRecorder().record(PerformanceUnit.ROWS, all.getAllResults().size());
         getPipeTaskContext().getPipe().put(MaybeFinished.of(all));
     }

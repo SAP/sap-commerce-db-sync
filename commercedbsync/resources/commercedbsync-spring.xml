@@ -225,6 +225,11 @@
 		<property name="configurationService" ref="configurationService" />
 	</bean>
 
+    <bean id="updateYDeploymentsPostProcessor"
+            class="com.sap.cx.boosters.commercedbsync.processors.impl.UpdateYDeploymentsPostProcessor">
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+    </bean>
+
     <alias name="defaultCopyCompleteEventListener" alias="copyCompleteEventListener"/>
     <bean id="defaultCopyCompleteEventListener"
           class="com.sap.cx.boosters.commercedbsync.events.handlers.CopyCompleteEventListener"
@@ -240,6 +245,7 @@
                 <ref bean="reportMigrationPostProcessor"/>
                 <ref bean="jdbcQueriesPostProcessor"/>
                 <ref bean="adjustActiveTypeSystemPostProcessor"/>
+                <ref bean="updateYDeploymentsPostProcessor"/>
             </util:list>
         </property>
     </bean>

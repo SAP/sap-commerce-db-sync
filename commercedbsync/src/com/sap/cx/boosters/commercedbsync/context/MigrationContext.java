@@ -108,6 +108,14 @@ public interface MigrationContext {
 
     void setFullDatabaseMigrationEnabled(boolean enabled);
 
+    boolean isProfiling();
+
+    long getMemoryMin();
+
+    int getMemoryMaxAttempts();
+
+    int getMemoryWait();
+
     void refreshSelf();
 
     /**

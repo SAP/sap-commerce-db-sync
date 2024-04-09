@@ -123,7 +123,10 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, context.getMigrationId());
             try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
+                if (!rs.next()) {
+                    throw new IllegalStateException(
+                            "Unable to get migration status for given ID. Check if migration started correctly");
+                }
                 return convertToStatus(rs);
             }
         }

@@ -12,11 +12,14 @@ import com.sap.cx.boosters.commercedbsync.concurrent.MaybeFinished;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
-
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BatchOffsetDataReaderTask extends DataReaderTask {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BatchOffsetDataReaderTask.class);
 
     private final long offset;
     private final Set<String> batchColumns;
@@ -32,6 +35,7 @@ public class BatchOffsetDataReaderTask extends DataReaderTask {
 
     @Override
     protected Boolean internalRun() throws Exception {
+        waitForFreeMemory();
         process();
         return Boolean.TRUE;
     }
@@ -50,7 +54,9 @@ public class BatchOffsetDataReaderTask extends DataReaderTask {
         queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
         queryDefinition.setLpTableEnabled(context.getMigrationContext().isLpTableMigrationEnabled());
         DataSet result = adapter.getBatchWithoutIdentifier(context.getMigrationContext(), queryDefinition);
+        profileData(context, batchId, table, pageSize, result);
         getPipeTaskContext().getRecorder().record(PerformanceUnit.ROWS, result.getAllResults().size());
         getPipeTaskContext().getPipe().put(MaybeFinished.of(result));
     }
+
 }

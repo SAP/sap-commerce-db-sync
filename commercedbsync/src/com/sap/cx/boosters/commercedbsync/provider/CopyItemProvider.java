@@ -16,6 +16,9 @@ import java.util.Set;
  * Provides the means to copy an Item fro Source to Target
  */
 public interface CopyItemProvider {
+    String TYPE_SYSTEM_PROPS_TABLE = "typesystemprops";
+    String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributeDescriptors", "collectiontypes",
+            "composedtypes", "enumerationvalues", "maptypes", TYPE_SYSTEM_PROPS_TABLE};
     Set<CopyContext.DataCopyItem> get(MigrationContext context) throws Exception;
 
     Set<TableCandidate> getSourceTableCandidates(MigrationContext context) throws Exception;

@@ -20,6 +20,7 @@ import java.util.Set;
 import com.sap.cx.boosters.commercedbsync.context.LaunchOptions;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.model.cron.MigrationCronJobModel;
+import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -48,8 +49,6 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
 
     private static final String[] RUNNING_MIGRATION = new String[]{MigrationProgress.RUNNING.toString(),
             MigrationProgress.PROCESSED.toString(), MigrationProgress.POSTPROCESSING.toString()};
-    private static final String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributeDescriptors",
-            "collectiontypes", "composedtypes", "enumerationvalues", "maptypes"};
 
     private static final String MIGRATION_UPDATE_TYPE_SYSTEM = "migration.ds.update.typesystem.table";
     private static final String SOURCE_TYPESYSTEMNAME = "migration.ds.source.db.typesystemname";
@@ -152,7 +151,7 @@ public abstract class AbstractMigrationJobPerformable extends AbstractJobPerform
         }
         DataRepository sourceRepository = migrationContext.getDataSourceRepository();
         for (final String tableName : migrationItems) {
-            if (Arrays.stream(TYPE_SYSTEM_RELATED_TYPES)
+            if (Arrays.stream(CopyItemProvider.TYPE_SYSTEM_RELATED_TYPES)
                     .anyMatch(t -> StringUtils.startsWithIgnoreCase(tableName, t))) {
                 try (Connection connection = sourceRepository.getConnection();
                         Statement stmt = connection.createStatement();

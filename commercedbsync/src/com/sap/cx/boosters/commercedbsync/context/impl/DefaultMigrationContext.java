@@ -283,6 +283,26 @@ public class DefaultMigrationContext implements MigrationContext {
     }
 
     @Override
+    public boolean isProfiling() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_PROFILING);
+    }
+
+    @Override
+    public long getMemoryMin() {
+        return getLongProperty(CommercedbsyncConstants.MIGRATION_PROFILING_MEMORY_MIN);
+    }
+
+    @Override
+    public int getMemoryMaxAttempts() {
+        return getNumericProperty(CommercedbsyncConstants.MIGRATION_PROFILING_MEMORY_ATTEMPTS);
+    }
+
+    @Override
+    public int getMemoryWait() {
+        return getNumericProperty(CommercedbsyncConstants.MIGRATION_PROFILING_MEMORY_WAIT);
+    }
+
+    @Override
     public boolean isDeletionEnabled() {
         return this.deletionEnabled;
     }
@@ -320,6 +340,10 @@ public class DefaultMigrationContext implements MigrationContext {
 
     protected int getNumericProperty(final String key) {
         return configuration.getInt(key);
+    }
+
+    protected long getLongProperty(final String key) {
+        return configuration.getLong(key);
     }
 
     protected String getStringProperty(final String key) {
