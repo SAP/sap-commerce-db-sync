@@ -24,7 +24,7 @@ There are two main use cases:
 
 # Quick demo
 
-[![Watch the video](docs/user/commerce-db-sync-demo.png)](https://video.sap.com/embed/secure/iframe/entryId/1_7bhihtlz/uiConfId/30317401/st/0)
+[![Watch the video](docs/user/commerce-db-sync-demo.png)](https://sapvideo.cfapps.eu10-004.hana.ondemand.com/?entry_id=1_7bhihtlz)
 
 ## Release v1.2
 
