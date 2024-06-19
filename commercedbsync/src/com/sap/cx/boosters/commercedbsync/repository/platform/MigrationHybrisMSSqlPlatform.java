@@ -89,7 +89,8 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
     private static class HybrisMSSqlModelReader extends MSSqlModelReader {
         private static final String TABLE_NAME_KEY = "TABLE_NAME";
 
-        private final Set<String> tablesToExclude = Set.of("trace_xe_action_map", "trace_xe_event_map");
+        private final Set<String> tablesToExclude = Set.of("trace_xe_action_map", "trace_xe_event_map",
+                "change_streams_partition_scheme", "change_streams_destination_type");
 
         public HybrisMSSqlModelReader(Platform platform) {
             super(platform);
