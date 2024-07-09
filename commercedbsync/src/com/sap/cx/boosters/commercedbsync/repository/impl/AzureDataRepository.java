@@ -47,6 +47,7 @@ public class AzureDataRepository extends AbstractDataRepository {
         platform.getPlatformInfo().addNativeTypeMapping(Types.NCLOB, "NVARCHAR(MAX)");
         platform.getPlatformInfo().addNativeTypeMapping(Types.CLOB, "NVARCHAR(MAX)");
         platform.getPlatformInfo().addNativeTypeMapping(Types.LONGVARCHAR, "NVARCHAR(MAX)");
+        platform.getPlatformInfo().addNativeTypeMapping(Types.LONGNVARCHAR, "NVARCHAR(MAX)");
         platform.getPlatformInfo().addNativeTypeMapping(Types.VARBINARY, "VARBINARY");
         platform.getPlatformInfo().addNativeTypeMapping(Types.REAL, "float");
         platform.getPlatformInfo().addNativeTypeMapping(Types.LONGVARBINARY, "VARBINARY(MAX)");

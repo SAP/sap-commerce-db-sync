@@ -15,6 +15,8 @@ import org.apache.ddlutils.PlatformInfo;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
 import org.apache.ddlutils.model.Table;
+import org.apache.ddlutils.model.TypeMap;
+import org.apache.ddlutils.model.JdbcTypeCategoryEnum;
 import org.apache.ddlutils.platform.DatabaseMetaDataWrapper;
 import org.apache.ddlutils.platform.mssql.MSSqlModelReader;
 import org.apache.ddlutils.platform.mssql.MSSqlPlatform;
@@ -36,6 +38,7 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
 
     public static HybrisPlatform build(DatabaseSettings databaseSettings) {
         MigrationHybrisMSSqlPlatform instance = new MigrationHybrisMSSqlPlatform();
+        MigrationHybrisMSSqlPlatform.MSSqlHybrisTypeMap.register();
         instance.provideCustomMapping();
         instance.setSqlBuilder(new MigrationHybrisMSSqlBuilder(instance, databaseSettings));
         MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader reader = new MigrationHybrisMSSqlPlatform.HybrisMSSqlModelReader(
@@ -63,9 +66,10 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
         platformInfo.addNativeTypeMapping(Types.SMALLINT, "INTEGER");
         platformInfo.addNativeTypeMapping(Types.TINYINT, "TINYINT", Types.TINYINT);
         platformInfo.addNativeTypeMapping(Types.DOUBLE, "FLOAT", Types.DOUBLE);
-        platformInfo.addNativeTypeMapping(Types.FLOAT, "FLOAT", Types.DOUBLE);
+        platformInfo.addNativeTypeMapping(Types.FLOAT, "FLOAT", Types.FLOAT);
         platformInfo.addNativeTypeMapping(Types.NVARCHAR, "NVARCHAR", Types.NVARCHAR);
         platformInfo.addNativeTypeMapping(Types.TIME, "DATETIME2", Types.TIMESTAMP);
+        platformInfo.addNativeTypeMapping(Types.DATE, "DATETIME2");
         platformInfo.addNativeTypeMapping(Types.TIMESTAMP, "DATETIME2");
         platformInfo.addNativeTypeMapping(Types.BLOB, "VARBINARY(MAX)");
     }
@@ -86,17 +90,44 @@ public class MigrationHybrisMSSqlPlatform extends MSSqlPlatform implements Hybri
         this.evaluateBatch(connection, sql, continueOnError);
     }
 
+    static class MSSqlHybrisTypeMap extends TypeMap {
+
+        static void register() {
+            registerJdbcType(Types.NCHAR, "NCHAR", JdbcTypeCategoryEnum.TEXTUAL);
+        }
+    }
+
     private static class HybrisMSSqlModelReader extends MSSqlModelReader {
         private static final String TABLE_NAME_KEY = "TABLE_NAME";
 
-        private final Set<String> tablesToExclude = Set.of("trace_xe_action_map", "trace_xe_event_map");
+        private final Set<String> tablesToExclude = Set.of("trace_xe_action_map", "trace_xe_event_map",
+                "change_streams_partition_scheme", "change_streams_destination_type");
 
         public HybrisMSSqlModelReader(Platform platform) {
             super(platform);
         }
 
         protected Table readTable(DatabaseMetaDataWrapper metaData, Map values) throws SQLException {
-            return this.tableShouldBeExcluded(values) ? null : super.readTable(metaData, values);
+            if (this.tableShouldBeExcluded(values)) {
+                LOG.debug("Table `{}` is excluded from schema read", values.get("TABLE_NAME"));
+
+                return null;
+            }
+
+            try {
+                return super.readTable(metaData, values);
+            } catch (Exception e) {
+                LOG.error(
+                        "Error when reading schema details for table `{}` (catalog: {}, schema: {}, type: {}), message: {}",
+                        values.get("TABLE_NAME"), values.get("TABLE_CAT"), values.get("TABLE_SCHEM"),
+                        values.get("TABLE_TYPE"), e.getMessage());
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Table schema read error occurred", e);
+                }
+            }
+
+            return null;
         }
 
         private boolean tableShouldBeExcluded(Map values) {
