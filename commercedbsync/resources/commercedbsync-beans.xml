@@ -81,9 +81,6 @@
         <property name="commonTableName" type="String">
             <description>No prefix, no type system suffix</description>
         </property>
-        <property name="tableName" type="String">
-            <description>No prefix, with type system suffix</description>
-        </property>
         <property name="fullTableName" type="String">
             <description>With prefix, with type system suffix</description>
         </property>

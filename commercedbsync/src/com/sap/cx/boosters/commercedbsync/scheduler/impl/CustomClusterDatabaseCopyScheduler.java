@@ -116,6 +116,9 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(ownNodeId, context.getMigrationId(),
                     context.getPropertyOverrideMap());
             eventService.publishEvent(event);
+        } else {
+            throw new IllegalStateException(
+                    "No matching tables found to be copied. Please review configuration and adjust inclusions/exclusions if necessary");
         }
     }
 
@@ -339,8 +342,12 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 if (status.isFailed()) {
                     endState = "FAILED";
                 }
-                LOG.info("Migration {} ({}) in {}", endState, status.getStatus(), DurationFormatUtils
-                        .formatDurationHMS(Duration.between(status.getStart(), status.getEnd()).toMillis()));
+                if (status.getStart() != null && status.getEnd() != null) {
+                    LOG.info("Migration {} ({}) in {}", endState, status.getStatus(), DurationFormatUtils
+                            .formatDurationHMS(Duration.between(status.getStart(), status.getEnd()).toMillis()));
+                } else {
+                    LOG.info("Migration {} ({})", endState, status.getStatus());
+                }
             }
         }
 

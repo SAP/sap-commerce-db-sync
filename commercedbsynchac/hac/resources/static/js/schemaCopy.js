@@ -31,11 +31,7 @@ $(document).ready(function() {
 	$('#buttonMigrateSchema').prop('disabled', true);
 
 	$('#checkboxAccept').change(function() {
-       if($(this).is(":checked")) {
-	      $('#buttonMigrateSchema').prop('disabled', false);
-       } else {
-          $('#buttonMigrateSchema').prop('disabled', true);
-       }
+      $('#buttonMigrateSchema').prop('disabled', !$(this).is(":checked"));
     });
 
 	// tab 1
@@ -68,6 +64,8 @@ function migrateSchemaPreview()
 	sourceSchemaDiffTable.fnClearTable();
 
 	$('#buttonMigrateSchemaPreview').html(buttonMigrateSchemaPreview + ' ' +  hac.global.getSpinnerImg());
+    $('#buttonMigrateSchemaPreview').prop('disabled', true);
+    $('#buttonGenerateSchemaScript').prop('disabled', true);
 
     const token = $("meta[name='_csrf']").attr("content");
     const url = $('#buttonMigrateSchemaPreview').attr('data-url');
@@ -83,6 +81,8 @@ function migrateSchemaPreview()
 			debug.log(data);
 
 			$('#buttonMigrateSchemaPreview').html(buttonMigrateSchemaPreview);
+            $('#buttonMigrateSchemaPreview').prop('disabled', false);
+            $('#buttonGenerateSchemaScript').prop('disabled', false);
 
 			if(data.target.results.length > 0) {
 			    targetSchemaDiffTable.fnAddData(data.target.results);
@@ -101,8 +101,11 @@ function migrateSchemaPreview()
 function generateSchemaScript()
 {
 	$('#buttonGenerateSchemaScript').html(buttonGenerateSchemaScript + ' ' +  hac.global.getSpinnerImg());
+    $('#buttonGenerateSchemaScript').prop('disabled', true);
+    $('#buttonMigrateSchemaPreview').prop('disabled', true);
     $("#checkboxAccept").prop("checked", false);
-	$('#buttonMigrateSchema').prop('disabled', true);
+    $('#buttonMigrateSchema').prop('disabled', true);
+    sqlQueryEditor.setValue('');
 
     var token = $("meta[name='_csrf']").attr("content");
     var url = $('#buttonGenerateSchemaScript').attr('data-url');
@@ -115,9 +118,11 @@ function generateSchemaScript()
             'X-CSRF-TOKEN' : token
         },
 		success: function(data) {
-            hac.global.notify('Duplicate tables may have been found. Please review generated schema script carefully.');
+            hac.global.notify('Please review generated schema script carefully!');
 			sqlQueryEditor.setValue(data);
 		    $('#buttonGenerateSchemaScript').html(buttonGenerateSchemaScript);
+            $('#buttonGenerateSchemaScript').prop('disabled', false);
+            $('#buttonMigrateSchemaPreview').prop('disabled', false);
 		},
 		error: hac.global.err
 	});

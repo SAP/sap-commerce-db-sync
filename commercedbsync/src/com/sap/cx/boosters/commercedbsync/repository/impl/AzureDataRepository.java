@@ -18,6 +18,7 @@ import javax.sql.DataSource;
 
 import com.google.common.base.Joiner;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,8 +149,16 @@ public class AzureDataRepository extends AbstractDataRepository {
 
     @Override
     protected String createAllTableNamesQuery() {
-        return String.format("SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s'",
-                getDataSourceConfiguration().getSchema());
+        final StringBuilder sqlBuilder = new StringBuilder(
+                "SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '")
+                        .append(getDataSourceConfiguration().getSchema()).append("'");
+
+        if (StringUtils.isNotEmpty(getDataSourceConfiguration().getTablePrefix())) {
+            sqlBuilder.append(" AND TABLE_NAME LIKE '").append(getDataSourceConfiguration().getTablePrefix())
+                    .append("%'");
+        }
+
+        return sqlBuilder.toString();
     }
 
     @Override

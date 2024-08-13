@@ -6,9 +6,12 @@
 
 package com.sap.cx.boosters.commercedbsync.profile.impl;
 
+import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+
+import java.util.Optional;
 
 /**
  * Contains the JDBC DataSource Configuration
@@ -120,7 +123,9 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         this.schema = getProfileProperty(profile, configuration, "db.schema");
         this.catalog = getProfileProperty(profile, configuration, "db.catalog");
         this.tablePrefix = getProfileProperty(profile, configuration, "db.tableprefix");
-        this.typeSystemName = getProfileProperty(profile, configuration, "db.typesystemname");
+        this.typeSystemName = Optional
+                .ofNullable(getProfileProperty(profile, configuration, "db.typesystemname", false))
+                .map(StringUtils::trimToNull).orElse(PersistenceInformation.DEFAULT_TYPE_SYSTEM_NAME);
         this.typeSystemSuffix = getProfileProperty(profile, configuration, "db.typesystemsuffix");
         this.maxActive = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.active.max"));
         this.maxIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.max"));

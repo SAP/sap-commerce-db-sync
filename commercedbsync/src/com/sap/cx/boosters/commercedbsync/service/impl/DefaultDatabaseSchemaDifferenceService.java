@@ -349,7 +349,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         logMigrationContext(context);
         final SchemaDifference schemaDifference = new SchemaDifference(rightRepository.asDatabase(),
                 rightRepository.getDataSourceConfiguration().getTablePrefix());
-        final Set<TableCandidate> leftDatabaseTables = getTables(context, leftRepository, leftCandidates);
+        final Set<TableCandidate> leftDatabaseTables = getTables(context, leftCandidates);
         LOG.info("LEFT Repo = " + leftRepository.getDatabaseProvider().getDbName());
         LOG.info("RIGHT Repo = " + rightRepository.getDatabaseProvider().getDbName());
 
@@ -416,8 +416,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return translatedTableName + leftCandidate.getAdditionalSuffix();
     }
 
-    private Set<TableCandidate> getTables(final MigrationContext context, final DataRepository repository,
-            final Set<TableCandidate> candidates) {
+    private Set<TableCandidate> getTables(final MigrationContext context, final Set<TableCandidate> candidates) {
         return candidates.stream().filter(c -> dataCopyTableFilter.filter(context).test(c.getCommonTableName()))
                 .collect(Collectors.toSet());
     }

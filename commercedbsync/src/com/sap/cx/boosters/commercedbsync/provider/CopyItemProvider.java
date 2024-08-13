@@ -17,7 +17,7 @@ import java.util.Set;
  */
 public interface CopyItemProvider {
     String TYPE_SYSTEM_PROPS_TABLE = "typesystemprops";
-    String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributeDescriptors", "collectiontypes",
+    String[] TYPE_SYSTEM_RELATED_TYPES = new String[]{"atomictypes", "attributedescriptors", "collectiontypes",
             "composedtypes", "enumerationvalues", "maptypes", TYPE_SYSTEM_PROPS_TABLE};
     Set<CopyContext.DataCopyItem> get(MigrationContext context) throws Exception;
 
