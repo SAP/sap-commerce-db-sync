@@ -8,7 +8,6 @@ package com.sap.cx.boosters.commercedbsync.processors.impl;
 
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.processors.MigrationPostProcessor;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
 import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
@@ -30,10 +29,9 @@ import static com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider.TYPE_
 /**
  * <b>Deployments table adjustment post processor</b> <br/>
  * <br/>
- * In case of selecting custom target database tables prefix
- * (`migration.ds.target.db.tableprefix`), or when migrated type system is
- * "above" first one (with suffix, via
- * `migration.ds.target.db.typesystemsuffix`), it is mandatory to update
+ * In case migrated type system suffix
+ * (`migration.ds.source.db.typesystemsuffix`) is different from target suffix
+ * (`migration.ds.target.db.typesystemsuffix`), it is mandatory to update
  * references in `ydeployments` entires, to point to proper database tables,
  * instead of original values migrated from source system
  */
@@ -46,8 +44,6 @@ public class UpdateYDeploymentsPostProcessor implements MigrationPostProcessor {
     private static final String ADJUST_DATA_TABLE_STATEMENT = "UPDATE %s SET TableName = ? WHERE LOWER(TableName) = ? AND LOWER(TypeSystemName) = ?";
     private static final String ADJUST_PROPS_TABLE_STATEMENT = "UPDATE %s SET PropsTableName = ? WHERE LOWER(PropsTableName) = ? AND LOWER(TypeSystemName) = ?";
     private static final String GET_TABLE_STATEMENT = "SELECT DISTINCT(PropsTableName) FROM %s WHERE LOWER(PropsTableName) = ?";
-    private static final String GET_TABLES_NAMES_STATEMENT = "SELECT Name, TableName, PropsTableName FROM %s WHERE LOWER(TypeSystemName) = ?";
-    private static final String ADJUST_TABLES_NAMES_STATEMENT = "UPDATE %s SET TableName = ?, PropsTableName = ? WHERE Name = ? AND LOWER(TypeSystemName) = ?";
 
     private static final List<String> TYPE_SYSTEM_DATA_TABLES = Stream.of(CopyItemProvider.TYPE_SYSTEM_RELATED_TYPES)
             .filter(t -> !TYPE_SYSTEM_PROPS_TABLE.equalsIgnoreCase(t)).collect(Collectors.toList());
@@ -117,37 +113,6 @@ public class UpdateYDeploymentsPostProcessor implements MigrationPostProcessor {
                 LOG.error("Error fetching data for post processor (SQLException) ", e);
             }
 
-            if (!StringUtils.equalsIgnoreCase(sourceRepository.getDataSourceConfiguration().getTablePrefix(),
-                    targetRepository.getDataSourceConfiguration().getTablePrefix())) {
-                try (PreparedStatement statement = connection
-                        .prepareStatement(String.format(GET_TABLES_NAMES_STATEMENT, deploymentsTableName));
-                        PreparedStatement updateStatement = connection
-                                .prepareStatement(String.format(ADJUST_TABLES_NAMES_STATEMENT, deploymentsTableName))) {
-                    statement.setString(1, typeSystemName.toLowerCase());
-
-                    try (ResultSet rs = statement.executeQuery()) {
-                        while (rs.next()) {
-                            final String name = rs.getString(1);
-
-                            updateStatement.setString(1,
-                                    getPrefixedTableName(targetRepository, rs.getString(2), useUpperCaseTableName));
-                            updateStatement.setString(2,
-                                    getPrefixedTableName(targetRepository, rs.getString(3), useUpperCaseTableName));
-                            updateStatement.setString(3, name);
-                            updateStatement.setString(4, typeSystemName.toLowerCase());
-
-                            if (updateStatement.executeUpdate() > 0) {
-                                LOG.debug(
-                                        "Updated `{}` table, with prefixed deployment table names for: `{}` in type system: {}",
-                                        deploymentsTableName, name, typeSystemName);
-                            }
-                        }
-                    }
-                } catch (SQLException e) {
-                    LOG.error("Error while executing post processor (SQLException) ", e);
-                }
-            }
-
             LOG.info("Finished `{}` table adjustments for type system: {}", deploymentsTableName, typeSystemName);
         } catch (Exception e) {
             LOG.error("Error executing post processor", e);
@@ -156,12 +121,6 @@ public class UpdateYDeploymentsPostProcessor implements MigrationPostProcessor {
 
     private String getTypeSystemTableName(DataRepository repository, String tableName, boolean upperCase) {
         tableName += StringUtils.trimToEmpty(repository.getDataSourceConfiguration().getTypeSystemSuffix());
-
-        return upperCase ? tableName.toUpperCase() : tableName.toLowerCase();
-    }
-
-    private String getPrefixedTableName(DataRepository repository, String tableName, boolean upperCase) {
-        tableName = StringUtils.trimToEmpty(repository.getDataSourceConfiguration().getTablePrefix()) + tableName;
 
         return upperCase ? tableName.toUpperCase() : tableName.toLowerCase();
     }
@@ -180,11 +139,13 @@ public class UpdateYDeploymentsPostProcessor implements MigrationPostProcessor {
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        final DataSourceConfiguration configuration = context.getMigrationContext().getDataTargetRepository()
-                .getDataSourceConfiguration();
+        final String srcTypeSystemSuffix = context.getMigrationContext().getDataSourceRepository()
+                .getDataSourceConfiguration().getTypeSystemSuffix();
+        final String tgtTypeSystemSuffix = context.getMigrationContext().getDataTargetRepository()
+                .getDataSourceConfiguration().getTypeSystemSuffix();
 
         try {
-            return !StringUtils.isAllEmpty(configuration.getTablePrefix(), configuration.getTypeSystemSuffix())
+            return !srcTypeSystemSuffix.equals(tgtTypeSystemSuffix)
                     && databaseCopyTaskRepository.getAllTasks(context).stream().anyMatch(
                             task -> StringUtils.containsIgnoreCase(task.getTargettablename(), DEPLOYMENTS_TABLE));
         } catch (Exception e) {

@@ -51,3 +51,38 @@ button[disabled] {
   cursor: default;
   opacity: 0.5;
 }
+
+button.control-button {
+	float:left;
+}
+
+.placeholder {
+	color: dimgrey;
+}
+
+.status dd {
+	font-size: 1rem;
+}
+
+.completed {
+	color: green;
+}
+
+.failed {
+	color: red;
+}
+
+#schemaPreviewSummary .total, #schemaPreviewSummary .failed, #schemaPreviewSummary .completed {
+	font-weight: bold;
+}
+
+#schemaPreviewStatus .completed {
+	color: green;
+	text-transform: uppercase;
+	font-weight: bolder;
+}
+
+#schemaPreviewStatus .failed {
+	text-transform: uppercase;
+	font-weight: bolder;
+}

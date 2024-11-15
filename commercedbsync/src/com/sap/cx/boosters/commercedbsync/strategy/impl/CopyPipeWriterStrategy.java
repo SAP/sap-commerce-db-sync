@@ -6,6 +6,7 @@
 
 package com.sap.cx.boosters.commercedbsync.strategy.impl;
 
+import com.sap.cx.boosters.commercedbsync.anonymizer.AnonymizerConfigurator;
 import com.sap.cx.boosters.commercedbsync.concurrent.DataWorkerExecutor;
 import com.sap.cx.boosters.commercedbsync.concurrent.MaybeFinished;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
@@ -50,12 +51,16 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
 
     private final DataThreadPoolFactory dataWriteWorkerPoolFactory;
 
+    private final AnonymizerConfigurator anonymizerConfigurator;
+
     private static final String LP_SUFFIX = "lp";
 
-    public CopyPipeWriterStrategy(DatabaseCopyTaskRepository taskRepository,
-            DataThreadPoolFactory dataWriteWorkerPoolFactory) {
+    public CopyPipeWriterStrategy(final DatabaseCopyTaskRepository taskRepository,
+            final DataThreadPoolFactory dataWriteWorkerPoolFactory,
+            final AnonymizerConfigurator anonymizerConfigurator) {
         this.taskRepository = taskRepository;
         this.dataWriteWorkerPoolFactory = dataWriteWorkerPoolFactory;
+        this.anonymizerConfigurator = anonymizerConfigurator;
     }
 
     @Override
@@ -63,8 +68,10 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
         final DataBaseProvider dbProvider = context.getMigrationContext().getDataTargetRepository()
                 .getDatabaseProvider();
         String targetTableName = item.getTargetItem();
+        String sourceTableName = item.getSourceItem()
+                + (item.getChunkData() != null ? item.getChunkData().getCurrentChunk() : "");
         PerformanceRecorder performanceRecorder = context.getPerformanceProfiler()
-                .createRecorder(PerformanceCategory.DB_WRITE, targetTableName);
+                .createRecorder(PerformanceCategory.DB_WRITE, sourceTableName);
         performanceRecorder.start();
         Set<String> excludedColumns = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (context.getMigrationContext().getExcludedColumns().containsKey(targetTableName)) {
@@ -177,7 +184,15 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
             }
         }
         if (context.getMigrationContext().isTruncateEnabled()) {
-            if (!context.getMigrationContext().getTruncateExcludedTables().contains(targetTableName)) {
+            boolean tableAlreadyTruncated = false;
+            if (item.getChunkData() != null) {
+                tableAlreadyTruncated = taskRepository.findInAllPipelines(context, item,
+                        databaseCopyTask -> databaseCopyTask.isTruncated());
+                LOG.info("Table " + item.getTargetItem() + " " + item.getChunkData().getCurrentChunk() + "|"
+                        + tableAlreadyTruncated);
+            }
+            if (!context.getMigrationContext().getTruncateExcludedTables().contains(targetTableName)
+                    && !tableAlreadyTruncated) {
                 assertTruncateAllowed(context);
                 context.getMigrationContext().getDataTargetRepository().truncateTable(targetTableName);
                 taskRepository.markTaskTruncated(context, item);
@@ -289,7 +304,7 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
         if (ctx.isDeletionEnabled()) {
             return new DataDeleteWriterTask(dwc, dataSet);
         } else {
-            return new CopyPipeWriterTask(dwc, dataSet);
+            return new CopyPipeWriterTask(dwc, dataSet, anonymizerConfigurator.getConfiguration());
         }
     }
 }

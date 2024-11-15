@@ -19,6 +19,16 @@ import java.time.OffsetDateTime;
 public interface DatabaseMigrationService {
 
     /**
+     * Preparation activities
+     *
+     * @param context
+     *            Migration configuration
+     * @throws Exception
+     *             if anything goes wrong during preparation activities
+     */
+    void prepareMigration(MigrationContext context) throws Exception;
+
+    /**
      * Asynchronously start a new database migration
      *
      * @param context

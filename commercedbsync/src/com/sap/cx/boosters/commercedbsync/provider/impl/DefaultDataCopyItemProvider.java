@@ -11,7 +11,7 @@ import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
 import de.hybris.bootstrap.ddl.DataBaseProvider;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.TableCandidate;
 import com.sap.cx.boosters.commercedbsync.TypeSystemTable;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
@@ -53,7 +53,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
                 for (final TableCandidate source : tablesCandidates) {
                     LOG.debug("$$Table Common Name = " + source.getCommonTableName() + ", Base Table = "
                             + source.getBaseTableName() + ", Suffix = " + source.getAdditionalSuffix()
-                            + ", Full Name = " + source.getFullTableName() + ", Table Name = " + source.getTableName());
+                            + ", Table Name = " + source.getFullTableName());
                 }
                 LOG.debug("---------END------," + debugtext);
             }
@@ -92,8 +92,8 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
         return targetRepository.getAllTableNames().stream()
                 .filter(n -> prefix == null || StringUtils.startsWithIgnoreCase(n, prefix))
-                .map(n -> StringUtils.removeStartIgnoreCase(n, prefix))
-                .filter(n -> !isNonMatchingTypesystemTable(targetRepository, n))
+                .filter(n -> !isNonMatchingTypesystemTable(targetRepository,
+                        StringUtils.removeStartIgnoreCase(n, prefix)))
                 .map(n -> createTableCandidate(targetRepository, n))
                 .collect(Collectors.toCollection(() -> new TreeSet<>(tableCandidateComparator)));
     }
@@ -127,26 +127,27 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
         LOG.debug("$$ALL TABLES...getTableCandidates " + allTableNames);
         final Set<TableCandidate> tableCandidates = new TreeSet<>(tableCandidateComparator);
+        final String tablePrefix = StringUtils.trimToEmpty(repository.getDataSourceConfiguration().getTablePrefix());
 
         // add meta tables
-        tableCandidates.add(createTableCandidate(repository, CommercedbsyncConstants.DEPLOYMENTS_TABLE));
-        tableCandidates.add(createTableCandidate(repository, "aclentries"));
-        tableCandidates.add(createTableCandidate(repository, "configitems"));
-        tableCandidates.add(createTableCandidate(repository, "numberseries"));
-        tableCandidates.add(createTableCandidate(repository, "metainformations"));
+        tableCandidates.add(createTableCandidate(repository, CommercedbsyncConstants.DEPLOYMENTS_TABLE, tablePrefix));
+        tableCandidates.add(createTableCandidate(repository, "aclentries", tablePrefix));
+        tableCandidates.add(createTableCandidate(repository, "configitems", tablePrefix));
+        tableCandidates.add(createTableCandidate(repository, "numberseries", tablePrefix));
+        tableCandidates.add(createTableCandidate(repository, "metainformations", tablePrefix));
 
         // add tables listed in "ydeployments"
         final Set<TypeSystemTable> allTypeSystemTables = repository.getAllTypeSystemTables();
         allTypeSystemTables.forEach(t -> {
-            tableCandidates.add(createTableCandidate(repository, t.getTableName()));
+            tableCandidates.add(createTableCandidate(repository, t.getTableName(), tablePrefix));
 
             final String propsTableName = t.getPropsTableName();
 
             if (StringUtils.isNotEmpty(propsTableName)) {
-                tableCandidates.add(createTableCandidate(repository, t.getPropsTableName()));
+                tableCandidates.add(createTableCandidate(repository, t.getPropsTableName(), tablePrefix));
             }
 
-            final TableCandidate lpTable = createTableCandidate(repository, t.getTableName() + LP_SUFFIX);
+            final TableCandidate lpTable = createTableCandidate(repository, t.getTableName() + LP_SUFFIX, tablePrefix);
 
             if (allTableNames.stream().anyMatch(lpTable.getFullTableName()::equalsIgnoreCase)) {
                 LOG.debug("LP table Match... " + lpTable.getFullTableName());
@@ -154,7 +155,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
             }
 
             if (shouldMigrateAuditTable(context, t.getAuditTableName())) {
-                final TableCandidate auditTable = createTableCandidate(repository, t.getAuditTableName());
+                final TableCandidate auditTable = createTableCandidate(repository, t.getAuditTableName(), tablePrefix);
 
                 if (allTableNames.contains(auditTable.getFullTableName())) {
                     tableCandidates.add(auditTable);
@@ -171,26 +172,38 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
         return tableCandidates;
     }
 
+    private TableCandidate createTableCandidate(final DataRepository repository, final String tableName,
+            String tableNamePrefix) {
+        return createTableCandidate(repository, tableNamePrefix + tableName);
+    }
+
     private TableCandidate createTableCandidate(final DataRepository repository, final String tableName) {
         final TableCandidate candidate = new TableCandidate();
 
         final String additionalSuffix = getAdditionalSuffix(tableName, repository.getDatabaseProvider());
         final String tableNameWithoutAdditionalSuffix = getTableNameWithoutAdditionalSuffix(tableName,
                 additionalSuffix);
-        final String baseTableName = getTableNameWithoutTypeSystemSuffix(tableNameWithoutAdditionalSuffix,
-                repository.getDataSourceConfiguration().getTypeSystemSuffix());
-        final boolean isTypeSystemRelatedTable = isTypeSystemRelatedTable(baseTableName);
+
+        String baseTableName = getTableNameWithoutPrefix(tableNameWithoutAdditionalSuffix,
+                repository.getDataSourceConfiguration().getTablePrefix());
+        final String typeSystemSuffix = repository.getDataSourceConfiguration().getTypeSystemSuffix();
+        final boolean isTypeSystemRelatedTable = isTypeSystemRelatedTable(baseTableName, typeSystemSuffix);
+
+        if (isTypeSystemRelatedTable) {
+            baseTableName = getTableNameWithoutTypeSystemSuffix(baseTableName, typeSystemSuffix);
+        }
+
         candidate.setCommonTableName(baseTableName + additionalSuffix);
-        candidate.setTableName(tableName);
-        candidate.setFullTableName(repository.getDataSourceConfiguration().getTablePrefix() + tableName);
+        candidate.setFullTableName(tableName);
         candidate.setAdditionalSuffix(additionalSuffix);
         candidate.setBaseTableName(baseTableName);
         candidate.setTypeSystemRelatedTable(isTypeSystemRelatedTable);
         return candidate;
     }
 
-    private boolean isTypeSystemRelatedTable(final String tableName) {
-        return Arrays.stream(TYPE_SYSTEM_RELATED_TYPES).anyMatch(tableName::equalsIgnoreCase);
+    private boolean isTypeSystemRelatedTable(final String tableName, final String typeSystemSuffix) {
+        return Arrays.stream(TYPE_SYSTEM_RELATED_TYPES)
+                .anyMatch(name -> StringUtils.equalsIgnoreCase(tableName, name + typeSystemSuffix));
     }
 
     private String getAdditionalSuffix(final String tableName, final DataBaseProvider dataBaseProvider) {
@@ -210,6 +223,10 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
     private String getTableNameWithoutAdditionalSuffix(final String tableName, final String suffix) {
         return StringUtils.removeEnd(tableName, suffix);
+    }
+
+    private String getTableNameWithoutPrefix(final String tableName, final String prefix) {
+        return StringUtils.removeStartIgnoreCase(tableName, prefix);
     }
 
     private Set<CopyContext.DataCopyItem> createCopyItems(final MigrationContext context,

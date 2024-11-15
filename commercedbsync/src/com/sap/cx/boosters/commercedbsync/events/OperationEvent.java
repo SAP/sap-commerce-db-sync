@@ -11,18 +11,18 @@ import de.hybris.platform.servicelayer.event.PublishEventContext;
 import de.hybris.platform.servicelayer.event.events.AbstractEvent;
 
 /**
- * ClusterAwareEvent to notify other Nodes to start the migration
+ * ClusterAwareEvent to notify other Nodes to start the operation
  */
-public abstract class CopyEvent extends AbstractEvent implements ClusterAwareEvent {
+public abstract class OperationEvent extends AbstractEvent implements ClusterAwareEvent {
 
     private final int sourceNodeId;
 
-    private final String migrationId;
+    private final String operationId;
 
-    public CopyEvent(final int sourceNodeId, final String migrationId) {
+    public OperationEvent(final int sourceNodeId, final String operationId) {
         super();
         this.sourceNodeId = sourceNodeId;
-        this.migrationId = migrationId;
+        this.operationId = operationId;
     }
 
     @Override
@@ -38,10 +38,10 @@ public abstract class CopyEvent extends AbstractEvent implements ClusterAwareEve
     }
 
     /**
-     * @return the migrationId
+     * @return the operationId
      */
-    public String getMigrationId() {
-        return migrationId;
+    public String getOperationId() {
+        return operationId;
     }
 
 }

@@ -16,7 +16,6 @@ import javax.sql.DataSource;
 
 public class DefaultMigrationDataSourceFactory extends AbstractMigrationDataSourceFactory {
 
-    // TODO: resource leak: DataSources are never closed
     @Override
     public DataSource create(final DataSourceConfiguration dataSourceConfiguration) {
         HikariConfig config = new HikariConfig();
@@ -27,6 +26,8 @@ public class DefaultMigrationDataSourceFactory extends AbstractMigrationDataSour
         config.setMaximumPoolSize(dataSourceConfiguration.getMaxActive());
         config.setMinimumIdle(dataSourceConfiguration.getMinIdle());
         config.setRegisterMbeans(true);
+        config.setMaxLifetime(dataSourceConfiguration.getMaxLifetime());
+        config.setSchema(dataSourceConfiguration.getSchema());
         return new HikariDataSource(config);
     }
 

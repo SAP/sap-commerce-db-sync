@@ -9,7 +9,7 @@ package com.sap.cx.boosters.commercedbsync.events;
 /**
  * * ClusterAwareEvent to signal completion of the assigned copy ta
  */
-public class CopyCompleteEvent extends CopyEvent {
+public class CopyCompleteEvent extends OperationEvent {
 
     private final Boolean copyResult = false;
 

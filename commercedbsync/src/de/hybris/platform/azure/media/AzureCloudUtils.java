@@ -39,11 +39,10 @@ public class AzureCloudUtils {
     }
 
     private static String getTenantPrefix() {
-        // return "sys-" +
-        // Registry.getCurrentTenantNoFallback().getTenantID().toLowerCase();
         String defaultPrefix = Registry.getCurrentTenantNoFallback().getTenantID();
-        String prefix = toValidPrefixName(Config.getString("db.tableprefix", defaultPrefix));
-        return "sys-" + prefix.toLowerCase();
+        String prefix = toValidPrefixName(Config.getString("migration.media.container.prefix", defaultPrefix));
+        String suffix = toValidPrefixName(Config.getString("migration.media.container.suffix", ""));
+        return "sys-" + prefix.toLowerCase() + (StringUtils.isNotEmpty(suffix) ? HYPHEN + suffix : "");
     }
 
     public static boolean hasValidMediaFolderName(final MediaStorageConfigService.MediaFolderConfig config) {

@@ -8,7 +8,7 @@ package com.sap.cx.boosters.commercedbsync.scheduler.impl;
 
 import com.google.common.collect.ImmutableList;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopySchedulerAlgorithm;
+import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseOperationSchedulerAlgorithm;
 import de.hybris.platform.cluster.PingBroadcastHandler;
 import de.hybris.platform.servicelayer.cluster.ClusterService;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class RoundRobinClusterSchedulerAlgorithm implements DatabaseCopySchedulerAlgorithm {
+public class RoundRobinClusterSchedulerAlgorithm implements DatabaseOperationSchedulerAlgorithm {
 
     private static final Logger LOG = LoggerFactory.getLogger(RoundRobinClusterSchedulerAlgorithm.class);
 

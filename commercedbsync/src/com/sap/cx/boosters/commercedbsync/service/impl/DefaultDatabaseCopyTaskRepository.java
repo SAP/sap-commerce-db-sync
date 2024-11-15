@@ -15,6 +15,7 @@ import com.sap.cx.boosters.commercedbsync.performance.PerformanceCategory;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceRecorder;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.service.DataCopyChunk;
 import de.hybris.platform.servicelayer.cluster.ClusterService;
 import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.MigrationProgress;
@@ -45,6 +46,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.function.Predicate;
 
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MIGRATION_TABLESPREFIX;
 
@@ -78,11 +80,11 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public synchronized void createMigrationStatus(CopyContext context) throws Exception {
+    public synchronized void createMigrationStatus(CopyContext context, int numberOfItems) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYSTATUS + " (migrationId, total) VALUES (?, ?)";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, context.getMigrationId());
-            stmt.setObject(2, context.getCopyItems().size());
+            stmt.setObject(2, numberOfItems);
             stmt.executeUpdate();
         }
     }
@@ -183,7 +185,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     public synchronized void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount,
             int targetNode) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYTASKS
-                + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, batchsize, lastupdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, batchsize, lastupdate, chunked, chunksize, chunknumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, targetNode);
             stmt.setObject(2, copyItem.getPipelineName());
@@ -194,6 +196,9 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             stmt.setObject(7, sourceRowCount);
             stmt.setObject(8, copyItem.getBatchSize());
             setTimestamp(stmt, 9, now());
+            stmt.setObject(10, copyItem.getChunkData() != null ? "1" : "0");
+            stmt.setObject(11, (copyItem.getChunkData() != null ? copyItem.getChunkData().getChunkSize() : null));
+            stmt.setObject(12, (copyItem.getChunkData() != null ? copyItem.getChunkData().getCurrentChunk() : null));
             stmt.executeUpdate();
         }
     }
@@ -307,6 +312,23 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
                             "Invalid scheduler table, cannot have same pipeline multiple times.");
                 }
                 return databaseCopyTasks.stream().findFirst();
+            }
+        }
+    }
+
+    @Override
+    public boolean findInAllPipelines(CopyContext context, CopyContext.DataCopyItem dataCopyItem,
+            Predicate<DatabaseCopyTask> p) throws Exception {
+        String sql = "SELECT * FROM " + TABLECOPYTASKS
+                + " WHERE migrationid=? AND sourcetablename=? AND targettablename=?";
+        try (Connection connection = getConnection(context);
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setObject(1, context.getMigrationId());
+            stmt.setObject(2, dataCopyItem.getSourceItem());
+            stmt.setObject(3, dataCopyItem.getTargetItem());
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                Set<DatabaseCopyTask> databaseCopyTasks = convertToTask(resultSet);
+                return databaseCopyTasks.stream().anyMatch(p);
             }
         }
     }
@@ -426,12 +448,13 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     public synchronized void markTaskTruncated(CopyContext context, CopyContext.DataCopyItem copyItem)
             throws Exception {
         String sql = "UPDATE " + TABLECOPYTASKS
-                + " SET truncated = '1' WHERE targetnodeid=? AND migrationId=? AND pipelinename=? ";
+                + " SET truncated = '1' WHERE targetnodeid=? AND migrationId=? AND sourcetablename=? AND targettablename=? ";
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, getTargetNodeId());
             stmt.setObject(2, context.getMigrationId());
-            stmt.setObject(3, copyItem.getPipelineName());
+            stmt.setObject(3, copyItem.getSourceItem());
+            stmt.setObject(4, copyItem.getTargetItem());
             stmt.executeUpdate();
         }
     }
@@ -529,6 +552,14 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             copyTask.setKeyColumns(Splitter.on(",")
                     .splitToList(StringUtils.defaultIfEmpty(rs.getString("keycolumns"), StringUtils.EMPTY)));
             setBatchSizeSafely(copyTask, rs);
+            copyTask.setBatchsize(rs.getInt("batchsize"));
+            Boolean chunked = rs.getBoolean("chunked");
+            if (chunked) {
+                DataCopyChunk chunk = new DataCopyChunk();
+                chunk.setChunkSize(rs.getLong("chunksize"));
+                chunk.setCurrentChunk(rs.getInt("chunknumber"));
+                copyTask.setChunk(chunk);
+            }
             copyTasks.add(copyTask);
         }
         return copyTasks;

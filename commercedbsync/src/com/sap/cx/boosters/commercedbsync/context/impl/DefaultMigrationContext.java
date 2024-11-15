@@ -6,41 +6,29 @@
 
 package com.sap.cx.boosters.commercedbsync.context.impl;
 
+import com.google.common.base.Splitter;
+import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfigurationFactory;
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.lang.StringUtils;
+
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.StringUtils;
-
-import com.google.common.base.Splitter;
-import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfigurationFactory;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
-
 public class DefaultMigrationContext implements MigrationContext {
+    protected final Configuration configuration;
     private final DataRepository dataSourceRepository;
     private final DataRepository dataTargetRepository;
     protected boolean deletionEnabled;
     protected boolean lpTableMigrationEnabled;
-
-    protected final Configuration configuration;
-
     protected Set<String> tableViewNames;
 
     public DefaultMigrationContext(final DataRepositoryFactory dataRepositoryFactory,
@@ -55,7 +43,6 @@ public class DefaultMigrationContext implements MigrationContext {
         this.dataSourceRepository = dataRepositoryFactory.create(this, inputDataSourceConfigurations);
         this.dataTargetRepository = dataRepositoryFactory.create(this, outputDataSourceConfigurations);
     }
-
     private void ensureDefaultLocale(Configuration configuration) {
         String localeProperty = configuration.getString(CommercedbsyncConstants.MIGRATION_LOCALE_DEFAULT);
         Locale locale = Locale.forLanguageTag(localeProperty);
@@ -80,6 +67,11 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public boolean isSchemaMigrationEnabled() {
         return getBooleanProperty(CommercedbsyncConstants.MIGRATION_SCHEMA_ENABLED);
+    }
+
+    @Override
+    public boolean isAnonymizerEnabled() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_ANONYMIZER_ENABLED);
     }
 
     @Override
@@ -117,6 +109,18 @@ public class DefaultMigrationContext implements MigrationContext {
         String tblConfKey = CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE.replace("{table}",
                 tableName);
         return configuration.getInteger(tblConfKey, getReaderBatchSize());
+    }
+
+    @Override
+    public long getClusterChunkSize() {
+        return getLongProperty(CommercedbsyncConstants.MIGRATION_CLUSTER_CHUNK_SIZE);
+    }
+
+    @Override
+    public Long getClusterChunkSize(final String tableName) {
+        String tblConfKey = CommercedbsyncConstants.MIGRATION_CLUSTER_CHUNK_SIZE_FOR_TABLE.replace("{table}",
+                tableName);
+        return configuration.getLong(tblConfKey, getClusterChunkSize());
     }
 
     @Override
@@ -250,6 +254,11 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public boolean isSchedulerResumeEnabled() {
         return getBooleanProperty(CommercedbsyncConstants.MIGRATION_SCHEDULER_RESUME_ENABLED);
+    }
+
+    @Override
+    public boolean isMssqlUpdateStatisticsEnabled() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_MSSQL_UPDATE_STATISTICS_ENABLED);
     }
 
     @Override
@@ -443,6 +452,7 @@ public class DefaultMigrationContext implements MigrationContext {
 
     @Override
     public String getViewColumnPrefixFor(final String tableName) {
-        return configuration.getString("migration.data.view.t." + tableName + ".columnPrefix");
+        return configuration
+                .getString(CommercedbsyncConstants.MIGRATION_DATA_VIEW_TBL_COL_PREFIX.replace("{table}", tableName));
     }
 }

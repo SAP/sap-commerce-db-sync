@@ -6,9 +6,12 @@
 
 package com.sap.cx.boosters.commercedbsync.profile.impl;
 
+import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
+
+import java.util.Optional;
 
 /**
  * Contains the JDBC DataSource Configuration
@@ -30,6 +33,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     private int maxIdle;
     private int minIdle;
     private boolean removedAbandoned;
+    private long maxLifeTime;
 
     public DefaultDataSourceConfiguration(Configuration configuration, String profile) {
         this.profile = profile;
@@ -111,6 +115,11 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         return removedAbandoned;
     }
 
+    @Override
+    public long getMaxLifetime() {
+        return maxLifeTime;
+    }
+
     protected void load(Configuration configuration, String profile) {
         this.driver = getProfileProperty(profile, configuration, "db.driver");
         this.connectionString = getProfileProperty(profile, configuration, "db.url");
@@ -120,13 +129,16 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         this.schema = getProfileProperty(profile, configuration, "db.schema");
         this.catalog = getProfileProperty(profile, configuration, "db.catalog");
         this.tablePrefix = getProfileProperty(profile, configuration, "db.tableprefix");
-        this.typeSystemName = getProfileProperty(profile, configuration, "db.typesystemname");
+        this.typeSystemName = Optional
+                .ofNullable(getProfileProperty(profile, configuration, "db.typesystemname", false))
+                .map(StringUtils::trimToNull).orElse(PersistenceInformation.DEFAULT_TYPE_SYSTEM_NAME);
         this.typeSystemSuffix = getProfileProperty(profile, configuration, "db.typesystemsuffix");
         this.maxActive = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.active.max"));
         this.maxIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.max"));
         this.minIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.min"));
         this.removedAbandoned = Boolean
                 .parseBoolean(getProfileProperty(profile, configuration, "db.connection.removeabandoned"));
+        this.maxLifeTime = parseLong(getProfileProperty(profile, configuration, "db.connection.pool.maxlifetime"));
     }
 
     protected String getNormalProperty(Configuration configuration, String key) {
@@ -138,6 +150,13 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
             return 0;
         } else {
             return Integer.parseInt(value);
+        }
+    }
+    protected long parseLong(String value) {
+        if (StringUtils.isEmpty(value)) {
+            return 0;
+        } else {
+            return Long.parseLong(value);
         }
     }
 

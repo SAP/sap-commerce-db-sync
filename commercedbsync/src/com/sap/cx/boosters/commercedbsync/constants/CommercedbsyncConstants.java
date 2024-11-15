@@ -15,6 +15,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String PROPERTIES_PREFIX = "migration";
     public static final String MIGRATION_TRIGGER_UPDATESYSTEM = "migration.trigger.updatesystem";
     public static final String MIGRATION_SCHEMA_ENABLED = "migration.schema.enabled";
+    public static final String MIGRATION_ANONYMIZER_ENABLED = "migration.anonymizer.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_TABLES_ADD_ENABLED = "migration.schema.target.tables.add.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_TABLES_REMOVE_ENABLED = "migration.schema.target.tables.remove.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADD_ENABLED = "migration.schema.target.columns.add.enabled";
@@ -25,6 +26,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_FULLDATABASE = "migration.data.fulldatabase.enabled";
     public static final String MIGRATION_DATA_READER_BATCHSIZE = "migration.data.reader.batchsize";
     public static final String MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE = "migration.data.reader.batchsize.{table}";
+    public static final String MIGRATION_CLUSTER_CHUNK_SIZE = "migration.cluster.chunk.size";
+    public static final String MIGRATION_CLUSTER_CHUNK_SIZE_FOR_TABLE = "migration.cluster.chunk.size.{table}";
     public static final String MIGRATION_DATA_TRUNCATE_ENABLED = "migration.data.truncate.enabled";
     public static final String MIGRATION_DATA_TRUNCATE_EXCLUDED = "migration.data.truncate.excluded";
     public static final String MIGRATION_DATA_WORKERS_READER_MAXTASKS = "migration.data.workers.reader.maxtasks";
@@ -73,6 +76,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_WORKERS_WRITER_KEEPALIVESECONDS = "migration.data.workers.writer.keepaliveseconds";
 
     public static final String MDC_MIGRATIONID = "migrationID";
+    public static final String MDC_SCHEMADIFFID = "schemaDiffID";
     public static final String MDC_PIPELINE = "pipeline";
     public static final String MDC_CLUSTERID = "clusterID";
 
@@ -103,7 +107,11 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
 
     public static final String MIGRATION_DATA_VIEW_TBL_GENERATION = "migration.data.view.t.{table}.enabled";
     public static final String MIGRATION_DATA_VIEW_TBL_JOIN_WHERE = "migration.data.view.t.{table}.joinWhereClause";
+    public static final String MIGRATION_DATA_VIEW_TBL_COL_PREFIX = "migration.data.view.t.{table}.columnPrefix";
     public static final String MIGRATION_DATA_VIEW_COL_REPLACEMENT = "migration.data.view.t.{table}.columnTransformation.{column}";
+
+    // MSSQL Post Processing
+    public static final String MIGRATION_DATA_MSSQL_UPDATE_STATISTICS_ENABLED = "migration.data.mssql.update.statistics.enabled";
 
     private CommercedbsyncConstants() {
         // empty to avoid instantiating this constant class

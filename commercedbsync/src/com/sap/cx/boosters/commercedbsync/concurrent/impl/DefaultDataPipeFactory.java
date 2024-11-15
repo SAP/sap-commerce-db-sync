@@ -16,11 +16,7 @@ import com.sap.cx.boosters.commercedbsync.concurrent.DataThreadPoolConfigBuilder
 import com.sap.cx.boosters.commercedbsync.concurrent.DataThreadPoolFactory;
 import com.sap.cx.boosters.commercedbsync.concurrent.DataWorkerExecutor;
 import com.sap.cx.boosters.commercedbsync.concurrent.MaybeFinished;
-import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.BatchMarkerDataReaderTask;
-import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.BatchOffsetDataReaderTask;
-import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.DataReaderTask;
-import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.DefaultDataReaderTask;
-import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.PipeTaskContext;
+import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.*;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceCategory;
@@ -101,20 +97,25 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         return pipe;
     }
 
+    private static String getRecorderName(CopyContext.DataCopyItem copyItem, boolean chunkedTable) {
+        return copyItem.getSourceItem() + (chunkedTable ? copyItem.getChunkData().getCurrentChunk() : "");
+    }
+
     private void scheduleWorkers(CopyContext context, DataWorkerExecutor<Boolean> workerExecutor,
             DataPipe<DataSet> pipe, CopyContext.DataCopyItem copyItem) throws Exception {
         DataRepositoryAdapter dataRepositoryAdapter = new ContextualDataRepositoryAdapter(
                 context.getMigrationContext().getDataSourceRepository());
         String table = copyItem.getSourceItem();
         long totalRows = copyItem.getRowCount();
-        int pageSize = copyItem.getBatchSize();
+        int batchSize = copyItem.getBatchSize();
+        boolean chunkedTable = copyItem.getChunkData() != null;
         try {
             PerformanceRecorder recorder = context.getPerformanceProfiler().createRecorder(PerformanceCategory.DB_READ,
-                    table);
+                    getRecorderName(copyItem, chunkedTable));
             recorder.start();
 
-            PipeTaskContext pipeTaskContext = new PipeTaskContext(context, pipe, table, dataRepositoryAdapter, pageSize,
-                    recorder, taskRepository);
+            PipeTaskContext pipeTaskContext = new PipeTaskContext(context, pipe, table, dataRepositoryAdapter,
+                    batchSize, recorder, taskRepository);
 
             String batchColumn = "";
             // help.sap.com/viewer/d0224eca81e249cb821f2cdf45a82ace/LATEST/en-US/08a27931a21441b59094c8a6aa2a880e.html
@@ -154,8 +155,11 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                         taskRepository.resetPipelineBatches(context, copyItem);
                     } else {
                         batches = new ArrayList<>();
-                        for (long offset = 0; offset < totalRows; offset += pageSize) {
-                            batches.add(Pair.of(offset, offset + pageSize));
+                        long chunkOffset = chunkedTable
+                                ? copyItem.getChunkData().getChunkSize() * copyItem.getChunkData().getCurrentChunk()
+                                : 0;
+                        for (long offset = 0; offset < totalRows; offset += batchSize) {
+                            batches.add(Pair.of(chunkOffset + offset, chunkOffset + offset + batchSize));
                         }
                     }
 
@@ -185,7 +189,6 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 // do the pagination by value comparison
                 taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.SEEK.toString());
                 taskRepository.updateTaskKeyColumns(context, copyItem, Lists.newArrayList(batchColumn));
-
                 List<List<Object>> batchMarkersList;
                 if (context.getMigrationContext().isSchedulerResumeEnabled()) {
                     Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
@@ -197,7 +200,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
                     queryDefinition.setTable(table);
                     queryDefinition.setColumn(batchColumn);
-                    queryDefinition.setBatchSize(pageSize);
+                    queryDefinition.setBatchSize(batchSize);
                     queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
                     queryDefinition.setLpTableEnabled(context.getMigrationContext().isLpTableMigrationEnabled());
                     DataSet batchMarkers = dataRepositoryAdapter
@@ -207,27 +210,31 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                         throw new RuntimeException("Could not retrieve batch values for table " + table);
                     }
                 }
-
                 for (int i = 0; i < batchMarkersList.size(); i++) {
-                    List<Object> lastBatchMarkerRow = batchMarkersList.get(i);
-                    Optional<List<Object>> nextBatchMarkerRow = Optional.empty();
-                    int nextIndex = i + 1;
-                    if (nextIndex < batchMarkersList.size()) {
-                        nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
-                    }
-                    if (!Collections.isEmpty(lastBatchMarkerRow)) {
-                        Object lastBatchValue = lastBatchMarkerRow.get(0);
-                        Pair<Object, Object> batchMarkersPair = Pair.of(lastBatchValue,
-                                nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null));
-                        DataReaderTask dataReaderTask = new BatchMarkerDataReaderTask(pipeTaskContext, i, batchColumn,
-                                batchMarkersPair);
-                        // After creating the task, we register the batch in the db for later use if
-                        // necessary
-                        taskRepository.scheduleBatch(context, copyItem, i, batchMarkersPair.getLeft(),
-                                batchMarkersPair.getRight());
-                        workerExecutor.safelyExecute(dataReaderTask);
-                    } else {
-                        throw new IllegalArgumentException("Invalid batch marker passed to task");
+                    boolean processBatch = isCurrentChunkBatch(copyItem, chunkedTable, i);
+                    if (processBatch) {
+                        List<Object> lastBatchMarkerRow = batchMarkersList.get(i);
+                        Optional<List<Object>> nextBatchMarkerRow = Optional.empty();
+                        int nextIndex = i + 1;
+                        if (nextIndex < batchMarkersList.size()) {
+                            nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
+                        }
+                        if (!Collections.isEmpty(lastBatchMarkerRow)) {
+                            Object lastBatchValue = lastBatchMarkerRow.get(0);
+                            Object nextValue = nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null);
+                            // check if nextValue is null and allow Pair(value, null) only if it is last
+                            // chunk
+                            Pair<Object, Object> batchMarkersPair = Pair.of(lastBatchValue, nextValue);
+                            DataReaderTask dataReaderTask = new BatchMarkerDataReaderTask(pipeTaskContext, i,
+                                    batchColumn, batchMarkersPair, false);
+                            // After creating the task, we register the batch in the db for later use if
+                            // necessary
+                            taskRepository.scheduleBatch(context, copyItem, i, batchMarkersPair.getLeft(),
+                                    batchMarkersPair.getRight());
+                            workerExecutor.safelyExecute(dataReaderTask);
+                        } else {
+                            throw new IllegalArgumentException("Invalid batch marker passed to task");
+                        }
                     }
                 }
             }
@@ -239,5 +246,17 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             }
             throw new RuntimeException("Exception while preparing reader tasks", ex);
         }
+    }
+
+    private static boolean isCurrentChunkBatch(CopyContext.DataCopyItem copyItem, boolean chunkedTable, int i) {
+        boolean processBatch = true;
+        if (chunkedTable) {
+            // if chunked data process only batch items that belong to this batch
+            CopyContext.DataCopyItem.ChunkData chunkData = copyItem.getChunkData();
+            int batchesPerChunk = (int) (chunkData.getChunkSize() / copyItem.getBatchSize());
+            processBatch = (i >= chunkData.getCurrentChunk() * batchesPerChunk)
+                    && (i < (chunkData.getCurrentChunk() + 1) * batchesPerChunk);
+        }
+        return processBatch;
     }
 }

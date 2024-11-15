@@ -6,20 +6,12 @@
 
 package de.hybris.platform.hac.controller;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
-import de.hybris.platform.commercedbsynchac.data.*;
-import de.hybris.platform.servicelayer.config.ConfigurationService;
-import de.hybris.platform.servicelayer.user.UserService;
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.util.Strings;
 import com.sap.cx.boosters.commercedbsync.MigrationStatus;
+import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.context.LaunchOptions;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
@@ -28,9 +20,16 @@ import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
 import com.sap.cx.boosters.commercedbsync.service.impl.BlobDatabaseMigrationReportStorageService;
-import com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseSchemaDifferenceService;
 import com.sap.cx.boosters.commercedbsync.utils.MaskUtil;
 import com.sap.cx.boosters.commercedbsynchac.metric.MetricService;
+import de.hybris.platform.commercedbsynchac.data.*;
+import de.hybris.platform.servicelayer.config.ConfigurationService;
+import de.hybris.platform.servicelayer.user.UserService;
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,8 +43,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -54,7 +51,6 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  *
@@ -234,17 +230,6 @@ public class CommercemigrationhacController {
         }
     }
 
-    @RequestMapping(value = {"/generateSchemaScript"}, method = {
-            org.springframework.web.bind.annotation.RequestMethod.GET})
-    @ResponseBody
-    public String generateSchemaScript() throws Exception {
-        logAction("Generate schema script button clicked");
-        // ORACLE_TARGET -- start
-        migrationContext.refreshSelf();
-        // ORACLE_TARGET -- END
-        return databaseSchemaDifferenceService.generateSchemaDifferencesSql(migrationContext);
-    }
-
     @RequestMapping(value = {"/migrateSchema"}, method = {org.springframework.web.bind.annotation.RequestMethod.POST})
     @ResponseBody
     public String migrateSchema(@ModelAttribute("schemaSqlForm") SchemaSqlFormData data) {
@@ -267,63 +252,40 @@ public class CommercemigrationhacController {
     @RequestMapping(value = {"/previewSchemaMigration"}, method = {
             org.springframework.web.bind.annotation.RequestMethod.GET})
     @ResponseBody
-    public SchemaDifferenceResultContainerData previewSchemaMigration() throws Exception {
+    public String previewSchemaMigration() throws Exception {
         logAction("Preview schema migration changes button clicked");
         LOG.info("Starting preview of source and target db diff...");
-        DefaultDatabaseSchemaDifferenceService.SchemaDifferenceResult difference = databaseSchemaDifferenceService
-                .getDifference(migrationContext);
-        SchemaDifferenceResultData sourceSchemaDifferenceResultData = getSchemaDifferenceResultData(
-                difference.getSourceSchema());
-        SchemaDifferenceResultData targetSchemaDifferenceResultData = getSchemaDifferenceResultData(
-                difference.getTargetSchema());
-        SchemaDifferenceResultContainerData schemaDifferenceResultContainerData = new SchemaDifferenceResultContainerData();
-        schemaDifferenceResultContainerData.setSource(sourceSchemaDifferenceResultData);
-        schemaDifferenceResultContainerData.setTarget(targetSchemaDifferenceResultData);
-
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        String timeStamp = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
-        try {
-            InputStream is = new ByteArrayInputStream(
-                    gson.toJson(schemaDifferenceResultContainerData).getBytes(StandardCharsets.UTF_8));
-            blobDatabaseMigrationReportStorageService.store("schema-differences-" + timeStamp + ".json", is);
-        } catch (Exception e) {
-            LOG.error("Failed to save the schema differences report to blob storage!");
-        }
-        return schemaDifferenceResultContainerData;
+        return databaseSchemaDifferenceService.startSchemaDifferenceCheck(migrationContext);
     }
 
-    private SchemaDifferenceResultData getSchemaDifferenceResultData(
-            DefaultDatabaseSchemaDifferenceService.SchemaDifference diff) {
-        SchemaDifferenceResultData schemaDifferenceResultData = new SchemaDifferenceResultData();
-
-        Map<String, String> missingTablesMap = diff.getMissingTables().stream()
-                .collect(Collectors.toMap(e -> getTableName(diff, e.getRightName()), e -> ""));
-        Map<String, String> missingColumnsMap = diff.getMissingColumnsInTable().asMap().entrySet().stream()
-                .collect(Collectors.toMap(e -> getTableName(diff, e.getKey().getRightName()),
-                        e -> Joiner.on(";").join(e.getValue())));
-
-        Map<String, String> map = new HashMap<>();
-        map.putAll(missingTablesMap);
-        map.putAll(missingColumnsMap);
-
-        String[][] result = new String[map.size()][2];
-        int count = 0;
-        for (Map.Entry<String, String> entry : map.entrySet()) {
-            result[count][0] = entry.getKey();
-            result[count][1] = entry.getValue();
-            count++;
+    @RequestMapping(value = "/schemaStatus", method = RequestMethod.GET)
+    @ResponseBody
+    public SchemaDifferenceStatus schemaStatus(@RequestParam String schemaDifferenceId) throws Exception {
+        final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
+                .getSchemaDifferenceStatusById(schemaDifferenceId, migrationContext);
+        if (schemaDifferenceStatus != null) {
+            prepareStateForJsonSerialization(schemaDifferenceStatus);
         }
-
-        schemaDifferenceResultData.setResults(result);
-        return schemaDifferenceResultData;
+        return schemaDifferenceStatus;
     }
 
-    private String getTableName(DefaultDatabaseSchemaDifferenceService.SchemaDifference diff, String name) {
-        if (StringUtils.isNotEmpty(diff.getPrefix())) {
-            return String.format("%s", name);
-        } else {
-            return name;
+    @RequestMapping(value = "/lastSchemaStatus", method = RequestMethod.GET)
+    @ResponseBody
+    public SchemaDifferenceStatus lastSchemaStatus() throws Exception {
+        final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
+                .getMostRecentSchemaDifference(migrationContext);
+        if (schemaDifferenceStatus != null) {
+            prepareStateForJsonSerialization(schemaDifferenceStatus);
         }
+        return schemaDifferenceStatus;
+    }
+
+    @RequestMapping(value = "/abortSchema", method = RequestMethod.POST)
+    @ResponseBody
+    public String abortSchema() throws Exception {
+        logAction("Stop schema diff button clicked");
+        databaseSchemaDifferenceService.abortRunningSchemaDifference(migrationContext);
+        return "true";
     }
 
     @RequestMapping(value = "/copyData", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -351,7 +313,7 @@ public class CommercemigrationhacController {
                 databaseMigrationService.resumeUnfinishedMigration(migrationContext, launchOptions, currentMigrationId);
             } else {
                 logAction("Start data migration executed");
-
+                databaseMigrationService.prepareMigration(migrationContext);
                 currentMigrationId = databaseMigrationService.startMigration(migrationContext, launchOptions);
             }
         } catch (Exception e) {
@@ -416,6 +378,15 @@ public class CommercemigrationhacController {
             u.setLastUpdateEpoch(convertToEpoch(u.getLastUpdate()));
             u.setLastUpdate(null);
         });
+    }
+
+    private void prepareStateForJsonSerialization(SchemaDifferenceStatus schemaDifferenceState) {
+        schemaDifferenceState.setStartEpoch(convertToEpoch(schemaDifferenceState.getStart()));
+        schemaDifferenceState.setStart(null);
+        schemaDifferenceState.setEndEpoch(convertToEpoch(schemaDifferenceState.getEnd()));
+        schemaDifferenceState.setEnd(null);
+        schemaDifferenceState.setLastUpdateEpoch(convertToEpoch(schemaDifferenceState.getLastUpdate()));
+        schemaDifferenceState.setLastUpdate(null);
     }
 
     private Long convertToEpoch(LocalDateTime time) {

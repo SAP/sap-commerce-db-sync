@@ -118,18 +118,18 @@ After having established your secure connectivity, validate the source and targe
 ![hac validate](hac_validate_ds.png)
 
 ## Check Schema Differences
-Check if there are any schema differences. For this, open the HAC and go to Migration->Schema Migration. By clicking the "Preview Schema Migration Changes" you will see a list of schema differences if any.
+Check if there are any schema differences. For this, open the HAC and go to Migration->Schema Migration. Trigger Schema Migration preview by clicking the "Start" button. Once completed, you will see a list of schema differences if any.
 
 ![hac schema diff prev](hac_schema_diff_prev.png)
 
-In case there are schema differences switch to the right tab and generate the sql script to adjust the target schema.
+In case there are schema differences switch to the right tab and review generated sql script used to adjust the target schema.
 
 ![hac schema diff exec](hac_schema_diff_exec.png)
 
-Make sure to review the script and execute it if you think it is all fine.
+If you think it is all fine, make sure to tick "I reviewed and verified the script above" checkbox.
 
 ## Copy Schema
-After you have analysed all the schema differences and understood what data you want to migrate, you can use the "Migrate Schema" button to modify the target SAP Commerce Cloud schema and make it equivalent to the source schema. Please note, this operation executes the following in the target schema:
+After you have analysed all the schema differences and understood what data you want to migrate, you can use the "Execute Script" button to modify the target SAP Commerce Cloud schema and make it equivalent to the source schema. Please note, this operation executes the following in the target schema:
 * Create tables
 * Add/drop columns to existing tables
 

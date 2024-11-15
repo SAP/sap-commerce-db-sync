@@ -26,6 +26,8 @@ public interface MigrationContext {
 
     boolean isSchemaMigrationEnabled();
 
+    boolean isAnonymizerEnabled();
+
     boolean isAddMissingTablesToSchemaEnabled();
 
     boolean isRemoveMissingTablesToSchemaEnabled();
@@ -45,6 +47,16 @@ public interface MigrationContext {
      * @return int if configured or null if not defined for the given tableName
      */
     Integer getReaderBatchSize(final String tableName);
+
+    long getClusterChunkSize();
+
+    /**
+     * Retrieves the chunk size for an individual table if available.
+     *
+     * @param tableName
+     * @return int if configured or null if not defined for the given tableName
+     */
+    Long getClusterChunkSize(final String tableName);
 
     boolean isTruncateEnabled();
 
@@ -103,6 +115,8 @@ public interface MigrationContext {
     boolean isLpTableMigrationEnabled();
 
     boolean isSchedulerResumeEnabled();
+
+    boolean isMssqlUpdateStatisticsEnabled();
 
     boolean isFullDatabaseMigration();
 

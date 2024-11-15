@@ -16,8 +16,10 @@
         const dataSourceButton = document.getElementById("buttonDataSourceReport");
         const dataTargetButton = document.getElementById("buttonDataTargetReport") ;
         const reportForm = document.getElementById("formCopyReport");
-        const timezoneCheckbox = document.getElementById("timezoneCheckbox")
+        const timezoneCheckbox = document.getElementById("timezoneCheckbox");
         const token = document.querySelector('meta[name="_csrf"]').content;
+        const playFinishSoundCheckbox = document.getElementById("playFinishSoundCheckbox");
+        const finishSoundUrl = playFinishSoundCheckbox.dataset.soundurl;
         let lastUpdateTime = Date.UTC(1970, 0, 1, 0, 0, 0);
         let pollInterval;
         let startButtonContentBefore;
@@ -134,6 +136,7 @@
             startButtonContentBefore = startButton.innerHTML;
             startButton.innerHTML = startButtonContentBefore + ' ' + hac.global.getSpinnerImg();
             startButton.disabled = true;
+            stopButton.disabled = true;
             reportButton.disabled = true;
             if (dataSourceButton) {
                 dataSourceButton.disabled = true;
@@ -141,7 +144,7 @@
             if (dataTargetButton) {
                 dataTargetButton.disabled = true;
             }
-            stopButton.disabled = false;
+
             $.ajax({
                 url: startUrl,
                 type: 'POST',
@@ -155,7 +158,6 @@
                     {
                      hac.global.error(data.customException);
 
-                     stopButton.disabled = true;
                      startButton.innerHTML = startButtonContentBefore;
                      startButton.disabled = false;
                     }
@@ -164,6 +166,7 @@
                     currentMigrationID = data.migrationID;
                     empty(logContainer);
                     updateStatus(data);
+                    setTimeout(() => { stopButton.disabled = false; }, 5000);
                     doPoll();
                     pollInterval = setInterval(doPoll, 5000);
                     }
@@ -171,8 +174,7 @@
                 },
                 error: function(xht, textStatus, ex) {
                     hac.global.error("Data migration process failed, please check the logs");
-
-                    stopButton.disabled = true;
+                    
                     startButton.innerHTML = startButtonContentBefore;
 
                     configureStartButton(false)
@@ -184,7 +186,6 @@
             stopButton.disabled = true;
             startButton.innerHTML = startButtonContentBefore;
 
-            configureStartButton(false)
             $.ajax({
                 url: stopUrl,
                 type: 'PUT',
@@ -194,6 +195,11 @@
                     'X-CSRF-TOKEN': token
                 },
                 success: function (data) {
+                    currentMigrationID = null;
+                    lastUpdateTime = Date.UTC(1970, 0, 1, 0, 0, 0);
+                    setTimeout(() => {
+                        configureStartButton(false);
+                    }, 5000);
                 },
                 error: hac.global.err
             });
@@ -249,6 +255,7 @@
 
         function doPoll() {
             // console.log(new Date(lastUpdateTime).toISOString());
+            if (currentMigrationID === null) { return;}
             $.ajax({
                 url: statusUrl,
                 type: 'GET',
@@ -285,6 +292,9 @@
                             $(dataTargetButton).siblings('input[name=migrationId]').val(currentMigrationID);
                             dataTargetButton.disabled = false;
                         }
+                        if (playFinishSoundCheckbox && $(playFinishSoundCheckbox).is(':checked')) {
+                            playFinishSound();
+                        }
                         clearInterval(pollInterval);
                     }
                 },
@@ -293,6 +303,11 @@
                 }
             });
             lastUpdateTime = Date.now();
+        }
+
+        function playFinishSound() {
+            var sound = new Audio(finishSoundUrl);
+            sound.play();
         }
 
         function writeLogs(statusUpdates) {

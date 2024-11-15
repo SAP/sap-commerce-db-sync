@@ -11,11 +11,10 @@ import com.sap.cx.boosters.commercedbsync.adapter.impl.ContextualDataRepositoryA
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.events.CopyCompleteEvent;
 import com.sap.cx.boosters.commercedbsync.events.CopyDatabaseTableEvent;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.scheduler.ClusterTableSplittingStrategy;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
-import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopySchedulerAlgorithm;
+import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseOperationSchedulerAlgorithm;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
-import de.hybris.bootstrap.ddl.DataBaseProvider;
 import de.hybris.platform.core.Registry;
 import de.hybris.platform.core.Tenant;
 import de.hybris.platform.jalo.JaloSession;
@@ -32,7 +31,6 @@ import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.core.io.ClassPathResource;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -61,7 +59,9 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
 
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
 
-    private DatabaseCopySchedulerAlgorithm databaseCopySchedulerAlgorithm;
+    private DatabaseOperationSchedulerAlgorithm databaseOperationSchedulerAlgorithm;
+
+    private ClusterTableSplittingStrategy clusterTableSplittingStrategy;
 
     /**
      * Schedules a Data Copy Task for each table across all the available nodes
@@ -71,36 +71,22 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
      */
     @Override
     public void schedule(CopyContext context) throws Exception {
-        databaseCopySchedulerAlgorithm.reset();
+        databaseOperationSchedulerAlgorithm.reset();
 
         logMigrationContext(context.getMigrationContext());
 
-        final DataRepository repository = !context.getMigrationContext().isDataExportEnabled()
-                ? context.getMigrationContext().getDataTargetRepository()
-                : context.getMigrationContext().getDataSourceRepository();
-        final DataBaseProvider databaseProvider = repository.getDatabaseProvider();
-        final ClassPathResource scriptResource = new ClassPathResource(
-                String.format("/sql/createSchedulerTables%s.sql", databaseProvider));
-
-        if (!scriptResource.exists()) {
-            throw new IllegalStateException(
-                    "Scheduler tables creation script for database " + databaseProvider + " not found!");
-        }
-
-        repository.runSqlScript(scriptResource);
-
-        int ownNodeId = databaseCopySchedulerAlgorithm.getOwnNodeId();
+        int ownNodeId = databaseOperationSchedulerAlgorithm.getOwnNodeId();
         if (!CollectionUtils.isEmpty(context.getCopyItems())) {
-            databaseCopyTaskRepository.createMigrationStatus(context);
             DataRepositoryAdapter dataRepositoryAdapter = new ContextualDataRepositoryAdapter(
                     context.getMigrationContext().getDataSourceRepository());
             List<Pair<CopyContext.DataCopyItem, Long>> itemsToSchedule = generateSchedulerItemList(context,
                     dataRepositoryAdapter);
+            databaseCopyTaskRepository.createMigrationStatus(context, itemsToSchedule.size());
             for (final Pair<CopyContext.DataCopyItem, Long> itemToSchedule : itemsToSchedule) {
                 CopyContext.DataCopyItem dataCopyItem = itemToSchedule.getLeft();
                 final long sourceRowCount = itemToSchedule.getRight();
                 if (sourceRowCount > 0) {
-                    final int destinationNodeId = databaseCopySchedulerAlgorithm.next();
+                    final int destinationNodeId = databaseOperationSchedulerAlgorithm.next();
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, sourceRowCount, destinationNodeId);
                 } else {
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, sourceRowCount, ownNodeId);
@@ -116,12 +102,15 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(ownNodeId, context.getMigrationId(),
                     context.getPropertyOverrideMap());
             eventService.publishEvent(event);
+        } else {
+            throw new IllegalStateException(
+                    "No matching tables found to be copied. Please review configuration and adjust inclusions/exclusions if necessary");
         }
     }
 
     @Override
     public void resumeUnfinishedItems(CopyContext copyContext) throws Exception {
-        databaseCopySchedulerAlgorithm.reset();
+        databaseOperationSchedulerAlgorithm.reset();
         Set<DatabaseCopyTask> failedTasks = databaseCopyTaskRepository.findFailedTasks(copyContext);
         if (failedTasks.isEmpty()) {
             throw new IllegalStateException("No pending failed table copy tasks found to be resumed");
@@ -129,12 +118,13 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
 
         for (DatabaseCopyTask failedTask : failedTasks) {
             databaseCopyTaskRepository.rescheduleTask(copyContext, failedTask.getPipelinename(),
-                    databaseCopySchedulerAlgorithm.next());
+                    databaseOperationSchedulerAlgorithm.next());
         }
         databaseCopyTaskRepository.resetMigration(copyContext);
         startMonitorThread(copyContext);
-        final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(databaseCopySchedulerAlgorithm.getOwnNodeId(),
-                copyContext.getMigrationId(), copyContext.getPropertyOverrideMap());
+        final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(
+                databaseOperationSchedulerAlgorithm.getOwnNodeId(), copyContext.getMigrationId(),
+                copyContext.getPropertyOverrideMap());
         eventService.publishEvent(event);
     }
 
@@ -182,8 +172,13 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             DataRepositoryAdapter dataRepositoryAdapter) throws Exception {
         List<Pair<CopyContext.DataCopyItem, Long>> pairs = new ArrayList<>();
         for (CopyContext.DataCopyItem copyItem : context.getCopyItems()) {
-            pairs.add(Pair.of(copyItem,
-                    dataRepositoryAdapter.getRowCount(context.getMigrationContext(), copyItem.getSourceItem())));
+            LOG.debug("Counting rows in table: {}", copyItem.getSourceItem());
+            final long rowCount = dataRepositoryAdapter.getRowCount(context.getMigrationContext(),
+                    copyItem.getSourceItem());
+            List<Pair<CopyContext.DataCopyItem, Long>> splitItems = clusterTableSplittingStrategy.split(copyItem,
+                    rowCount, databaseOperationSchedulerAlgorithm.getNodeIds().size());
+            pairs.addAll(splitItems);
+            LOG.debug("Found {} rows in table: {}", rowCount, copyItem.getSourceItem());
         }
         // we sort the items to make sure big tables are assigned to nodes in a fair way
         return pairs.stream().sorted(Comparator.comparingLong(Pair::getRight)).collect(Collectors.toList());
@@ -233,8 +228,13 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         this.databaseCopyTaskRepository = databaseCopyTaskRepository;
     }
 
-    public void setDatabaseCopySchedulerAlgorithm(DatabaseCopySchedulerAlgorithm databaseCopySchedulerAlgorithm) {
-        this.databaseCopySchedulerAlgorithm = databaseCopySchedulerAlgorithm;
+    public void setDatabaseOperationSchedulerAlgorithm(
+            DatabaseOperationSchedulerAlgorithm databaseOperationSchedulerAlgorithm) {
+        this.databaseOperationSchedulerAlgorithm = databaseOperationSchedulerAlgorithm;
+    }
+
+    public void setClusterTableSplittingStrategy(ClusterTableSplittingStrategy clusterTableSplittingStrategy) {
+        this.clusterTableSplittingStrategy = clusterTableSplittingStrategy;
     }
 
     public void setEventService(EventService eventService) {
@@ -304,8 +304,8 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
          * Notifies nodes about termination
          */
         private void notifyFinished() {
-            final CopyCompleteEvent completeEvent = new CopyCompleteEvent(databaseCopySchedulerAlgorithm.getOwnNodeId(),
-                    context.getMigrationId());
+            final CopyCompleteEvent completeEvent = new CopyCompleteEvent(
+                    databaseOperationSchedulerAlgorithm.getOwnNodeId(), context.getMigrationId());
             eventService.publishEvent(completeEvent);
         }
 
@@ -339,8 +339,12 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 if (status.isFailed()) {
                     endState = "FAILED";
                 }
-                LOG.info("Migration {} ({}) in {}", endState, status.getStatus(), DurationFormatUtils
-                        .formatDurationHMS(Duration.between(status.getStart(), status.getEnd()).toMillis()));
+                if (status.getStart() != null && status.getEnd() != null) {
+                    LOG.info("Migration {} ({}) in {}", endState, status.getStatus(), DurationFormatUtils
+                            .formatDurationHMS(Duration.between(status.getStart(), status.getEnd()).toMillis()));
+                } else {
+                    LOG.info("Migration {} ({})", endState, status.getStatus());
+                }
             }
         }
 

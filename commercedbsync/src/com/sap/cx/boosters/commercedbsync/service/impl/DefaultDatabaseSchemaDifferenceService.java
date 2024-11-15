@@ -7,38 +7,46 @@
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress;
+import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
+import com.sap.cx.boosters.commercedbsync.TableCandidate;
+import com.sap.cx.boosters.commercedbsync.concurrent.MDCTaskDecorator;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import com.sap.cx.boosters.commercedbsync.context.SchemaDifferenceContext;
+import com.sap.cx.boosters.commercedbsync.filter.DataCopyTableFilter;
+import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseSchemaDifferenceScheduler;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportStorageService;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
+import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
-import de.hybris.platform.util.Config;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
 import org.apache.ddlutils.model.Table;
-import com.sap.cx.boosters.commercedbsync.TableCandidate;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.filter.DataCopyTableFilter;
-import com.sap.cx.boosters.commercedbsync.provider.CopyItemProvider;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportStorageService;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,9 +57,14 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     private DatabaseMigrationReportStorageService databaseMigrationReportStorageService;
     private CopyItemProvider copyItemProvider;
     private ConfigurationService configurationService;
+    private DatabaseSchemaDifferenceTaskRepository taskRepository;
+    private DatabaseSchemaDifferenceScheduler databaseSchemaDifferenceScheduler;
+    private MDCTaskDecorator mdcTaskDecorator;
+    private final List<CompletableFuture<?>> schemaDiffTasks = new ArrayList<>();
 
     @Override
-    public String generateSchemaDifferencesSql(MigrationContext context) throws Exception {
+    public String generateSchemaDifferencesSql(MigrationContext context,
+            final SchemaDifferenceResult schemaDifferenceResult) throws Exception {
         final int maxStageMigrations = context.getMaxTargetStagedMigrations();
         final Set<String> stagingPrefixes = findStagingPrefixes(context);
         String schemaSql = "";
@@ -63,7 +76,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         } else {
             LOG.info(
                     "generateSchemaDifferencesSql..getDatabaseModelWithChanges4TableCreation - calibrating Schema changes ");
-            final DatabaseStatus databaseModelWithChanges = getDatabaseModelWithChanges4TableCreation(context);
+            final DatabaseStatus databaseModelWithChanges = getDatabaseModelWithChanges4TableCreation(context,
+                    schemaDifferenceResult);
             if (databaseModelWithChanges.isHasSchemaDiff()) {
                 LOG.info("generateSchemaDifferencesSql..Schema Diff found - now to generate the SQLs ");
                 if (context.getDataTargetRepository().getDatabaseProvider().isHanaUsed()) {
@@ -117,7 +131,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         try {
             platform.evaluateBatch(connection, sql, continueOnError);
             LOG.info("Executed the following sql to change the schema:\n" + sql);
-            writeReport(context, sql);
+            writeReport(sql);
         } catch (final Exception e) {
             throw new RuntimeException("Could not execute Schema Diff Script", e);
         } finally {
@@ -127,7 +141,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 
     @Override
     public void executeSchemaDifferences(final MigrationContext context) throws Exception {
-        executeSchemaDifferencesSql(context, generateSchemaDifferencesSql(context));
+        final SchemaDifferenceStatus status = startSchemaDifferenceCheckAndWaitForFinish(context);
+        executeSchemaDifferencesSql(context, status.getSqlScript());
     }
 
     private Set<String> findDuplicateTables(final MigrationContext migrationContext) {
@@ -173,11 +188,10 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return database;
     }
 
-    protected DatabaseStatus getDatabaseModelWithChanges4TableCreation(final MigrationContext migrationContext)
-            throws Exception {
+    protected DatabaseStatus getDatabaseModelWithChanges4TableCreation(final MigrationContext migrationContext,
+            final SchemaDifferenceResult differenceResult) throws Exception {
         final DatabaseStatus dbStatus = new DatabaseStatus();
 
-        final SchemaDifferenceResult differenceResult = getDifference(migrationContext);
         if (!differenceResult.hasDifferences()) {
             LOG.info("getDatabaseModelWithChanges4TableCreation - No Difference found in schema ");
             dbStatus.setDatabase(migrationContext.getDataTargetRepository().asDatabase());
@@ -185,7 +199,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             return dbStatus;
         }
         final SchemaDifference targetDiff = differenceResult.getTargetSchema();
-        final Database database = targetDiff.getDatabase();
+        final Database database = (Database) targetDiff.getDatabase().clone();
 
         // add missing tables in target
         if (migrationContext.isAddMissingTablesToSchemaEnabled()) {
@@ -227,7 +241,20 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 
         // remove superfluous tables in target
         if (migrationContext.isRemoveMissingTablesToSchemaEnabled()) {
-            throw new UnsupportedOperationException("not yet implemented");
+            final SchemaDifference sourceDiff = differenceResult.getSourceSchema();
+            final List<TableKeyPair> missingTables = sourceDiff.getMissingTables();
+            for (final TableKeyPair missingTable : missingTables) {
+                final Table tableClone = (Table) differenceResult.getTargetSchema().getDatabase()
+                        .findTable(missingTable.getLeftName(), false).clone();
+                tableClone.setName(missingTable.getRightName());
+                tableClone.setCatalog(
+                        migrationContext.getDataTargetRepository().getDataSourceConfiguration().getCatalog());
+                tableClone
+                        .setSchema(migrationContext.getDataTargetRepository().getDataSourceConfiguration().getSchema());
+                database.removeTable(tableClone);
+                LOG.info("getDatabaseModelWithChanges4TableCreation - missingTable.getRightName() ="
+                        + missingTable.getRightName() + ", missingTable.getLeftName() = " + missingTable.getLeftName());
+            }
         }
 
         // remove superfluous columns in target
@@ -253,7 +280,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return dbStatus;
     }
 
-    protected void writeReport(final MigrationContext migrationContext, final String differenceSql) {
+    protected void writeReport(final String differenceSql) {
         try {
             final String fileName = String.format("schemaChanges-%s.sql", LocalDateTime.now().getNano());
             databaseMigrationReportStorageService.store(fileName,
@@ -264,39 +291,261 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     }
 
     @Override
-    public SchemaDifferenceResult getDifference(final MigrationContext migrationContext) throws Exception {
-        try {
-            LOG.info("reading source database model ...");
-            migrationContext.getDataSourceRepository().asDatabase(true);
-            LOG.info("reading target database model ...");
-            migrationContext.getDataTargetRepository().asDatabase(true);
+    public SchemaDifferenceResult getSchemaDifferenceFromStatus(final MigrationContext migrationContext,
+            final SchemaDifferenceStatus schemaDifferenceStatus) {
+        final SchemaDifference sourceSchemaDifference = getSchemaDifferenceFromResult(
+                migrationContext.getDataSourceRepository(), schemaDifferenceStatus.getDiffResult().getSource());
+        final SchemaDifference targetSchemaDifference = getSchemaDifferenceFromResult(
+                migrationContext.getDataTargetRepository(), schemaDifferenceStatus.getDiffResult().getTarget());
 
-            LOG.info("computing SCHEMA diff, REF DB = "
-                    + migrationContext.getDataTargetRepository().getDatabaseProvider().getDbName()
-                    + " vs Checking in DB = "
-                    + migrationContext.getDataSourceRepository().getDatabaseProvider().getDbName());
-            final Set<TableCandidate> targetTableCandidates = copyItemProvider
-                    .getTargetTableCandidates(migrationContext);
-            final SchemaDifference sourceSchemaDifference = computeDiff(migrationContext,
-                    migrationContext.getDataTargetRepository(), migrationContext.getDataSourceRepository(),
-                    targetTableCandidates);
-            LOG.info("compute SCHEMA diff, REF DB ="
-                    + migrationContext.getDataSourceRepository().getDatabaseProvider().getDbName()
-                    + "vs Checking in DB = "
-                    + migrationContext.getDataTargetRepository().getDatabaseProvider().getDbName());
-            final Set<TableCandidate> sourceTableCandidates = copyItemProvider
-                    .getSourceTableCandidates(migrationContext);
-            final SchemaDifference targetSchemaDifference = computeDiff(migrationContext,
-                    migrationContext.getDataSourceRepository(), migrationContext.getDataTargetRepository(),
-                    sourceTableCandidates);
-            final SchemaDifferenceResult schemaDifferenceResult = new SchemaDifferenceResult(sourceSchemaDifference,
-                    targetSchemaDifference);
-            LOG.info("Diff finished. Differences detected: " + schemaDifferenceResult.hasDifferences());
+        return new SchemaDifferenceResult(sourceSchemaDifference, targetSchemaDifference);
+    }
 
-            return schemaDifferenceResult;
-        } catch (final Exception e) {
-            throw new RuntimeException("Error computing schema diff", e);
+    @Override
+    public SchemaDifferenceResult createSchemaDifferenceResult(final MigrationContext migrationContext)
+            throws Exception {
+        final SchemaDifference sourceSchemaDifference = getSchemaDifference(migrationContext, true);
+        final SchemaDifference targetSchemaDifference = getSchemaDifference(migrationContext, false);
+        return new SchemaDifferenceResult(sourceSchemaDifference, targetSchemaDifference);
+    }
+
+    private SchemaDifference getSchemaDifference(final MigrationContext migrationContext,
+            final boolean useTargetAsRefDatabase) throws Exception {
+        final DataRepository leftRepository = useTargetAsRefDatabase
+                ? migrationContext.getDataTargetRepository()
+                : migrationContext.getDataSourceRepository();
+        final DataRepository rightRepository = useTargetAsRefDatabase
+                ? migrationContext.getDataSourceRepository()
+                : migrationContext.getDataTargetRepository();
+
+        LOG.info("computing SCHEMA diff, REF DB = " + leftRepository.getDatabaseProvider().getDbName()
+                + " vs Checking in DB = " + rightRepository.getDatabaseProvider().getDbName());
+
+        final Set<TableCandidate> tableCandidates = useTargetAsRefDatabase
+                ? copyItemProvider.getTargetTableCandidates(migrationContext)
+                : copyItemProvider.getSourceTableCandidates(migrationContext);
+
+        return computeDiff(migrationContext, leftRepository, rightRepository, tableCandidates);
+    }
+
+    @Override
+    public SchemaDifferenceStatus getSchemaDifferenceStatusById(final String schemaDifferenceId,
+            final MigrationContext migrationContext) throws Exception {
+        return taskRepository
+                .getSchemaDifferenceStatus(new SchemaDifferenceContext(schemaDifferenceId, migrationContext));
+    }
+
+    @Override
+    public SchemaDifferenceStatus getMostRecentSchemaDifference(final MigrationContext migrationContext)
+            throws Exception {
+        final String mostRecentSchemaDifferenceId = taskRepository
+                .getMostRecentSchemaDifferenceId(new SchemaDifferenceContext(migrationContext));
+        if (mostRecentSchemaDifferenceId == null) {
+            return null;
         }
+        return getSchemaDifferenceStatusById(mostRecentSchemaDifferenceId, migrationContext);
+    }
+
+    @Override
+    public CompletableFuture<Void> checkSchemaDifferenceAsync(final SchemaDifferenceContext context) {
+        final ThreadPoolTaskExecutor executor = createExecutor();
+
+        final CompletableFuture<Boolean> readSourceTask = scheduleReadDatabaseModelTask(context, executor,
+                context.getMigrationContext().getDataSourceRepository());
+        final CompletableFuture<Boolean> readTargetTask = scheduleReadDatabaseModelTask(context, executor,
+                context.getMigrationContext().getDataTargetRepository());
+        final CompletableFuture<SchemaDifferenceResult> computeTask = scheduleComputeDiffTask(context, readSourceTask,
+                readTargetTask);
+        final CompletableFuture<Void> generateSqlTask = scheduleGenerateSqlTask(context, computeTask);
+
+        schemaDiffTasks.add(readSourceTask);
+        schemaDiffTasks.add(readTargetTask);
+        schemaDiffTasks.add(computeTask);
+        schemaDiffTasks.add(generateSqlTask);
+
+        // clear tasks when done
+        generateSqlTask.thenRun(schemaDiffTasks::clear);
+
+        executor.shutdown();
+        return generateSqlTask;
+    }
+
+    @Override
+    public void abortRunningSchemaDifference(MigrationContext migrationContext) throws Exception {
+        schemaDiffTasks.forEach(task -> task.completeExceptionally(new CancellationException("Aborted!")));
+        schemaDiffTasks.clear();
+
+        final SchemaDifferenceStatus status = getMostRecentSchemaDifference(migrationContext);
+        if (!status.isCompleted()) {
+            databaseSchemaDifferenceScheduler
+                    .abort(new SchemaDifferenceContext(status.getSchemaDifferenceId(), migrationContext));
+        }
+    }
+
+    private ThreadPoolTaskExecutor createExecutor() {
+        final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setThreadNamePrefix("SchemaDiffWorker-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setTaskDecorator(mdcTaskDecorator);
+        executor.initialize();
+        return executor;
+    }
+
+    private CompletableFuture<Boolean> scheduleReadDatabaseModelTask(final SchemaDifferenceContext context,
+            final ThreadPoolTaskExecutor executor, final DataRepository dataRepository) {
+        final String profile = dataRepository.getDataSourceConfiguration().getProfile();
+        final String pipelinename = String.format("read-%s-db", profile);
+
+        return CompletableFuture.supplyAsync(() -> {
+            final Stopwatch timer = Stopwatch.createStarted();
+            try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_PIPELINE, pipelinename)) {
+                LOG.info("Reading {} database model ...", profile);
+                dataRepository.asDatabase(true);
+                final Stopwatch endStop = timer.stop();
+                silentlyUpdateCompletedState(context, pipelinename, endStop.toString(), endStop.elapsed().getSeconds(),
+                        null);
+                return Boolean.TRUE;
+            }
+        }, executor).exceptionally(e -> {
+            LOG.error("Failed to read {} database model", profile, e);
+            silentlyUpdateCompletedState(context, pipelinename, StringUtils.EMPTY, 0f, (Exception) e);
+            return Boolean.FALSE;
+        });
+    }
+
+    private CompletableFuture<SchemaDifferenceResult> scheduleComputeDiffTask(final SchemaDifferenceContext context,
+            final CompletableFuture<Boolean> readSourceTask, final CompletableFuture<Boolean> readTargetTask) {
+        final String pipelinename = "compute-diff";
+
+        return readSourceTask.thenCombine(readTargetTask, (s, t) -> s && t).thenApply(readDbsSuccessful -> {
+            if (!readDbsSuccessful) {
+                throw new CancellationException("Aborted - previous task failed!");
+            }
+
+            final Stopwatch timer = Stopwatch.createStarted();
+            try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_PIPELINE, pipelinename)) {
+                final SchemaDifferenceResult schemaDifferenceResult = createSchemaDifferenceResult(
+                        context.getMigrationContext());
+                LOG.info("Diff finished. Differences detected: {}", schemaDifferenceResult.hasDifferences());
+                taskRepository.saveSchemaDifference(context, schemaDifferenceResult.getSourceSchema(), "source");
+                taskRepository.saveSchemaDifference(context, schemaDifferenceResult.getTargetSchema(), "target");
+                final Stopwatch endStop = timer.stop();
+                silentlyUpdateCompletedState(context, pipelinename, endStop.toString(), endStop.elapsed().getSeconds(),
+                        null);
+                return schemaDifferenceResult;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).exceptionally(e -> {
+            LOG.error("Failed to compute diff model", e);
+            silentlyUpdateCompletedState(context, pipelinename, StringUtils.EMPTY, 0f, (Exception) e);
+            return null;
+        });
+    }
+
+    private CompletableFuture<Void> scheduleGenerateSqlTask(final SchemaDifferenceContext context,
+            final CompletableFuture<SchemaDifferenceResult> computeDiffTask) {
+        final String pipelinename = "generate-sql";
+
+        return computeDiffTask.thenAccept(diffResult -> {
+            if (diffResult == null) {
+                throw new CancellationException("Aborted - previous task failed!");
+            }
+
+            try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_PIPELINE, pipelinename)) {
+                final Stopwatch timer = Stopwatch.createStarted();
+                final String sqlScript = generateSchemaDifferencesSql(context.getMigrationContext(), diffResult);
+                taskRepository.saveSqlScript(context, sqlScript);
+                final Stopwatch endStop = timer.stop();
+                silentlyUpdateCompletedState(context, pipelinename, endStop.toString(), endStop.elapsed().getSeconds(),
+                        null);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).whenComplete((r, e) -> {
+            if (e != null) {
+                LOG.error("Failed to generate SQL script", e);
+                silentlyUpdateCompletedState(context, pipelinename, StringUtils.EMPTY, 0, (Exception) e);
+            }
+        });
+    }
+
+    private void silentlyUpdateCompletedState(final SchemaDifferenceContext context, final String pipelinename,
+            final String duration, final float durationSeconds, @Nullable final Exception exception) {
+        try {
+            if (exception == null) {
+                taskRepository.markTaskCompleted(context, pipelinename, duration, durationSeconds);
+            } else {
+                taskRepository.markTaskFailed(context, pipelinename, exception);
+            }
+        } catch (final Exception e) {
+            LOG.error("Failed to update schema diff task status", e);
+        }
+    }
+
+    @Override
+    public String startSchemaDifferenceCheck(final MigrationContext migrationContext) throws Exception {
+        return startSchemaDifferenceCheck(migrationContext, false);
+    }
+
+    @Override
+    public SchemaDifferenceStatus startSchemaDifferenceCheckAndWaitForFinish(final MigrationContext context)
+            throws Exception {
+        final String schemaDifferenceId = startSchemaDifferenceCheck(context, true);
+        final SchemaDifferenceStatus status = getSchemaDifferenceStatusById(schemaDifferenceId, context);
+
+        if (status.isFailed()) {
+            throw new Exception("Schema diff failed");
+        }
+
+        return status;
+    }
+
+    private String startSchemaDifferenceCheck(final MigrationContext migrationContext, final boolean waitForFinish)
+            throws Exception {
+        final SchemaDifferenceStatus lastSchema = getMostRecentSchemaDifference(migrationContext);
+        if (lastSchema != null && lastSchema.getStatus() == SchemaDifferenceProgress.RUNNING) {
+            LOG.debug("Found already running schema diff with ID: {}", lastSchema.getSchemaDifferenceId());
+            return lastSchema.getSchemaDifferenceId();
+        }
+
+        final SchemaDifferenceContext schemaDifferenceContext = new SchemaDifferenceContext(migrationContext);
+
+        try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_SCHEMADIFFID,
+                schemaDifferenceContext.getSchemaDifferenceId())) {
+            databaseSchemaDifferenceScheduler.schedule(schemaDifferenceContext);
+            LOG.debug("Starting Schema Differences Check with Id {}", schemaDifferenceContext.getSchemaDifferenceId());
+
+            final CompletableFuture<Void> schemaDiffProcess = checkSchemaDifferenceAsync(schemaDifferenceContext);
+
+            if (waitForFinish) {
+                schemaDiffProcess.join();
+            }
+        }
+
+        return schemaDifferenceContext.getSchemaDifferenceId();
+    }
+
+    private SchemaDifference getSchemaDifferenceFromResult(final DataRepository dataRepository,
+            final SchemaDifferenceResultData schemaDifferenceResultData) {
+        SchemaDifference schemaDifference = new SchemaDifference(dataRepository.asDatabase(),
+                dataRepository.getDataSourceConfiguration().getTablePrefix());
+
+        for (String[] result : schemaDifferenceResultData.getResults()) {
+            final TableKeyPair tableKeyPair = new TableKeyPair(result[0], result[1]);
+
+            if (StringUtils.isNotEmpty(result[2])) {
+                for (String missingColumn : result[2].split(taskRepository.MISSING_COLUMN_DELIMITER)) {
+                    schemaDifference.getMissingColumnsInTable().put(tableKeyPair, missingColumn);
+                }
+            } else {
+                schemaDifference.missingTables.add(tableKeyPair);
+            }
+        }
+
+        return schemaDifference;
     }
 
     protected String getSchemaDifferencesAsJson(final SchemaDifferenceResult schemaDifferenceResult) {
@@ -304,52 +553,11 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return gson.toJson(schemaDifferenceResult);
     }
 
-    private void logMigrationContext(final MigrationContext context) {
-        if (!Config.getBoolean("migration.log.context.details", true) || context == null) {
-            return;
-        }
-
-        LOG.info("--------MIGRATION CONTEXT- START----------");
-        LOG.info("isAddMissingColumnsToSchemaEnabled=" + context.isAddMissingColumnsToSchemaEnabled());
-        LOG.info("isAddMissingTablesToSchemaEnabled=" + context.isAddMissingTablesToSchemaEnabled());
-        LOG.info("isAuditTableMigrationEnabled=" + context.isAuditTableMigrationEnabled());
-        LOG.info("isClusterMode=" + context.isClusterMode());
-        LOG.info("isDeletionEnabled=" + context.isDeletionEnabled());
-        LOG.info("isDisableAllIndexesEnabled=" + context.isDisableAllIndexesEnabled());
-        LOG.info("isDropAllIndexesEnabled=" + context.isDropAllIndexesEnabled());
-        LOG.info("isFailOnErrorEnabled=" + context.isFailOnErrorEnabled());
-        LOG.info("isIncrementalModeEnabled=" + context.isIncrementalModeEnabled());
-        LOG.info("isMigrationTriggeredByUpdateProcess=" + context.isMigrationTriggeredByUpdateProcess());
-        LOG.info("isRemoveMissingColumnsToSchemaEnabled=" + context.isRemoveMissingColumnsToSchemaEnabled());
-        LOG.info("isRemoveMissingTablesToSchemaEnabled=" + context.isRemoveMissingTablesToSchemaEnabled());
-        LOG.info("isSchemaMigrationAutoTriggerEnabled=" + context.isSchemaMigrationAutoTriggerEnabled());
-        LOG.info("isSchemaMigrationEnabled=" + context.isSchemaMigrationEnabled());
-        LOG.info("isTruncateEnabled=" + context.isTruncateEnabled());
-        LOG.info("getIncludedTables=" + context.getIncludedTables());
-        LOG.info("getExcludedTables=" + context.getExcludedTables());
-        LOG.info("getIncrementalTables=" + context.getIncrementalTables());
-        LOG.info("getTruncateExcludedTables=" + context.getTruncateExcludedTables());
-        LOG.info("getCustomTables=" + context.getCustomTables());
-        LOG.info("getIncrementalTimestamp=" + context.getIncrementalTimestamp());
-        LOG.info(
-                "Source TS Name=" + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Source TS Suffix="
-                + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info(
-                "Target TS Name=" + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Target TS Suffix="
-                + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info("getItemTypeViewNamePattern=" + context.getItemTypeViewNamePattern());
-
-        LOG.info("--------MIGRATION CONTEXT- END----------");
-    }
-
     protected SchemaDifference computeDiff(final MigrationContext context, final DataRepository leftRepository,
             final DataRepository rightRepository, final Set<TableCandidate> leftCandidates) {
-        logMigrationContext(context);
         final SchemaDifference schemaDifference = new SchemaDifference(rightRepository.asDatabase(),
                 rightRepository.getDataSourceConfiguration().getTablePrefix());
-        final Set<TableCandidate> leftDatabaseTables = getTables(context, leftRepository, leftCandidates);
+        final Set<TableCandidate> leftDatabaseTables = getTables(context, leftCandidates);
         LOG.info("LEFT Repo = " + leftRepository.getDatabaseProvider().getDbName());
         LOG.info("RIGHT Repo = " + rightRepository.getDatabaseProvider().getDbName());
 
@@ -416,8 +624,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return translatedTableName + leftCandidate.getAdditionalSuffix();
     }
 
-    private Set<TableCandidate> getTables(final MigrationContext context, final DataRepository repository,
-            final Set<TableCandidate> candidates) {
+    private Set<TableCandidate> getTables(final MigrationContext context, final Set<TableCandidate> candidates) {
         return candidates.stream().filter(c -> dataCopyTableFilter.filter(context).test(c.getCommonTableName()))
                 .collect(Collectors.toSet());
     }
@@ -437,6 +644,19 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 
     public void setCopyItemProvider(final CopyItemProvider copyItemProvider) {
         this.copyItemProvider = copyItemProvider;
+    }
+
+    public void setTaskRepository(final DatabaseSchemaDifferenceTaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
+
+    public void setDatabaseSchemaDifferenceScheduler(
+            final DatabaseSchemaDifferenceScheduler databaseSchemaDifferenceScheduler) {
+        this.databaseSchemaDifferenceScheduler = databaseSchemaDifferenceScheduler;
+    }
+
+    public void setMdcTaskDecorator(final MDCTaskDecorator mdcTaskDecorator) {
+        this.mdcTaskDecorator = mdcTaskDecorator;
     }
 
     public static class SchemaDifferenceResult {

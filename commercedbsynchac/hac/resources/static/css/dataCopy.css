@@ -53,12 +53,12 @@
 
 #copyLogContainer .failed {
     font-weight: bold;
-    font-size: 1.02em
+    font-size: 1.02em;
 }
 
 #copyLogContainer .completed {
     font-weight: bold;
-    font-size: 1.02em
+    font-size: 1.02em;
 }
 
 button[disabled] {
