@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Repository to manage Migration Status and Tasks
@@ -35,7 +36,7 @@ public interface DatabaseCopyTaskRepository {
      * @param context
      * @throws Exception
      */
-    void createMigrationStatus(CopyContext context) throws Exception;
+    void createMigrationStatus(CopyContext context, int numberOfItems) throws Exception;
 
     /**
      * Resets the values of the current migration to start it again
@@ -112,6 +113,9 @@ public interface DatabaseCopyTaskRepository {
     Optional<DatabaseCopyTask> findPipeline(CopyContext context, CopyContext.DataCopyItem dataCopyItem)
             throws Exception;
 
+    boolean findInAllPipelines(CopyContext context, CopyContext.DataCopyItem dataCopyItem,
+            Predicate<DatabaseCopyTask> p) throws Exception;
+
     /**
      * Retrieves all pending tasks
      *
@@ -184,7 +188,7 @@ public interface DatabaseCopyTaskRepository {
     Set<DatabaseCopyTask> getAllTasks(CopyContext context) throws Exception;
 
     /**
-     * ORACLE_TARGET -- added duration ins econds Marks the Task as Completed
+     * ORACLE_TARGET -- added duration in seconds Marks the Task as Completed
      *
      * @param context
      * @param copyItem

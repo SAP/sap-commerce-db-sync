@@ -23,5 +23,4 @@ public interface DataRepositoryAdapter {
 
     DataSet getBatchMarkersOrderedByColumn(MigrationContext context, MarkersQueryDefinition queryDefinition)
             throws Exception;
-
 }

@@ -16,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -194,18 +195,18 @@ public abstract class AbstractDataRepository implements DataRepository {
         return executeUpdateAndCommit(String.format("truncate table %s", table));
     }
 
+    protected String createRowCountQuery() {
+        return "SELECT COUNT(*) FROM %s WHERE %s";
+    }
+
     @Override
     public long getRowCount(String table) throws SQLException {
-        List<String> conditionsList = new ArrayList<>(1);
-        processDefaultConditions(table, conditionsList);
-        String[] conditions = null;
-        if (!conditionsList.isEmpty()) {
-            conditions = conditionsList.toArray(new String[conditionsList.size()]);
-        }
+        List<String> conditions = new ArrayList<>(1);
+        processDefaultConditions(table, conditions);
         try (Connection connection = getConnection();
                 Statement stmt = connection.createStatement();
-                ResultSet resultSet = stmt.executeQuery(
-                        String.format("select count(*) from %s where %s", table, expandConditions(conditions)))) {
+                ResultSet resultSet = stmt
+                        .executeQuery(String.format(createRowCountQuery(), table, expandConditions(conditions)))) {
             long value = 0;
             if (resultSet.next()) {
                 value = resultSet.getLong(1);
@@ -222,15 +223,13 @@ public abstract class AbstractDataRepository implements DataRepository {
 
     @Override
     public long getRowCountModifiedAfter(String table, Instant time) throws SQLException {
-        List<String> conditionsList = new ArrayList<>(1);
-        processDefaultConditions(table, conditionsList);
-        String[] conditions = null;
-        if (!conditionsList.isEmpty()) {
-            conditions = conditionsList.toArray(new String[conditionsList.size()]);
-        }
+        List<String> conditions = new ArrayList<>(1);
+        conditions.add("modifiedts > ?");
+        processDefaultConditions(table, conditions);
+
         try (Connection connection = getConnection()) {
-            try (PreparedStatement stmt = connection.prepareStatement(String.format(
-                    "select count(*) from %s where modifiedts > ? AND %s", table, expandConditions(conditions)))) {
+            try (PreparedStatement stmt = connection
+                    .prepareStatement(String.format(createRowCountQuery(), table, expandConditions(conditions)))) {
                 stmt.setTimestamp(1, Timestamp.from(time));
                 ResultSet resultSet = stmt.executeQuery();
                 long value = 0;
@@ -244,31 +243,23 @@ public abstract class AbstractDataRepository implements DataRepository {
 
     @Override
     public DataSet getAll(String table) throws Exception {
-        List<String> conditionsList = new ArrayList<>(1);
-        processDefaultConditions(table, conditionsList);
-        String[] conditions = null;
-        if (!conditionsList.isEmpty()) {
-            conditions = conditionsList.toArray(new String[conditionsList.size()]);
-        }
+        List<String> conditions = new ArrayList<>(1);
+        processDefaultConditions(table, conditions);
         try (Connection connection = getConnection();
                 Statement stmt = connection.createStatement();
                 ResultSet resultSet = stmt.executeQuery(
-                        String.format("select * from %s where %s", table, expandConditions(conditions)))) {
+                        String.format("SELECT * FROM %s WHERE %s", table, expandConditions(conditions)))) {
             return convertToDataSet(resultSet);
         }
     }
 
     @Override
     public DataSet getAllModifiedAfter(String table, Instant time) throws Exception {
-        List<String> conditionsList = new ArrayList<>(1);
-        processDefaultConditions(table, conditionsList);
-        String[] conditions = null;
-        if (!conditionsList.isEmpty()) {
-            conditions = conditionsList.toArray(new String[conditionsList.size()]);
-        }
+        List<String> conditions = new ArrayList<>(1);
+        processDefaultConditions(table, conditions);
         try (Connection connection = getConnection()) {
             try (PreparedStatement stmt = connection.prepareStatement(String
-                    .format("select * from %s where modifiedts > ? and %s", table, expandConditions(conditions)))) {
+                    .format("SELECT * FROM %s WHERE modifiedts > ? AND %s", table, expandConditions(conditions)))) {
                 stmt.setTimestamp(1, Timestamp.from(time));
                 ResultSet resultSet = stmt.executeQuery();
                 return convertToDataSet(resultSet);
@@ -678,7 +669,6 @@ public abstract class AbstractDataRepository implements DataRepository {
             if (hasParameterizedBatchMarkersQuery()) {
                 stmt.setLong(++paramIdx, queryDefinition.getBatchSize());
             }
-
             ResultSet resultSet = stmt.executeQuery();
             return convertToBatchDataSet(0, resultSet);
         }
@@ -725,6 +715,14 @@ public abstract class AbstractDataRepository implements DataRepository {
 
     protected String expandConditions(String[] conditions) {
         if (conditions == null || conditions.length == 0) {
+            return "1=1";
+        } else {
+            return Joiner.on(" AND ").join(conditions);
+        }
+    }
+
+    protected String expandConditions(Collection<String> conditions) {
+        if (conditions == null || conditions.isEmpty()) {
             return "1=1";
         } else {
             return Joiner.on(" AND ").join(conditions);

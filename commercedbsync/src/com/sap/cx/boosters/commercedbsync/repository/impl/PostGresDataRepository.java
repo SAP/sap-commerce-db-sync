@@ -74,14 +74,14 @@ public class PostGresDataRepository extends AbstractDataRepository {
         final String tableName = queryDefinition.getTable();
         // spotless:off
         return String.format("SELECT t.%s, t.rownum\n" +
-                "FROM\n" +
-                "(\n" +
-                "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownum\n" +
-                "    FROM %s\n WHERE %s" +
-                ") AS t\n" +
-                "WHERE t.rownum %% ? = 0\n" +
-                "ORDER BY t.%s",
-        // spotless:on
+                        "FROM\n" +
+                        "(\n" +
+                        "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownum\n" +
+                        "    FROM %s\n WHERE %s" +
+                        ") AS t\n" +
+                        "WHERE t.rownum %% ? = 0\n" +
+                        "ORDER BY t.%s",
+                // spotless:on
                 column, column, column, tableName, expandConditions(conditions), column);
     }
 
@@ -124,13 +124,13 @@ public class PostGresDataRepository extends AbstractDataRepository {
         // spotless:off
         return String.format(
                 "SELECT COLUMN_NAME\n" +
-                "   FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS C\n" +
-                "      JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS CC\n" +
-                "         USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME)\n" +
-                "   WHERE C.CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY')\n" +
-                "     AND TABLE_SCHEMA = '%s'\n" +
-                "     AND TABLE_NAME = '%s';",
-        // spotless:on
+                        "   FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS C\n" +
+                        "      JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE AS CC\n" +
+                        "         USING (TABLE_SCHEMA, TABLE_NAME, CONSTRAINT_NAME)\n" +
+                        "   WHERE C.CONSTRAINT_TYPE IN ('UNIQUE', 'PRIMARY KEY')\n" +
+                        "     AND TABLE_SCHEMA = '%s'\n" +
+                        "     AND TABLE_NAME = '%s';",
+                // spotless:on
                 getDataSourceConfiguration().getSchema(), tableName);
     }
 

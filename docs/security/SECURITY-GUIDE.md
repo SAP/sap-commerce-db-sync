@@ -37,8 +37,8 @@ It is mandatory to leave the system in a clean state:
 
 All actions triggered from Commerce DB Sync will be logged:
   * validate data source
-  * preview schema migration
-  * create schema script
+  * run schema migration preview
+  * stop schema migration preview
   * execute schema script
   * run migration
   * stop migration

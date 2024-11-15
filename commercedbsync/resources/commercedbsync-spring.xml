@@ -112,6 +112,7 @@
         <property name="performanceProfiler" ref="performanceProfiler"/>
         <property name="databaseMigrationReportService" ref="databaseMigrationReportService"/>
         <property name="schemaDifferenceService" ref="schemaDifferenceService"/>
+        <property name="configurationService" ref="configurationService" />
         <property name="migrationContextValidator" ref="migrationContextValidator"/>
         <property name="taskService" ref="taskService"/>
         <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
@@ -125,12 +126,24 @@
         </property>        
     </bean>
 
+    <bean id="clusterTableSplittingStrategy"
+          class="com.sap.cx.boosters.commercedbsync.scheduler.impl.DefaultClusterTableSplittingStrategy">
+        <constructor-arg ref="migrationContext"/>
+    </bean>
+
     <alias name="customClusterDatabaseCopyScheduler" alias="databaseCopyScheduler"/>
     <bean id="customClusterDatabaseCopyScheduler"
           class="com.sap.cx.boosters.commercedbsync.scheduler.impl.CustomClusterDatabaseCopyScheduler">
         <property name="eventService" ref="eventService"/>
         <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
-        <property name="databaseCopySchedulerAlgorithm" ref="clusterSchedulerAlgorithm"/>
+        <property name="clusterTableSplittingStrategy" ref="clusterTableSplittingStrategy"/>
+        <property name="databaseOperationSchedulerAlgorithm" ref="clusterSchedulerAlgorithm"/>
+    </bean>
+
+    <alias name="defaultDatabaseSchemaDifferenceScheduler" alias="databaseSchemaDifferenceScheduler"/>
+    <bean id="defaultDatabaseSchemaDifferenceScheduler"
+          class="com.sap.cx.boosters.commercedbsync.scheduler.impl.DefaultDatabaseSchemaDifferenceScheduler">
+        <property name="databaseSchemaDifferenceTaskRepository" ref="databaseSchemaDifferenceTaskRepository" />
     </bean>
 
     <alias name="roundRobinClusterSchedulerAlgorithm" alias="clusterSchedulerAlgorithm"/>
@@ -157,10 +170,13 @@
         <constructor-arg ref="dataReadWorkerPoolFactory"/>
     </bean>
 
+    <bean id="anonymizerConfigurator" class="com.sap.cx.boosters.commercedbsync.anonymizer.AnonymizerConfigurator"/>
+
     <alias name="defaultPipeWriterStrategy" alias="pipeWriterStrategy"/>
     <bean id="defaultPipeWriterStrategy" class="com.sap.cx.boosters.commercedbsync.strategy.impl.CopyPipeWriterStrategy">
         <constructor-arg ref="databaseCopyTaskRepository"/>
         <constructor-arg ref="dataWriteWorkerPoolFactory"/>
+        <constructor-arg ref="anonymizerConfigurator"/>
     </bean>
 
 
@@ -171,6 +187,9 @@
         <property name="databaseMigrationReportStorageService" ref="databaseMigrationReportStorageService"/>
         <property name="copyItemProvider" ref="dataCopyItemProvider"/>
         <property name="configurationService" ref="configurationService"/>
+        <property name="taskRepository" ref="databaseSchemaDifferenceTaskRepository" />
+        <property name="databaseSchemaDifferenceScheduler" ref="databaseSchemaDifferenceScheduler" />
+        <property name="mdcTaskDecorator" ref="mdcTaskDecorator" />
     </bean>
 
     <!-- Event Listeners -->
@@ -230,6 +249,11 @@
         <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
     </bean>
 
+    <bean id="mssqlUpdateStatisticsPostProcessor"
+          class="com.sap.cx.boosters.commercedbsync.processors.impl.MSSQLUpdateStatisticsPostProcessor">
+        <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
+    </bean>
+
     <alias name="defaultCopyCompleteEventListener" alias="copyCompleteEventListener"/>
     <bean id="defaultCopyCompleteEventListener"
           class="com.sap.cx.boosters.commercedbsync.events.handlers.CopyCompleteEventListener"
@@ -246,6 +270,7 @@
                 <ref bean="jdbcQueriesPostProcessor"/>
                 <ref bean="adjustActiveTypeSystemPostProcessor"/>
                 <ref bean="updateYDeploymentsPostProcessor"/>
+                <ref bean="mssqlUpdateStatisticsPostProcessor"/>
             </util:list>
         </property>
     </bean>
@@ -255,6 +280,10 @@
           class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseCopyTaskRepository">
         <property name="clusterService" ref="clusterService"/>
     </bean>
+
+    <alias name="defaultDatabaseSchemaDifferenceTaskRepository" alias="databaseSchemaDifferenceTaskRepository"/>
+    <bean id="defaultDatabaseSchemaDifferenceTaskRepository"
+          class="com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseSchemaDifferenceTaskRepository" />
 
     <alias name="defaultDataCopyItemProvider" alias="dataCopyItemProvider"/>
     <bean id="defaultDataCopyItemProvider" class="com.sap.cx.boosters.commercedbsync.provider.impl.DefaultDataCopyItemProvider">
@@ -316,6 +345,10 @@
   </bean>
 
   <bean id="incrementalMigrationJob" class="com.sap.cx.boosters.commercedbsync.jobs.IncrementalMigrationJob"
+    parent="abstractMigrationJobPerformable">
+  </bean>
+
+  <bean id="migrationPrepJob" class="com.sap.cx.boosters.commercedbsync.jobs.MigrationPrepJob"
     parent="abstractMigrationJobPerformable">
   </bean>
 

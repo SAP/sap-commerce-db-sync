@@ -33,6 +33,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     private int maxIdle;
     private int minIdle;
     private boolean removedAbandoned;
+    private long maxLifeTime;
 
     public DefaultDataSourceConfiguration(Configuration configuration, String profile) {
         this.profile = profile;
@@ -114,6 +115,11 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         return removedAbandoned;
     }
 
+    @Override
+    public long getMaxLifetime() {
+        return maxLifeTime;
+    }
+
     protected void load(Configuration configuration, String profile) {
         this.driver = getProfileProperty(profile, configuration, "db.driver");
         this.connectionString = getProfileProperty(profile, configuration, "db.url");
@@ -132,6 +138,7 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         this.minIdle = parseInt(getProfileProperty(profile, configuration, "db.connection.pool.size.idle.min"));
         this.removedAbandoned = Boolean
                 .parseBoolean(getProfileProperty(profile, configuration, "db.connection.removeabandoned"));
+        this.maxLifeTime = parseLong(getProfileProperty(profile, configuration, "db.connection.pool.maxlifetime"));
     }
 
     protected String getNormalProperty(Configuration configuration, String key) {
@@ -143,6 +150,13 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
             return 0;
         } else {
             return Integer.parseInt(value);
+        }
+    }
+    protected long parseLong(String value) {
+        if (StringUtils.isEmpty(value)) {
+            return 0;
+        } else {
+            return Long.parseLong(value);
         }
     }
 

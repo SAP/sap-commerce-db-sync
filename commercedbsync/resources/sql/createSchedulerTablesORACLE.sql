@@ -15,8 +15,8 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
     targettablename NVARCHAR2(255) NOT NULL,
     columnmap CLOB NULL,
     duration NVARCHAR2 (255) NULL,
-    sourcerowcount number(10) DEFAULT 0 NOT NULL,
-    targetrowcount number(10) DEFAULT 0 NOT NULL,
+    sourcerowcount number(20,0) DEFAULT 0 NOT NULL,
+    targetrowcount number(20,0) DEFAULT 0 NOT NULL,
     failure char(1) DEFAULT '0' NOT NULL,
     error CLOB NULL,
     published char(1) DEFAULT '0' NOT NULL,
@@ -28,6 +28,9 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
     keycolumns NVARCHAR2(255) NULL,
     durationinseconds number(10,2) DEFAULT 0 NULL,
     batchsize number(10) DEFAULT 1000 NOT NULL,
+    chunked char(1) NOT NULL DEFAULT '0',
+    chunknumber int,
+    chunksize BIGINT,
     PRIMARY KEY (migrationid, targetnodeid, pipelinename)
 )
 /

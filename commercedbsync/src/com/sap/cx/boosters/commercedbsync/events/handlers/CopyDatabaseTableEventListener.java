@@ -47,7 +47,7 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
 
     @Override
     protected void onEvent(final CopyDatabaseTableEvent event) {
-        final String migrationId = event.getMigrationId();
+        final String migrationId = event.getOperationId();
         processPropertyOverrides(event.getPropertyOverrideMap());
         LOG.debug("Starting Migration with Id {}", migrationId);
         try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_MIGRATIONID, migrationId);
@@ -58,7 +58,11 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
             Set<DatabaseCopyTask> copyTableTasks = databaseCopyTaskRepository.findPendingTasks(copyContext);
             Set<CopyContext.DataCopyItem> items = copyTableTasks.stream()
                     .map(task -> new CopyContext.DataCopyItem(task.getSourcetablename(), task.getTargettablename(),
-                            task.getColumnmap(), task.getSourcerowcount(), task.getBatchsize()))
+                            task.getColumnmap(), task.getSourcerowcount(), task.getBatchsize(),
+                            task.getChunk() != null
+                                    ? new CopyContext.DataCopyItem.ChunkData(task.getChunk().getCurrentChunk(),
+                                            task.getChunk().getChunkSize())
+                                    : null))
                     .collect(Collectors.toSet());
             copyContext.getCopyItems().addAll(items);
             databaseMigrationCopyService.copyAllAsync(copyContext);

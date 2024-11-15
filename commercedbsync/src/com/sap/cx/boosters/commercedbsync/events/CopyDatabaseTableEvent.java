@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Cluster Event to notify a Cluster to start the copy process
  */
-public class CopyDatabaseTableEvent extends CopyEvent {
+public class CopyDatabaseTableEvent extends OperationEvent {
 
     /**
      * contains property value updates that should be populated in the cluster

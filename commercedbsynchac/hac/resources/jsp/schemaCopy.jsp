@@ -28,6 +28,36 @@
                 <button id="toggleSidebarButton">&gt;</button>
                 <div class="marginLeft marginBottom">
                     <h2>Schema Migration</h2>
+
+                    <div id="latestSchemaStatus" data-url="<c:url value="/commercedbsynchac/lastSchemaStatus"/>">
+                        <h3>Last Schema Difference Detection Status</h3>
+                        <div class="clearfix" id="buttonsContainer">
+                            <button id="buttonStartSchemaPreview" class="control-button" data-url="<c:url value="/commercedbsynchac/previewSchemaMigration"/>">Start</button>
+                            <button id="buttonStopSchemaPreview" class="control-button" data-url="<c:url value="/commercedbsynchac/abortSchema"/>">Stop</button>
+                        </div>
+
+                        <div class="prepend-top clearfix status">
+                            <div id="schemaPreviewStatus" class="span-8" data-url="<c:url value="/commercedbsynchac/schemaStatus"/>">
+                                <dl>
+                                    <dt>ID</dt>
+                                    <dd><span class="placeholder">N/A</span></dd>
+                                    <dt>Status</dt>
+                                    <dd><span class="placeholder">N/A</span></dd>
+                                </dl>
+                            </div>
+                            <div id="schemaPreviewTime" class="span-8 last">
+                                <dl>
+                                    <dt>Start</dt>
+                                    <dd><span class="placeholder">N/A</span></dd>
+                                    <dt>End</dt>
+                                    <dd><span class="placeholder">N/A</span></dd>
+                                    <dt>Duration</dt>
+                                    <dd><span class="placeholder">N/A</span></dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="tabs">
                         <ul>
                             <li><a href="#tabs-1">Preview Schema Migration</a></li>
@@ -35,7 +65,6 @@
 
                         </ul>
                         <div id="tabs-1">
-                            <button id="buttonMigrateSchemaPreview" data-url="<c:url value="/commercedbsynchac/previewSchemaMigration"/>">Preview Schema Migration Changes</button>
                             <div id="schemaDiffWrapper">
                                 <h3>Target Schema</h3>
                                 <p>Target Schema is missing the following elements which are present in Source Schema </p>
@@ -78,8 +107,7 @@
                             </div>
                             <form:form method="post" action="${url}" modelAttribute="schemaSqlForm">
                                 <div class="prepend-top">
-                                    <h2>Generate SQL Script</h2>
-                                    <button id="buttonGenerateSchemaScript" data-url="<c:url value="/commercedbsynchac/generateSchemaScript"/>">Generate Schema Script</button>
+                                    <h2>Generated SQL Script</h2>
                                         <div id="sqlQueryWrapper" class="textarea-container">
                                             <div id="spinnerWrapper">
                                                 <img id="spinner" src="<c:url value="/static/img/spinner.gif"/>" alt="spinner"/>

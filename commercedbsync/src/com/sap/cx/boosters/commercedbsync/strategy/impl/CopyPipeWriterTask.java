@@ -7,6 +7,11 @@
 package com.sap.cx.boosters.commercedbsync.strategy.impl;
 
 import com.google.common.base.Stopwatch;
+import com.sap.cx.boosters.commercedbsync.anonymizer.TextEvaluator;
+import com.sap.cx.boosters.commercedbsync.anonymizer.TextTokenizer;
+import com.sap.cx.boosters.commercedbsync.anonymizer.model.AnonymizerConfiguration;
+import com.sap.cx.boosters.commercedbsync.anonymizer.model.Column;
+import com.sap.cx.boosters.commercedbsync.anonymizer.model.Table;
 import com.sap.cx.boosters.commercedbsync.concurrent.impl.task.RetriableTask;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.dataset.DataColumn;
@@ -15,6 +20,7 @@ import com.sap.cx.boosters.commercedbsync.performance.PerformanceRecorder;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
 import de.hybris.bootstrap.ddl.DataBaseProvider;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,24 +30,27 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import static java.sql.Types.BLOB;
-import static java.sql.Types.CLOB;
-import static java.sql.Types.NUMERIC;
+import static java.sql.Types.*;
 
 class CopyPipeWriterTask extends RetriableTask {
-
     private static final Logger LOG = LoggerFactory.getLogger(CopyPipeWriterTask.class);
 
     private final CopyPipeWriterContext ctx;
     private final DataSet dataSet;
+    private final AnonymizerConfiguration anonymizerConfiguration;
 
-    public CopyPipeWriterTask(CopyPipeWriterContext ctx, DataSet dataSet) {
+    public CopyPipeWriterTask(final CopyPipeWriterContext ctx, final DataSet dataSet,
+            final AnonymizerConfiguration anonymizerConfiguration) {
         super(ctx.getContext(), ctx.getCopyItem().getTargetItem());
         this.ctx = ctx;
         this.dataSet = dataSet;
+        this.anonymizerConfiguration = anonymizerConfiguration;
     }
 
     @Override
@@ -111,6 +120,79 @@ class CopyPipeWriterTask extends RetriableTask {
         recorder.record(PerformanceUnit.ROWS, batchCount);
     }
 
+    private Object anonymize(final String tableName, final String columnName, final Object columnValue) {
+        if (!anonymizerConfiguration.getTables().contains(new Table(tableName))) {
+            return columnValue;
+        }
+        final Table table = anonymizerConfiguration.getTable(tableName);
+        if (table == null) {
+            return columnValue;
+        }
+        final Column column = table.getColumn(columnName);
+        if (column == null) {
+            return columnValue;
+        }
+        if (column.getExclude().contains(columnValue)) {
+            return columnValue;
+        }
+
+        final TextTokenizer textTokenizer = new TextTokenizer();
+        final TextEvaluator textEvaluator = new TextEvaluator();
+        final List<String> tokens = textTokenizer.tokenizeText(column.getText());
+
+        switch (column.getOperation()) {
+            case APPEND :
+                return columnValue == null ? "" : columnValue + textEvaluator.getForTokens(tokens);
+            case REPLACE :
+                return textEvaluator.getForTokens(tokens);
+        }
+
+        return null;
+    }
+
+    private Map<Column, Object> getColumnValuesAnonymized(final DataBaseProvider dbProvider,
+            final ResultSet tempTargetRs, final List<Object> row, final String tableName) throws SQLException {
+        final Table table = anonymizerConfiguration.getTable(tableName);
+        if (table == null) {
+            return Collections.emptyMap();
+        }
+        final Map<Column, Object> columnValuesAnonymized = new HashMap<>();
+        int paramIdx = 0;
+        for (final String sourceColumnName : ctx.getColumnsToCopy()) {
+            final Column column = table.getColumn(sourceColumnName);
+            if (column == null) {
+                continue;
+            }
+            final int targetColumnIdx = tempTargetRs.findColumn(sourceColumnName);
+            final DataColumn sourceColumnType = dataSet.getColumn(paramIdx++);
+            final int targetColumnType = tempTargetRs.getMetaData().getColumnType(targetColumnIdx);
+            if (!ctx.getNullifyColumns().contains(sourceColumnName)
+                    && !isColumnOverride(ctx.getCopyItem(), sourceColumnName)) {
+                Object sourceColumnValue = dataSet.getColumnValue(sourceColumnName, row, sourceColumnType,
+                        targetColumnType);
+                if (sourceColumnValue != null) {
+                    if (column.getExcludeRow().contains(sourceColumnValue)) {
+                        return Collections.emptyMap();
+                    }
+                    columnValuesAnonymized.put(column, anonymize(tableName, sourceColumnName, sourceColumnValue));
+                }
+            }
+        }
+        return columnValuesAnonymized;
+    }
+
+    private Object getColumnValue(final String tableName, final String columnName, Map<Column, Object> columnValues) {
+        final Table table = anonymizerConfiguration.getTable(tableName);
+        if (table == null) {
+            return null;
+        }
+        final Column column = table.getColumn(columnName);
+        if (column == null) {
+            return null;
+        }
+        return columnValues.get(column);
+    }
+
     private void process() throws Exception {
         Connection connection = null;
         Boolean originalAutoCommit = null;
@@ -120,8 +202,9 @@ class CopyPipeWriterTask extends RetriableTask {
 
             final DataBaseProvider dbProvider = ctx.getContext().getMigrationContext().getDataTargetRepository()
                     .getDatabaseProvider();
+            final String tableName = ctx.getCopyItem().getTargetItem();
             LOG.debug("TARGET DB name = " + dbProvider.getDbName() + " SOURCE TABLE = "
-                    + ctx.getCopyItem().getSourceItem() + ", TARGET Table = " + ctx.getCopyItem().getTargetItem());
+                    + ctx.getCopyItem().getSourceItem() + ", TARGET Table = " + tableName);
 
             originalAutoCommit = connection.getAutoCommit();
 
@@ -139,6 +222,10 @@ class CopyPipeWriterTask extends RetriableTask {
                 boolean printedClobLog = false;
 
                 for (List<Object> row : dataSet.getAllResults()) {
+                    final Map<Column, Object> columnValuesAnonymized = ctx.getContext().getMigrationContext()
+                            .isAnonymizerEnabled()
+                                    ? getColumnValuesAnonymized(dbProvider, tempTargetRs, row, tableName)
+                                    : null;
                     int paramIdx = 1;
                     for (String sourceColumnName : ctx.getColumnsToCopy()) {
                         int targetColumnIdx = tempTargetRs.findColumn(sourceColumnName);
@@ -152,9 +239,25 @@ class CopyPipeWriterTask extends RetriableTask {
                                 bulkWriterStatement.setObject(paramIdx,
                                         ctx.getCopyItem().getColumnMap().get(sourceColumnName), targetColumnType);
                             } else {
-                                Object sourceColumnValue = dataSet.getColumnValue(sourceColumnName, row,
-                                        sourceColumnType, targetColumnType);
+                                final Object anonymizedValue = columnValuesAnonymized == null
+                                        ? null
+                                        : columnValuesAnonymized.get(new Column(sourceColumnName));
+                                Object sourceColumnValue = anonymizedValue != null
+                                        ? anonymizedValue
+                                        : dataSet.getColumnValue(sourceColumnName, row, sourceColumnType,
+                                                targetColumnType);
                                 if (sourceColumnValue != null) {
+                                    /*
+                                     * Code to handle \u0000 (NULL) characters in PostgreSQL as those are not
+                                     * allowed within text fields, exception example: PSQLException: ERROR: invalid
+                                     * byte sequence for encoding "UTF8": 0x00
+                                     */
+                                    if (dbProvider.isPostgreSqlUsed() && sourceColumnValue instanceof String
+                                            && targetColumnType == VARCHAR) {
+                                        final String stringValue = (String) sourceColumnValue;
+                                        sourceColumnValue = StringUtils.remove(stringValue, Character.MIN_VALUE);
+                                    }
+
                                     // catch all exceptions, not to print each time, print one for each type/worker.
                                     try {
                                         if (!dbProvider.isOracleUsed()) {
@@ -198,7 +301,7 @@ class CopyPipeWriterTask extends RetriableTask {
                                                         printedClobLog = true;
                                                     }
                                                     if (sourceColumnValue instanceof String) {
-                                                        String clobString = (String) sourceColumnValue;
+                                                        final String clobString = (String) sourceColumnValue;
                                                         if (!clobString.isEmpty()) {
                                                             LOG.debug(" reading CLOB");
                                                             bulkWriterStatement.setClob(paramIdx,
@@ -217,20 +320,19 @@ class CopyPipeWriterTask extends RetriableTask {
                                                     break;
                                                 }
                                             }
-
                                         }
                                     } catch (final NumberFormatException e) {
                                         LOG.error("NumberFormatException - Error setting Type on sourceColumnName = "
                                                 + sourceColumnName + ", sourceColumnValue = " + sourceColumnValue
                                                 + ", targetColumnType =" + targetColumnType + ", source type = "
                                                 + sourceColumnValue.getClass().getTypeName());
-                                        if (dbProvider.isOracleUsed()) {
-                                            if (targetColumnType == NUMERIC && sourceColumnValue instanceof String) {
-                                                final String stringValue = (String) sourceColumnValue;
-                                                if (!stringValue.isEmpty()) {
-                                                    final int character = Character.codePointAt(stringValue, 0);
-                                                    bulkWriterStatement.setInt(paramIdx, character);
-                                                }
+                                        if (dbProvider.isOracleUsed() && targetColumnType == NUMERIC
+                                                && sourceColumnValue instanceof String) {
+                                            final String stringValue = (String) sourceColumnValue;
+                                            if (!stringValue.isEmpty()) {
+                                                final int character = Character.codePointAt((String) sourceColumnValue,
+                                                        0);
+                                                bulkWriterStatement.setInt(paramIdx, character);
                                             }
                                         }
                                     } catch (final Exception e) {

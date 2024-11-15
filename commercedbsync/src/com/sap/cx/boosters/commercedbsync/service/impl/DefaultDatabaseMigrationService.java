@@ -6,12 +6,16 @@
 
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
+import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import de.hybris.bootstrap.ddl.DataBaseProvider;
+import de.hybris.platform.servicelayer.config.ConfigurationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -33,6 +37,7 @@ import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
+import org.springframework.core.io.ClassPathResource;
 
 public class DefaultDatabaseMigrationService implements DatabaseMigrationService {
 
@@ -43,10 +48,32 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
     private PerformanceProfiler performanceProfiler;
     private DatabaseMigrationReportService databaseMigrationReportService;
     private DatabaseSchemaDifferenceService schemaDifferenceService;
+    private ConfigurationService configurationService;
     private MigrationContextValidator migrationContextValidator;
     private TaskService taskService;
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
     private ArrayList<MigrationPreProcessor> preProcessors;
+
+    @Override
+    public void prepareMigration(MigrationContext context) throws Exception {
+        final DataRepository repository = !context.isDataExportEnabled()
+                ? context.getDataTargetRepository()
+                : context.getDataSourceRepository();
+        final DataBaseProvider databaseProvider = repository.getDatabaseProvider();
+        final ClassPathResource scriptResource = new ClassPathResource(
+                String.format("/sql/createSchedulerTables%s.sql", databaseProvider));
+
+        if (!scriptResource.exists()) {
+            throw new IllegalStateException(
+                    "Scheduler tables creation script for database " + databaseProvider + " not found!");
+        }
+        // we cannot set "read-only" now...
+        repository.getConnection().setReadOnly(false);
+        repository.runSqlScript(scriptResource);
+        // we can reset to read-only now...
+        repository.getConnection().setReadOnly(true);
+
+    }
 
     @Override
     public String startMigration(final MigrationContext context, LaunchOptions launchOptions) throws Exception {
@@ -82,6 +109,13 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
 
         if (context.isSchemaMigrationEnabled() && context.isSchemaMigrationAutoTriggerEnabled()) {
             schemaDifferenceService.executeSchemaDifferences(context);
+        }
+
+        final Serializable batchSize = launchOptions.getPropertyOverrideMap()
+                .remove(CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE);
+        if (batchSize != null) {
+            configurationService.getConfiguration().setProperty(CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE,
+                    String.valueOf(batchSize));
         }
 
         CopyContext copyContext = buildCopyContext(context, migrationId);
@@ -182,6 +216,10 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
 
     public void setSchemaDifferenceService(DatabaseSchemaDifferenceService schemaDifferenceService) {
         this.schemaDifferenceService = schemaDifferenceService;
+    }
+
+    public void setConfigurationService(ConfigurationService configurationService) {
+        this.configurationService = configurationService;
     }
 
     public void setMigrationContextValidator(MigrationContextValidator migrationContextValidator) {

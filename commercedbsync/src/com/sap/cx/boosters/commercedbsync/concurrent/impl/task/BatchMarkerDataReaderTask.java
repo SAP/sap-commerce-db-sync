@@ -22,13 +22,15 @@ public class BatchMarkerDataReaderTask extends DataReaderTask {
     private final String batchColumn;
     private final Pair<Object, Object> batchMarkersPair;
     private final int batchId;
+    private final boolean upperBoundInclusive;
 
     public BatchMarkerDataReaderTask(PipeTaskContext pipeTaskContext, int batchId, String batchColumn,
-            Pair<Object, Object> batchMarkersPair) {
+            Pair<Object, Object> batchMarkersPair, boolean upperBoundInclusive) {
         super(pipeTaskContext);
         this.batchId = batchId;
         this.batchColumn = batchColumn;
         this.batchMarkersPair = batchMarkersPair;
+        this.upperBoundInclusive = upperBoundInclusive;
     }
 
     @Override

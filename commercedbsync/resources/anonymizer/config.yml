@@ -1,0 +1,98 @@
+tables:
+  - name: users
+    columns:
+      - name: p_name
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}"
+      - name: p_description
+        operation: REPLACE
+        text: "new description"
+      - name: p_uid
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}"
+        excludeRow: ["anonymous", "admin"]
+      - name: p_originaluid
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+      - name: p_email
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+
+  - name: addresses
+    columns:
+      - name: p_cellphone
+        operation: REPLACE
+        text: "{RANDOM(number,10)}"
+      - name: p_phone1
+        operation: REPLACE
+        text: "{RANDOM(number,10)}"
+      - name: p_phone2
+        operation: REPLACE
+        text: "{RANDOM(number,10)}"
+      - name: p_email
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(string,5)}.{RANDOM(number,2)}@test.com"
+        exclude: ["anette.customer@hybris.com", "keenreviewer24@hybris.com"]
+      - name: p_fax
+        operation: REPLACE
+        text: "{RANDOM(number,10)}"
+      - name: p_firstname
+        operation: REPLACE
+        text: "name_{RANDOM(number,5)}"
+      - name: p_lastname
+        operation: REPLACE
+        text: "lastname_{RANDOM(number,5)}"
+      - name: p_middlename
+        operation: REPLACE
+        text: "middlename_{RANDOM(number,5)}"
+      - name: p_middlename2
+        operation: REPLACE
+        text: "middlename2_{RANDOM(number,5)}"
+      - name: p_postalcode
+        operation: REPLACE
+        text: "{RANDOM(number,5)}"
+      - name: p_streetname
+        operation: REPLACE
+        text: "{RANDOM(street)}"
+      - name: p_streetnumber
+        operation: REPLACE
+        text: "{RANDOM(number,3)}"
+      - name: p_town
+        operation: REPLACE
+        text: "{RANDOM(city)}"
+
+  - name: emailaddress
+    columns:
+      - name: p_emailaddress
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+
+  - name: emailmessage
+    columns:
+      - name: p_replytoaddress
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+      - name: p_sentmessageid
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+
+  - name: useraudit
+    columns:
+      - name: p_uid
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+      - name: p_changinguser
+        operation: REPLACE
+        text: "{GUID}-{RANDOM(number,5)}@test.com"
+
+  - name: pointofservice
+    columns:
+      - name: p_description
+        operation: REPLACE
+        text: "new description"
+      - name: p_name
+        operation: REPLACE
+        text: "{RANDOM(string,5)}"
+      - name: p_displayname
+        operation: REPLACE
+        text: "{RANDOM(number,3)}"

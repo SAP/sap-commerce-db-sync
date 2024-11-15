@@ -39,4 +39,6 @@ public interface DataSourceConfiguration {
     int getMinIdle();
 
     boolean isRemoveAbandoned();
+
+    long getMaxLifetime();
 }

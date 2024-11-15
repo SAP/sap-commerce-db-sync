@@ -216,3 +216,8 @@ migration.data.view.t.users.enabled=true
 migration.data.view.t.users.columnPrefix=item_t1
 migration.data.view.t.users.joinWhereClause=users item_t1 LEFT JOIN MIGRATIONTOOLKIT_TF_TYPEINFO item_t2 ON item_t1.typepkstring = item_t2.pk WHERE item_t2.internalcode != 'Customer' OR item_t2.internalcode IS NULL OR item_t1.p_uid = 'anonymous'
 ```
+
+## Data Anonymization 
+
+There might be cases where you need the data to be anonymized in the target system.
+Please reference [Anonymization Configuration](../anonymizer/README.md)

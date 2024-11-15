@@ -42,6 +42,10 @@
                 <button id="buttonCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/copyData"/>">Start</button>
                 <button id="buttonStopCopyData" class="control-button" data-url="<c:url value="/commercedbsynchac/abortCopy"/>">Stop</button>
             </div>
+            <div id="playFinishSoundCheckboxContainer">
+                <input type="checkbox" id="playFinishSoundCheckbox" name="playFinishSoundCheckbox" data-soundurl="<c:url value="/static/audio/pling.mp3"/>">
+                <label for="playFinishSoundCheckbox">Play a sound on finish/fail of migration.</label>
+            </div>
             <div id="configPanel" class="prepend-top clearfix" data-configPanelDataUrl="<c:url value="/commercedbsynchac/configPanel"/>">
             </div>
         </c:if>

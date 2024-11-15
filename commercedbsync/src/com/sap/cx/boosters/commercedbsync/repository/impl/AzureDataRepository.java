@@ -18,7 +18,6 @@ import javax.sql.DataSource;
 
 import com.google.common.base.Joiner;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,17 +87,16 @@ public class AzureDataRepository extends AbstractDataRepository {
         }
         // spotless:off
         return String.format("SELECT t.%s, t.rownum\n" +
-                "FROM\n" +
-                "(\n" +
-                "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownum\n" +
-                "    FROM %s\n WHERE %s" +
-                ") AS t\n" +
-                "WHERE t.rownum %% ? = 0\n" +
-                "ORDER BY t.%s",
-        // spotless:on
+                        "FROM\n" +
+                        "(\n" +
+                        "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownum\n" +
+                        "    FROM %s\n WHERE %s" +
+                        ") AS t\n" +
+                        "WHERE t.rownum %% ? = 0\n" +
+                        "ORDER BY t.%s",
+                // spotless:on
                 column, column, column, tableName, expandConditions(conditions), column);
     }
-
     @Override
     protected boolean hasParameterizedBatchMarkersQuery() {
         return true;
@@ -149,16 +147,8 @@ public class AzureDataRepository extends AbstractDataRepository {
 
     @Override
     protected String createAllTableNamesQuery() {
-        final StringBuilder sqlBuilder = new StringBuilder(
-                "SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '")
-                        .append(getDataSourceConfiguration().getSchema()).append("'");
-
-        if (StringUtils.isNotEmpty(getDataSourceConfiguration().getTablePrefix())) {
-            sqlBuilder.append(" AND TABLE_NAME LIKE '").append(getDataSourceConfiguration().getTablePrefix())
-                    .append("%'");
-        }
-
-        return sqlBuilder.toString();
+        return String.format("SELECT DISTINCT TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '%s'",
+                getDataSourceConfiguration().getSchema());
     }
 
     @Override
@@ -223,33 +213,38 @@ public class AzureDataRepository extends AbstractDataRepository {
     protected String createUniqueColumnsQuery(String tableName) {
         // spotless:off
         return String.format("SELECT col.name FROM (\n" +
-                "SELECT TOP (1)\n" +
-                "     SchemaName = t.schema_id,\n" +
-                "     ObjectId = ind.object_id,\n" +
-                "     IndexId = ind.index_id,\n" +
-                "     TableName = t.name,\n" +
-                "     IndexName = ind.name,\n" +
-                "     ColCount = count(*)\n" +
-                "FROM \n" +
-                "     sys.indexes ind \n" +
-                "INNER JOIN \n" +
-                "     sys.tables t ON ind.object_id = t.object_id \n" +
-                "WHERE \n" +
-                "     t.name = '%s'\n" +
-                "     AND\n" +
-                "     SCHEMA_NAME(t.schema_id) = '%s'\n" +
-                "     AND\n" +
-                "     ind.is_unique = 1\n" +
-                "GROUP BY t.schema_id,ind.object_id,ind.index_id,t.name,ind.name\n" +
-                "ORDER BY ColCount ASC\n" +
-                ") t1\n" +
-                "INNER JOIN \n" +
-                "     sys.index_columns ic ON  t1.ObjectId = ic.object_id and t1.IndexId = ic.index_id \n" +
-                "INNER JOIN \n" +
-                "     sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id \n" +
-                "ORDER BY ic.key_ordinal",
-        // spotless:on
+                        "SELECT TOP (1)\n" +
+                        "     SchemaName = t.schema_id,\n" +
+                        "     ObjectId = ind.object_id,\n" +
+                        "     IndexId = ind.index_id,\n" +
+                        "     TableName = t.name,\n" +
+                        "     IndexName = ind.name,\n" +
+                        "     ColCount = count(*)\n" +
+                        "FROM \n" +
+                        "     sys.indexes ind \n" +
+                        "INNER JOIN \n" +
+                        "     sys.tables t ON ind.object_id = t.object_id \n" +
+                        "WHERE \n" +
+                        "     t.name = '%s'\n" +
+                        "     AND\n" +
+                        "     SCHEMA_NAME(t.schema_id) = '%s'\n" +
+                        "     AND\n" +
+                        "     ind.is_unique = 1\n" +
+                        "GROUP BY t.schema_id,ind.object_id,ind.index_id,t.name,ind.name\n" +
+                        "ORDER BY ColCount ASC\n" +
+                        ") t1\n" +
+                        "INNER JOIN \n" +
+                        "     sys.index_columns ic ON  t1.ObjectId = ic.object_id and t1.IndexId = ic.index_id \n" +
+                        "INNER JOIN \n" +
+                        "     sys.columns col ON ic.object_id = col.object_id and ic.column_id = col.column_id \n" +
+                        "ORDER BY ic.key_ordinal",
+                // spotless:on
                 tableName, getDataSourceConfiguration().getSchema());
+    }
+
+    @Override
+    protected String createRowCountQuery() {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE %s";
     }
 
     @Override

@@ -37,6 +37,7 @@ public class InitUpdateProcessTrigger implements MediaStorageInitializer {
         try {
             if (migrationContext.isMigrationTriggeredByUpdateProcess()) {
                 LOG.info("Starting data migration ...");
+                databaseMigrationService.prepareMigration(migrationContext);
                 String migrationId = databaseMigrationService.startMigration(migrationContext, LaunchOptions.NONE);
                 databaseMigrationService.waitForFinish(migrationContext, migrationId);
                 // note: further update activities not stopped here -> should we?

@@ -71,22 +71,25 @@ public class CopyContext {
         private final Map<String, String> columnMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         private final Long rowCount;
         private final Integer batchSize;
+        private final ChunkData chunkData;
 
         public DataCopyItem(String sourceItem, String targetItem, Integer batchSize) {
             this.sourceItem = sourceItem;
             this.targetItem = targetItem;
             this.batchSize = batchSize;
             this.rowCount = null;
+            this.chunkData = null;
         }
 
         public DataCopyItem(String sourceItem, String targetItem, Map<String, String> columnMap, Long rowCount,
-                Integer batchSize) {
+                Integer batchSize, ChunkData chunkData) {
             this.sourceItem = sourceItem;
             this.targetItem = targetItem;
             this.batchSize = batchSize;
             this.columnMap.clear();
             this.columnMap.putAll(columnMap);
             this.rowCount = rowCount;
+            this.chunkData = chunkData;
         }
 
         public String getSourceItem() {
@@ -102,7 +105,8 @@ public class CopyContext {
         }
 
         public String getPipelineName() {
-            return getSourceItem() + "->" + getTargetItem();
+            return getSourceItem() + (this.chunkData != null ? this.chunkData.getCurrentChunk() : "") + "->"
+                    + getTargetItem();
         }
 
         public Map<String, String> getColumnMap() {
@@ -115,6 +119,10 @@ public class CopyContext {
 
         public Integer getBatchSize() {
             return batchSize;
+        }
+
+        public ChunkData getChunkData() {
+            return chunkData;
         }
 
         @Override
@@ -130,12 +138,36 @@ public class CopyContext {
             if (o == null || getClass() != o.getClass())
                 return false;
             DataCopyItem that = (DataCopyItem) o;
-            return getSourceItem().equals(that.getSourceItem()) && getTargetItem().equals(that.getTargetItem());
+            if (!(getSourceItem().equals(that.getSourceItem()) && getTargetItem().equals(that.getTargetItem()))) {
+                return false;
+            }
+            return (this.getChunkData() == null && that.getChunkData() == null)
+                    || (this.getChunkData() != null && that.getChunkData() != null
+                            && this.getChunkData().getCurrentChunk().equals(that.getChunkData().getCurrentChunk()));
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(getSourceItem(), getTargetItem());
+            return Objects.hash(getSourceItem(), getTargetItem(),
+                    getChunkData() != null ? getChunkData().getCurrentChunk() : "");
+        }
+
+        public static class ChunkData {
+            private final Long chunkSize;
+            private final Integer currentChunk;
+
+            public ChunkData(int currentChunk, Long chunkSize) {
+                this.currentChunk = currentChunk;
+                this.chunkSize = chunkSize;
+            }
+
+            public Long getChunkSize() {
+                return chunkSize;
+            }
+
+            public Integer getCurrentChunk() {
+                return currentChunk;
+            }
         }
     }
 

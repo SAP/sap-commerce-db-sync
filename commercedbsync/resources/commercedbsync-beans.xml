@@ -16,6 +16,28 @@
         <value>STALLED</value>
     </enum>
 
+    <enum class="com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress">
+        <value>RUNNING</value>
+        <value>COMPLETED</value>
+        <value>ABORTED</value>
+    </enum>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus">
+        <property name="schemaDifferenceId" type="String" equals="true"/>
+        <property name="start" type="java.time.LocalDateTime"/>
+        <property name="startEpoch" type="Long"/>
+        <property name="end" type="java.time.LocalDateTime"/>
+        <property name="endEpoch" type="Long"/>
+        <property name="lastUpdate" type="java.time.LocalDateTime"/>
+        <property name="lastUpdateEpoch" type="Long"/>
+        <property name="completed" type="boolean"/>
+        <property name="failed" type="boolean"/>
+        <property name="aborted" type="boolean"/>
+        <property name="status" type="com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress"/>
+        <property name="diffResult" type="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData"/>
+        <property name="sqlScript" type="String" />
+    </bean>
+
     <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask">
         <property name="targetnodeId" type="int"/>
         <property name="migrationId" type="String"/>
@@ -40,6 +62,12 @@
         <property name="copyMethod" type="String"/>
         <property name="keyColumns" type="java.util.List&lt;String&gt;"/>
         <property name="batchsize" type="int"/>
+        <property name="chunk" type="com.sap.cx.boosters.commercedbsync.service.DataCopyChunk"/>
+    </bean>
+    <bean class="com.sap.cx.boosters.commercedbsync.service.DataCopyChunk">
+        <property name="currentChunk" type="int"/>
+        <property name="chunkSize" type="Long"/>
+        <property name="lastChunk" type="Boolean"/>
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyBatch">

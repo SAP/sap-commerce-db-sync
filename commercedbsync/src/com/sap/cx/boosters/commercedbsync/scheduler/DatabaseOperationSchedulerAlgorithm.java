@@ -8,7 +8,7 @@ package com.sap.cx.boosters.commercedbsync.scheduler;
 
 import java.util.List;
 
-public interface DatabaseCopySchedulerAlgorithm {
+public interface DatabaseOperationSchedulerAlgorithm {
     int getOwnNodeId();
 
     List<Integer> getNodeIds();

@@ -40,7 +40,7 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     @Override
     protected void onEvent(final CopyCompleteEvent event) {
-        final String migrationId = event.getMigrationId();
+        final String migrationId = event.getOperationId();
 
         LOG.info("Migration finished on Node {} with result {}", event.getSourceNodeId(), event.getCopyResult());
         final CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),

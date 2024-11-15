@@ -92,8 +92,8 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
         return targetRepository.getAllTableNames().stream()
                 .filter(n -> prefix == null || StringUtils.startsWithIgnoreCase(n, prefix))
-                .map(n -> StringUtils.removeStartIgnoreCase(n, prefix))
-                .filter(n -> !isNonMatchingTypesystemTable(targetRepository, n))
+                .filter(n -> !isNonMatchingTypesystemTable(targetRepository,
+                        StringUtils.removeStartIgnoreCase(n, prefix)))
                 .map(n -> createTableCandidate(targetRepository, n))
                 .collect(Collectors.toCollection(() -> new TreeSet<>(tableCandidateComparator)));
     }
@@ -139,15 +139,15 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
         // add tables listed in "ydeployments"
         final Set<TypeSystemTable> allTypeSystemTables = repository.getAllTypeSystemTables();
         allTypeSystemTables.forEach(t -> {
-            tableCandidates.add(createTableCandidate(repository, t.getTableName()));
+            tableCandidates.add(createTableCandidate(repository, t.getTableName(), tablePrefix));
 
             final String propsTableName = t.getPropsTableName();
 
             if (StringUtils.isNotEmpty(propsTableName)) {
-                tableCandidates.add(createTableCandidate(repository, t.getPropsTableName()));
+                tableCandidates.add(createTableCandidate(repository, t.getPropsTableName(), tablePrefix));
             }
 
-            final TableCandidate lpTable = createTableCandidate(repository, t.getTableName() + LP_SUFFIX);
+            final TableCandidate lpTable = createTableCandidate(repository, t.getTableName() + LP_SUFFIX, tablePrefix);
 
             if (allTableNames.stream().anyMatch(lpTable.getFullTableName()::equalsIgnoreCase)) {
                 LOG.debug("LP table Match... " + lpTable.getFullTableName());
@@ -155,7 +155,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
             }
 
             if (shouldMigrateAuditTable(context, t.getAuditTableName())) {
-                final TableCandidate auditTable = createTableCandidate(repository, t.getAuditTableName());
+                final TableCandidate auditTable = createTableCandidate(repository, t.getAuditTableName(), tablePrefix);
 
                 if (allTableNames.contains(auditTable.getFullTableName())) {
                     tableCandidates.add(auditTable);
@@ -186,11 +186,11 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
 
         String baseTableName = getTableNameWithoutPrefix(tableNameWithoutAdditionalSuffix,
                 repository.getDataSourceConfiguration().getTablePrefix());
-        final boolean isTypeSystemRelatedTable = isTypeSystemRelatedTable(baseTableName);
+        final String typeSystemSuffix = repository.getDataSourceConfiguration().getTypeSystemSuffix();
+        final boolean isTypeSystemRelatedTable = isTypeSystemRelatedTable(baseTableName, typeSystemSuffix);
 
         if (isTypeSystemRelatedTable) {
-            baseTableName = getTableNameWithoutTypeSystemSuffix(baseTableName,
-                    repository.getDataSourceConfiguration().getTypeSystemSuffix());
+            baseTableName = getTableNameWithoutTypeSystemSuffix(baseTableName, typeSystemSuffix);
         }
 
         candidate.setCommonTableName(baseTableName + additionalSuffix);
@@ -201,9 +201,9 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
         return candidate;
     }
 
-    private boolean isTypeSystemRelatedTable(final String tableName) {
+    private boolean isTypeSystemRelatedTable(final String tableName, final String typeSystemSuffix) {
         return Arrays.stream(TYPE_SYSTEM_RELATED_TYPES)
-                .anyMatch(name -> StringUtils.startsWithIgnoreCase(tableName, name));
+                .anyMatch(name -> StringUtils.equalsIgnoreCase(tableName, name + typeSystemSuffix));
     }
 
     private String getAdditionalSuffix(final String tableName, final DataBaseProvider dataBaseProvider) {

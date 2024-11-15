@@ -40,7 +40,8 @@ public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implemen
 
     private void provideCustomMapping() {
         PlatformInfo platformInfo = this.getPlatformInfo();
-        platformInfo.setMaxColumnNameLength(31);
+        platformInfo.setMaxIdentifierLength(63);
+        platformInfo.setMaxColumnNameLength(30);
         platformInfo.addNativeTypeMapping(Types.NVARCHAR, "VARCHAR", Types.VARCHAR);
         platformInfo.addNativeTypeMapping(Types.NCHAR, "int2", Types.TINYINT);
         platformInfo.addNativeTypeMapping(Types.CHAR, "int2", Types.TINYINT);
@@ -49,7 +50,7 @@ public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implemen
         platformInfo.setHasSize(Types.NVARCHAR, true);
         platformInfo.setHasSize(Types.VARCHAR, true);
         platformInfo.addNativeTypeMapping(Types.BIGINT, "int8");
-        platformInfo.addNativeTypeMapping(Types.INTEGER, "int2");
+        platformInfo.addNativeTypeMapping(Types.INTEGER, "int");
         platformInfo.addNativeTypeMapping(Types.SMALLINT, "int2");
         platformInfo.addNativeTypeMapping(Types.TINYINT, "int2");
         platformInfo.addNativeTypeMapping(Types.DOUBLE, "float8");
