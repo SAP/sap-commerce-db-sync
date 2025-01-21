@@ -4,16 +4,6 @@
 
 | Property | Description | Default   | values      | optional    | dependency   |
 | --- | --- | ---   | ---      | ---    | ---   |
-| commercedbsync.application-context | |  `commercedbsync-spring.xml`    |       |     |    |
-| configuration.view.blacklist.migration | |  `${migration.properties.masked}`    |       |     |    |
-| log4j2.appender.migrationAppender.layout.pattern | |  `%-5p [%t] [%c{1}] %X{migrationID,schemaDiffID,pipeline,clusterID} %m%n`    |       |     |    |
-| log4j2.appender.migrationAppender.layout.type | |  `PatternLayout`    |       |     |    |
-| log4j2.appender.migrationAppender.name | |  `MigrationAppender`    |       |     |    |
-| log4j2.appender.migrationAppender.type | |  `Console`    |       |     |    |
-| log4j2.logger.migrationToolkit.additivity | |  `false`    |       |     |    |
-| log4j2.logger.migrationToolkit.appenderRef.migration.ref | |  `MigrationAppender`    |       |     |    |
-| log4j2.logger.migrationToolkit.level | |  `INFO`    |       |     |    |
-| log4j2.logger.migrationToolkit.name | |  `com.sap.cx.boosters.commercedbsync`    |       |     |    |
 | migration.anonymizer.enabled | Enables / disables data anonymization. If set to false, no anonymization will be performed|  `false`    | true or false      | false    |    |
 | migration.cluster.chunk.size | If set to any positive value enables chunking globally.   Specifies the number of rows to read per chunk. Each split represents `virtual` table that is processed in separate pipeline.  Only taken into account if higher then `(int) Math.ceil(rowCount / numNodes / batchSize) * batchSize)`|  `-1`    | long value      | false    |    |
 | migration.cluster.chunk.size.TABLE | If set to any positive value enables chunking for specified TABLE.   Specifies the number of rows to read per chunk. Each split represents `virtual` table that is processed in separate pipeline.  Only taken into account if higher then `(int) Math.ceil(rowCount / numNodes / batchSize) * batchSize)`  Replace the TABLE with the source table name without prefix.|    | long value      | true    |    |
