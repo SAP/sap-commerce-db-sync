@@ -68,7 +68,7 @@ public class TypeInfoTableGeneratorPreProcessor implements MigrationPreProcessor
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return context.getMigrationContext().isDataExportEnabled()
+        return context.getMigrationContext().isDataSynchronizationEnabled()
                 && context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isMssqlUsed();
     }
 

@@ -37,12 +37,8 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MDC_CLUSTERID;
@@ -82,14 +78,17 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             List<Pair<CopyContext.DataCopyItem, Long>> itemsToSchedule = generateSchedulerItemList(context,
                     dataRepositoryAdapter);
             databaseCopyTaskRepository.createMigrationStatus(context, itemsToSchedule.size());
+            long itemOrder = 0;
             for (final Pair<CopyContext.DataCopyItem, Long> itemToSchedule : itemsToSchedule) {
                 CopyContext.DataCopyItem dataCopyItem = itemToSchedule.getLeft();
                 final long sourceRowCount = itemToSchedule.getRight();
                 if (sourceRowCount > 0) {
                     final int destinationNodeId = databaseOperationSchedulerAlgorithm.next();
-                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, sourceRowCount, destinationNodeId);
+                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, ++itemOrder, sourceRowCount,
+                            destinationNodeId);
                 } else {
-                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, sourceRowCount, ownNodeId);
+                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, itemOrder++, sourceRowCount,
+                            ownNodeId);
                     databaseCopyTaskRepository.markTaskCompleted(context, dataCopyItem, "0");
                     if (!context.getMigrationContext().isIncrementalModeEnabled()
                             && context.getMigrationContext().isTruncateEnabled()) {
@@ -100,7 +99,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             }
             startMonitorThread(context);
             final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(ownNodeId, context.getMigrationId(),
-                    context.getPropertyOverrideMap());
+                    context.getPropertyOverrideMap(), context.getMigrationContext().isReversed());
             eventService.publishEvent(event);
         } else {
             throw new IllegalStateException(
@@ -124,48 +123,14 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         startMonitorThread(copyContext);
         final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(
                 databaseOperationSchedulerAlgorithm.getOwnNodeId(), copyContext.getMigrationId(),
-                copyContext.getPropertyOverrideMap());
+                copyContext.getPropertyOverrideMap(), copyContext.getMigrationContext().isReversed());
         eventService.publishEvent(event);
     }
 
     private void logMigrationContext(final MigrationContext context) {
-        if (!Config.getBoolean("migration.log.context.details", true)) {
-            return;
+        if (Config.getBoolean("migration.log.context.details", true)) {
+            context.dumpLog(LOG);
         }
-
-        LOG.info("--------MIGRATION CONTEXT- START----------");
-        LOG.info("isAddMissingColumnsToSchemaEnabled=" + context.isAddMissingColumnsToSchemaEnabled());
-        LOG.info("isAddMissingTablesToSchemaEnabled=" + context.isAddMissingTablesToSchemaEnabled());
-        LOG.info("isAuditTableMigrationEnabled=" + context.isAuditTableMigrationEnabled());
-        LOG.info("isClusterMode=" + context.isClusterMode());
-        LOG.info("isDeletionEnabled=" + context.isDeletionEnabled());
-        LOG.info("isDisableAllIndexesEnabled=" + context.isDisableAllIndexesEnabled());
-        LOG.info("isDropAllIndexesEnabled=" + context.isDropAllIndexesEnabled());
-        LOG.info("isFailOnErrorEnabled=" + context.isFailOnErrorEnabled());
-        LOG.info("isIncrementalModeEnabled=" + context.isIncrementalModeEnabled());
-        LOG.info("isMigrationTriggeredByUpdateProcess=" + context.isMigrationTriggeredByUpdateProcess());
-        LOG.info("isRemoveMissingColumnsToSchemaEnabled=" + context.isRemoveMissingColumnsToSchemaEnabled());
-        LOG.info("isRemoveMissingTablesToSchemaEnabled=" + context.isRemoveMissingTablesToSchemaEnabled());
-        LOG.info("isSchemaMigrationAutoTriggerEnabled=" + context.isSchemaMigrationAutoTriggerEnabled());
-        LOG.info("isSchemaMigrationEnabled=" + context.isSchemaMigrationEnabled());
-        LOG.info("isTruncateEnabled=" + context.isTruncateEnabled());
-        LOG.info("getIncludedTables=" + context.getIncludedTables());
-        LOG.info("getExcludedTables=" + context.getExcludedTables());
-        LOG.info("getIncrementalTables=" + context.getIncrementalTables());
-        LOG.info("getTruncateExcludedTables=" + context.getTruncateExcludedTables());
-        LOG.info("getCustomTables=" + context.getCustomTables());
-        LOG.info("getIncrementalTimestamp=" + context.getIncrementalTimestamp());
-        LOG.info(
-                "Source TS Name=" + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Source TS Suffix="
-                + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info(
-                "Target TS Name=" + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Target TS Suffix="
-                + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info("getItemTypeViewNamePattern=" + context.getItemTypeViewNamePattern());
-
-        LOG.info("--------MIGRATION CONTEXT- END----------");
     }
 
     private List<Pair<CopyContext.DataCopyItem, Long>> generateSchedulerItemList(CopyContext context,
@@ -181,7 +146,21 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             LOG.debug("Found {} rows in table: {}", rowCount, copyItem.getSourceItem());
         }
         // we sort the items to make sure big tables are assigned to nodes in a fair way
-        return pairs.stream().sorted(Comparator.comparingLong(Pair::getRight)).collect(Collectors.toList());
+        return pairs.stream().sorted(Comparator.comparingLong(customizedTablesOrder(context)))
+                .collect(Collectors.toList());
+    }
+
+    private ToLongFunction<Pair<CopyContext.DataCopyItem, Long>> customizedTablesOrder(CopyContext context) {
+        if (context.getMigrationContext().isTablesOrdered()) {
+            final Set<String> first = context.getMigrationContext().getTablesOrderedAsFirst();
+            final Set<String> last = context.getMigrationContext().getTablesOrderedAsLast();
+
+            return pair -> first.contains(pair.getKey().getSourceItem())
+                    ? -1
+                    : last.contains(pair.getKey().getSourceItem()) ? Integer.MAX_VALUE : pair.getRight();
+        } else {
+            return Pair::getRight;
+        }
     }
 
     /**
@@ -305,7 +284,8 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
          */
         private void notifyFinished() {
             final CopyCompleteEvent completeEvent = new CopyCompleteEvent(
-                    databaseOperationSchedulerAlgorithm.getOwnNodeId(), context.getMigrationId());
+                    databaseOperationSchedulerAlgorithm.getOwnNodeId(), context.getMigrationId(),
+                    context.getMigrationContext().isReversed());
             eventService.publishEvent(completeEvent);
         }
 
@@ -366,5 +346,4 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             Registry.unsetCurrentTenant();
         }
     }
-
 }

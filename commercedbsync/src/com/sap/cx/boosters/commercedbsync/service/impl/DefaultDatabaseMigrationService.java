@@ -56,9 +56,8 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
 
     @Override
     public void prepareMigration(MigrationContext context) throws Exception {
-        final DataRepository repository = !context.isDataExportEnabled()
-                ? context.getDataTargetRepository()
-                : context.getDataSourceRepository();
+        final DataRepository repository = context.getDataRepository();
+
         final DataBaseProvider databaseProvider = repository.getDatabaseProvider();
         final ClassPathResource scriptResource = new ClassPathResource(
                 String.format("/sql/createSchedulerTables%s.sql", databaseProvider));
@@ -87,7 +86,7 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
             return runningMigrationStatus.getMigrationID();
         }
 
-        if (!context.isDataExportEnabled()) {
+        if (!context.isDataSynchronizationEnabled()) {
             TaskEngine engine = taskService.getEngine();
             boolean running = engine.isRunning();
 

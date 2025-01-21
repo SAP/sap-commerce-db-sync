@@ -11,6 +11,7 @@ import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
+import java.util.List;
 
 public interface DataRepositoryAdapter {
     long getRowCount(MigrationContext context, String table) throws Exception;
@@ -23,4 +24,6 @@ public interface DataRepositoryAdapter {
 
     DataSet getBatchMarkersOrderedByColumn(MigrationContext context, MarkersQueryDefinition queryDefinition)
             throws Exception;
+
+    List<String> getPartitions(String table) throws Exception;
 }

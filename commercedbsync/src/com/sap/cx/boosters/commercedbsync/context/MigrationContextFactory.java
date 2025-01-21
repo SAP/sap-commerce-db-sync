@@ -17,20 +17,23 @@ public class MigrationContextFactory {
     final DataRepositoryFactory dataRepositoryFactory;
     final DataSourceConfigurationFactory dataSourceConfigurationFactory;
     final Configuration configuration;
+    final boolean reversed;
 
-    public MigrationContextFactory(DataRepositoryFactory dataRepositoryFactory,
-            DataSourceConfigurationFactory dataSourceConfigurationFactory, Configuration configuration) {
+    public MigrationContextFactory(final DataRepositoryFactory dataRepositoryFactory,
+            final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration,
+            final boolean reversed) {
         this.dataRepositoryFactory = dataRepositoryFactory;
         this.dataSourceConfigurationFactory = dataSourceConfigurationFactory;
         this.configuration = configuration;
+        this.reversed = reversed;
     }
 
     public MigrationContext create() throws Exception {
-        if (configuration.getBoolean(CommercedbsyncConstants.MIGRATION_DATA_EXPORT_ENABLED, false)) {
+        if (configuration.getBoolean(CommercedbsyncConstants.MIGRATION_DATA_SYNCHRONIZATION_ENABLED, false)) {
             return new DefaultIncrementalMigrationContext(dataRepositoryFactory, dataSourceConfigurationFactory,
-                    configuration);
+                    configuration, reversed);
         }
 
-        return new DefaultMigrationContext(dataRepositoryFactory, dataSourceConfigurationFactory, configuration);
+        return new DefaultMigrationContext(dataRepositoryFactory, dataSourceConfigurationFactory, configuration, false);
     }
 }

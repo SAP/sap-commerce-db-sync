@@ -202,7 +202,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     private Connection getConnection(SchemaDifferenceContext context) throws Exception {
         final MigrationContext migrationContext = context.getMigrationContext();
 
-        final DataRepository repository = !migrationContext.isDataExportEnabled()
+        final DataRepository repository = !migrationContext.isDataSynchronizationEnabled()
                 ? migrationContext.getDataTargetRepository()
                 : migrationContext.getDataSourceRepository();
 

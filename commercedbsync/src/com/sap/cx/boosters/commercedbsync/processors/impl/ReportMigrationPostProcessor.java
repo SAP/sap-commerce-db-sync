@@ -38,8 +38,10 @@ public class ReportMigrationPostProcessor implements MigrationPostProcessor {
 
         try {
             final GsonBuilder gsonBuilder = new GsonBuilder();
+            gsonBuilder.setPrettyPrinting();
             gsonBuilder.registerTypeAdapter(LocalDateTime.class, new LocalDateTypeAdapter());
-            Gson gson = gsonBuilder.setPrettyPrinting().create();
+            gsonBuilder.disableHtmlEscaping();
+            Gson gson = gsonBuilder.create();
             MigrationReport migrationReport = databaseMigrationReportService.getMigrationReport(context);
             InputStream is = new ByteArrayInputStream(gson.toJson(migrationReport).getBytes(StandardCharsets.UTF_8));
             databaseMigrationReportStorageService.store(context.getMigrationId() + ".json", is);

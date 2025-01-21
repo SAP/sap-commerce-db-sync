@@ -37,7 +37,7 @@ public class DefaultMigrationContextValidator implements MigrationContextValidat
     }
 
     private void checkSourceDbIsNotTargetDb(MigrationContext context) {
-        if (context.isDataExportEnabled()) {
+        if (context.isDataSynchronizationEnabled()) {
             return; // in this mode, source DB can (should?) be set to CCv2 instance
         }
 
@@ -54,7 +54,7 @@ public class DefaultMigrationContextValidator implements MigrationContextValidat
 
     private void checkSystemNotLocked(MigrationContext context) {
         final boolean isSystemLocked = getConfigurationService().getConfiguration().getBoolean(DISABLE_UNLOCKING);
-        if (!context.isDataExportEnabled() && isSystemLocked) {
+        if (!context.isDataSynchronizationEnabled() && isSystemLocked) {
             throw new RuntimeException(
                     "You cannot run the migration on locked system. Check property " + DISABLE_UNLOCKING);
         }

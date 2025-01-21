@@ -27,6 +27,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Collections;
 import java.util.List;
 
 public class MySQLDataRepository extends AbstractDataRepository {
@@ -141,7 +142,20 @@ public class MySQLDataRepository extends AbstractDataRepository {
 
     @Override
     public String buildBulkUpsertStatement(String table, List<String> columnsToCopy, List<String> upsertIDs) {
-        throw new UnsupportedOperationException("not implemented");
+        final StringBuilder sqlBuilder = new StringBuilder();
+
+        sqlBuilder.append(String.format("INSERT INTO %s (", table));
+        sqlBuilder.append(String.join(", ", columnsToCopy));
+        sqlBuilder.append(") VALUES (");
+        sqlBuilder.append(String.join(", ", Collections.nCopies(columnsToCopy.size(), "?")));
+        sqlBuilder.append(") ");
+        sqlBuilder.append("ON DUPLICATE KEY UPDATE ");
+        for (String column : columnsToCopy) {
+            sqlBuilder.append(String.format("%s = VALUES(%s), ", column, column));
+        }
+        sqlBuilder.setLength(sqlBuilder.length() - 2);
+        sqlBuilder.append(";");
+        return sqlBuilder.toString();
     }
 
     @Override

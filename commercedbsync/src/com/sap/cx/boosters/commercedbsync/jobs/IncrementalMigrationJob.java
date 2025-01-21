@@ -58,8 +58,9 @@ public class IncrementalMigrationJob extends AbstractMigrationJobPerformable {
     private static final String TABLE_EXISTS_SELECT_STATEMENT_HANA = "SELECT TABLE_NAME \n" + " FROM public.tables \n"
             + " WHERE schema_name = upper('%s') \n" + " AND   table_name = upper('%2$s') ";
 
-    private static final String TABLE_EXISTS_SELECT_STATEMENT_POSTGRES = "SELECT TABLE_NAME \n"
-            + " FROM public.tables \n" + " WHERE schema_name = upper('%s') \n" + " AND   table_name = upper('%2$s') ";
+    private static final String TABLE_EXISTS_SELECT_STATEMENT_POSTGRES = "SELECT table_name \n"
+            + " FROM information_schema.tables \n" + " WHERE table_schema = upper('%s') \n"
+            + " AND   table_name = upper('%2$s') ";
 
     @Resource(name = "typeService")
     private TypeService typeService;

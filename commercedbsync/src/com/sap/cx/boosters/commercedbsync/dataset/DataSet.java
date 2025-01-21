@@ -14,7 +14,7 @@ import java.util.Objects;
 
 public interface DataSet {
 
-    DataSet EMPTY = new DefaultDataSet(0, 0, Collections.emptyList(), Collections.emptyList());
+    DataSet EMPTY = new DefaultDataSet(0, 0, Collections.emptyList(), Collections.emptyList(), null);
 
     int getBatchId();
 
@@ -39,4 +39,6 @@ public interface DataSet {
     DataColumn getColumn(int columnIndex);
 
     DataColumn getColumn(String columnName);
+
+    String getPartition();
 }

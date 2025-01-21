@@ -153,6 +153,7 @@
         <property name="lastColumnValue" type="Object" />
         <property name="nextColumnValue" type="Object" />
         <property name="batchSize" type="long" />
+        <property name="partition" type="String" />
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition">
@@ -170,6 +171,7 @@
         <property name="batchSize" type="long" />
         <property name="lowerColumnBoundary" type="Object" />
         <property name="upperColumnBoundary" type="Object" />
+        <property name="partition" type="String" />
     </bean>
 
      <bean class="com.sap.cx.boosters.commercedbsync.SeekQueryDefinition">

@@ -25,6 +25,7 @@ import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
 import com.sap.cx.boosters.commercedbsync.views.TableViewGenerator;
 
+import de.hybris.platform.core.Registry;
 import org.apache.commons.lang3.tuple.Pair;
 import org.fest.util.Collections;
 import com.sap.cx.boosters.commercedbsync.DataThreadPoolConfig;
@@ -72,6 +73,9 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         try {
             executor.submit(() -> {
                 try {
+                    if (!Registry.hasCurrentTenant()) {
+                        Registry.activateMasterTenant();
+                    }
                     scheduleWorkers(context, workerExecutor, pipe, item);
                     workerExecutor.waitAndRethrowUncaughtExceptions();
                     pipe.put(MaybeFinished.finished(DataSet.EMPTY));
@@ -131,16 +135,8 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
 
             if (batchColumn.isEmpty()) {
                 // trying offset queries with unique index columns
-                Set<String> batchColumns;
-                DataSet uniqueColumns = context.getMigrationContext().getDataSourceRepository()
-                        .getUniqueColumns(TableViewGenerator.getTableNameForView(table, context.getMigrationContext()));
-                if (uniqueColumns.isNotEmpty()) {
-                    if (uniqueColumns.getColumnCount() == 0) {
-                        throw new IllegalStateException(
-                                "Corrupt dataset retrieved. Dataset should have information about unique columns");
-                    }
-                    batchColumns = uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0)))
-                            .collect(Collectors.toCollection(LinkedHashSet::new));
+                Set<String> batchColumns = getBatchColumns(context, table);
+                if (!batchColumns.isEmpty()) {
                     taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.OFFSET.toString());
                     taskRepository.updateTaskKeyColumns(context, copyItem, batchColumns);
 
@@ -191,50 +187,46 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 taskRepository.updateTaskKeyColumns(context, copyItem, Lists.newArrayList(batchColumn));
                 List<List<Object>> batchMarkersList;
                 if (context.getMigrationContext().isSchedulerResumeEnabled()) {
-                    Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
-                            .findPendingBatchesForPipeline(context, copyItem);
-                    batchMarkersList = pendingBatchesForPipeline.stream()
-                            .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList());
-                    taskRepository.resetPipelineBatches(context, copyItem);
-                } else {
-                    MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
-                    queryDefinition.setTable(table);
-                    queryDefinition.setColumn(batchColumn);
-                    queryDefinition.setBatchSize(batchSize);
-                    queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
-                    queryDefinition.setLpTableEnabled(context.getMigrationContext().isLpTableMigrationEnabled());
-                    DataSet batchMarkers = dataRepositoryAdapter
-                            .getBatchMarkersOrderedByColumn(context.getMigrationContext(), queryDefinition);
-                    batchMarkersList = batchMarkers.getAllResults();
-                    if (batchMarkersList.isEmpty()) {
-                        throw new RuntimeException("Could not retrieve batch values for table " + table);
+                    if (context.getMigrationContext().getPartitionedTables().contains(table)) {
+                        LOG.debug("Resuming partitioned table {}", table);
+                        final var partitions = dataRepositoryAdapter.getPartitions(table);
+                        for (String partition : partitions) {
+                            Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
+                                    .findPendingBatchesForPipeline(context, copyItem, partition);
+                            batchMarkersList = new ArrayList<>(pendingBatchesForPipeline.stream()
+                                    .map(b -> Collections.list(b.getLowerBoundary())).toList());
+                            taskRepository.resetPipelineBatches(context, copyItem, partition);
+                            createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkersList,
+                                    copyItem, chunkedTable, partition);
+                        }
+                    } else {
+                        Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
+                                .findPendingBatchesForPipeline(context, copyItem);
+                        batchMarkersList = pendingBatchesForPipeline.stream()
+                                .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList());
+                        taskRepository.resetPipelineBatches(context, copyItem);
+                        createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkersList, copyItem,
+                                chunkedTable, null);
                     }
-                }
-                for (int i = 0; i < batchMarkersList.size(); i++) {
-                    boolean processBatch = isCurrentChunkBatch(copyItem, chunkedTable, i);
-                    if (processBatch) {
-                        List<Object> lastBatchMarkerRow = batchMarkersList.get(i);
-                        Optional<List<Object>> nextBatchMarkerRow = Optional.empty();
-                        int nextIndex = i + 1;
-                        if (nextIndex < batchMarkersList.size()) {
-                            nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
+                } else {
+                    if (context.getMigrationContext().getPartitionedTables().contains(table)) {
+                        LOG.debug("Processing partitioned table {}", table);
+                        final var partitions = dataRepositoryAdapter.getPartitions(table);
+                        for (String partition : partitions) {
+                            MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
+                            queryDefinition.setPartition(partition);
+                            LOG.debug("getBatchMarkers for partition {}", partition);
+                            final var batchMarkers = getBatchMarkers(context, dataRepositoryAdapter, table, batchSize,
+                                    batchColumn, queryDefinition);
+                            createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkers, copyItem,
+                                    chunkedTable, partition);
                         }
-                        if (!Collections.isEmpty(lastBatchMarkerRow)) {
-                            Object lastBatchValue = lastBatchMarkerRow.get(0);
-                            Object nextValue = nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null);
-                            // check if nextValue is null and allow Pair(value, null) only if it is last
-                            // chunk
-                            Pair<Object, Object> batchMarkersPair = Pair.of(lastBatchValue, nextValue);
-                            DataReaderTask dataReaderTask = new BatchMarkerDataReaderTask(pipeTaskContext, i,
-                                    batchColumn, batchMarkersPair, false);
-                            // After creating the task, we register the batch in the db for later use if
-                            // necessary
-                            taskRepository.scheduleBatch(context, copyItem, i, batchMarkersPair.getLeft(),
-                                    batchMarkersPair.getRight());
-                            workerExecutor.safelyExecute(dataReaderTask);
-                        } else {
-                            throw new IllegalArgumentException("Invalid batch marker passed to task");
-                        }
+                    } else {
+                        MarkersQueryDefinition queryDefinition = new MarkersQueryDefinition();
+                        final var batchMarkers = getBatchMarkers(context, dataRepositoryAdapter, table, batchSize,
+                                batchColumn, queryDefinition);
+                        createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkers, copyItem,
+                                chunkedTable, null);
                     }
                 }
             }
@@ -258,5 +250,73 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     && (i < (chunkData.getCurrentChunk() + 1) * batchesPerChunk);
         }
         return processBatch;
+    }
+
+    protected List<List<Object>> getBatchMarkers(CopyContext context, DataRepositoryAdapter dataRepositoryAdapter,
+            String table, long batchSize, String batchColumn, MarkersQueryDefinition queryDefinition) throws Exception {
+        queryDefinition.setTable(table);
+        queryDefinition.setColumn(batchColumn);
+        queryDefinition.setBatchSize(batchSize);
+        queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
+        queryDefinition.setLpTableEnabled(context.getMigrationContext().isLpTableMigrationEnabled());
+        DataSet batchMarkers = dataRepositoryAdapter.getBatchMarkersOrderedByColumn(context.getMigrationContext(),
+                queryDefinition);
+        List<List<Object>> batchMarkersList = batchMarkers.getAllResults();
+        if (batchMarkersList.isEmpty()) {
+            throw new RuntimeException("Could not retrieve batch values for table " + table);
+        }
+        return batchMarkersList;
+    }
+
+    protected void createDataReaderTasks(DataWorkerExecutor<Boolean> workerExecutor, PipeTaskContext pipeTaskContext,
+            String batchColumn, List<List<Object>> batchMarkersList, final CopyContext.DataCopyItem copyItem,
+            final boolean chunkedTable, String partition) throws Exception {
+        for (int i = 0; i < batchMarkersList.size(); i++) {
+            boolean processBatch = isCurrentChunkBatch(copyItem, chunkedTable, i);
+            if (processBatch) {
+                List<Object> lastBatchMarkerRow = batchMarkersList.get(i);
+                Optional<List<Object>> nextBatchMarkerRow = Optional.empty();
+                int nextIndex = i + 1;
+                if (nextIndex < batchMarkersList.size()) {
+                    nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
+                }
+                if (!Collections.isEmpty(lastBatchMarkerRow)) {
+                    Object lastBatchValue = lastBatchMarkerRow.get(0);
+                    Object nextValue = nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null);
+                    // check if nextValue is null and allow Pair(value, null) only if it is last
+                    // chunk
+                    Pair<Object, Object> batchMarkersPair = Pair.of(lastBatchValue, nextValue);
+                    DataReaderTask dataReaderTask = partition == null
+                            ? new BatchMarkerDataReaderTask(pipeTaskContext, i, batchColumn, batchMarkersPair, false)
+                            : new PartitionedBatchMarkerDataReaderTask(pipeTaskContext, i, batchColumn,
+                                    batchMarkersPair, false, partition);
+                    // After creating the task, we register the batch in the db for later use if
+                    // necessary
+                    taskRepository.scheduleBatch(pipeTaskContext.getContext(), copyItem, i, batchMarkersPair.getLeft(),
+                            batchMarkersPair.getRight(), partition);
+                    workerExecutor.safelyExecute(dataReaderTask);
+                } else {
+                    throw new IllegalArgumentException("Invalid batch marker passed to task");
+                }
+            }
+        }
+    }
+
+    protected Set<String> getBatchColumns(CopyContext context, String table) throws Exception {
+        if (context.getMigrationContext().getBatchColumns().containsKey(table)) {
+            return context.getMigrationContext().getBatchColumns().get(table);
+        } else {
+            DataSet uniqueColumns = context.getMigrationContext().getDataSourceRepository()
+                    .getUniqueColumns(TableViewGenerator.getTableNameForView(table, context.getMigrationContext()));
+            if (uniqueColumns.isNotEmpty()) {
+                if (uniqueColumns.getColumnCount() == 0) {
+                    throw new IllegalStateException(
+                            "Corrupt dataset retrieved. Dataset should have information about unique columns");
+                }
+                return uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0)))
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+            }
+            return Set.of();
+        }
     }
 }

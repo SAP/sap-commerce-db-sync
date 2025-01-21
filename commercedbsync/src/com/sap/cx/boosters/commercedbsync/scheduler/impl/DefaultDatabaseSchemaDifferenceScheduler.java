@@ -25,9 +25,7 @@ public class DefaultDatabaseSchemaDifferenceScheduler implements DatabaseSchemaD
     private DatabaseSchemaDifferenceTaskRepository databaseSchemaDifferenceTaskRepository;
 
     private void prepare(final MigrationContext context) {
-        final DataRepository repository = !context.isDataExportEnabled()
-                ? context.getDataTargetRepository()
-                : context.getDataSourceRepository();
+        final DataRepository repository = context.getDataRepository();
         final DataBaseProvider databaseProvider = repository.getDatabaseProvider();
         final ClassPathResource scriptResource = new ClassPathResource(
                 String.format("/sql/createSchemaSchedulerTables%s.sql", databaseProvider));
@@ -58,43 +56,9 @@ public class DefaultDatabaseSchemaDifferenceScheduler implements DatabaseSchemaD
     }
 
     private void logMigrationContext(final MigrationContext context) {
-        if (!Config.getBoolean("migration.log.context.details", true) || context == null) {
-            return;
+        if (Config.getBoolean("migration.log.context.details", true) && context != null) {
+            context.dumpLog(LOG);
         }
-
-        LOG.info("--------MIGRATION CONTEXT- START----------");
-        LOG.info("isAddMissingColumnsToSchemaEnabled=" + context.isAddMissingColumnsToSchemaEnabled());
-        LOG.info("isAddMissingTablesToSchemaEnabled=" + context.isAddMissingTablesToSchemaEnabled());
-        LOG.info("isAuditTableMigrationEnabled=" + context.isAuditTableMigrationEnabled());
-        LOG.info("isClusterMode=" + context.isClusterMode());
-        LOG.info("isDeletionEnabled=" + context.isDeletionEnabled());
-        LOG.info("isDisableAllIndexesEnabled=" + context.isDisableAllIndexesEnabled());
-        LOG.info("isDropAllIndexesEnabled=" + context.isDropAllIndexesEnabled());
-        LOG.info("isFailOnErrorEnabled=" + context.isFailOnErrorEnabled());
-        LOG.info("isIncrementalModeEnabled=" + context.isIncrementalModeEnabled());
-        LOG.info("isMigrationTriggeredByUpdateProcess=" + context.isMigrationTriggeredByUpdateProcess());
-        LOG.info("isRemoveMissingColumnsToSchemaEnabled=" + context.isRemoveMissingColumnsToSchemaEnabled());
-        LOG.info("isRemoveMissingTablesToSchemaEnabled=" + context.isRemoveMissingTablesToSchemaEnabled());
-        LOG.info("isSchemaMigrationAutoTriggerEnabled=" + context.isSchemaMigrationAutoTriggerEnabled());
-        LOG.info("isSchemaMigrationEnabled=" + context.isSchemaMigrationEnabled());
-        LOG.info("isTruncateEnabled=" + context.isTruncateEnabled());
-        LOG.info("getIncludedTables=" + context.getIncludedTables());
-        LOG.info("getExcludedTables=" + context.getExcludedTables());
-        LOG.info("getIncrementalTables=" + context.getIncrementalTables());
-        LOG.info("getTruncateExcludedTables=" + context.getTruncateExcludedTables());
-        LOG.info("getCustomTables=" + context.getCustomTables());
-        LOG.info("getIncrementalTimestamp=" + context.getIncrementalTimestamp());
-        LOG.info(
-                "Source TS Name=" + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Source TS Suffix="
-                + context.getDataSourceRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info(
-                "Target TS Name=" + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
-        LOG.info("Target TS Suffix="
-                + context.getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
-        LOG.info("getItemTypeViewNamePattern=" + context.getItemTypeViewNamePattern());
-
-        LOG.info("--------MIGRATION CONTEXT- END----------");
     }
 
     public void setDatabaseSchemaDifferenceTaskRepository(

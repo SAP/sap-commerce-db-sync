@@ -60,10 +60,21 @@
         <constructor-arg name="dataRepositoryFactory" ref="dataRepositoryFactory"/>
         <constructor-arg name="dataSourceConfigurationFactory" ref="dataSourceConfigurationFactory"/>
         <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+        <constructor-arg name="reversed" value="false"/>
+    </bean>
+
+    <bean name="defaultReversedMigrationContextFactory" class="com.sap.cx.boosters.commercedbsync.context.MigrationContextFactory">
+        <constructor-arg name="dataRepositoryFactory" ref="dataRepositoryFactory"/>
+        <constructor-arg name="dataSourceConfigurationFactory" ref="dataSourceConfigurationFactory"/>
+        <constructor-arg name="configuration" value="#{configurationService.getConfiguration()}"/>
+        <constructor-arg name="reversed" value="true"/>
     </bean>
 
     <alias name="defaultMigrationContext" alias="migrationContext"/>
     <bean name="defaultMigrationContext" factory-bean="defaultMigrationContextFactory" factory-method="create"/>
+
+    <alias name="defaultReverseIncrementalMigrationContext" alias="reverseIncrementalMigrationContext"/>
+    <bean name="defaultReverseIncrementalMigrationContext" factory-bean="defaultReversedMigrationContextFactory" factory-method="create"/>
 
     <alias name="defaultMigrationContextValidator" alias="migrationContextValidator"/>
     <bean name="defaultMigrationContextValidator" class="com.sap.cx.boosters.commercedbsync.context.validation.impl.DefaultMigrationContextValidator">
@@ -202,6 +213,7 @@
         <property name="configurationService" ref="configurationService" />
         <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
         <property name="migrationContext" ref="migrationContext"/>
+        <property name="reverseMigrationContext" ref="reverseIncrementalMigrationContext"/>
         <property name="performanceProfiler" ref="performanceProfiler"/>
     </bean>
 
@@ -261,6 +273,7 @@
         <property name="migrationContext" ref="migrationContext"/>
         <property name="databaseCopyTaskRepository" ref="databaseCopyTaskRepository"/>
         <property name="performanceProfiler" ref="performanceProfiler"/>
+        <property name="reverseMigrationContext" ref="reverseIncrementalMigrationContext"/>
         <property name="postProcessors">
             <util:list>
                 <ref bean="migrationPostProcessor"/>
@@ -371,7 +384,15 @@
 
   <bean id="defaultCMTAfterSaveListener" class="com.sap.cx.boosters.commercedbsync.listeners.DefaultCMTAfterSaveListener">
     <property name="modelService" ref="modelService" />
-    <property name="typeService" ref="typeService" />
   </bean>
 
+    <bean class="com.sap.cx.boosters.commercedbsync.jobs.IncrementalMigrationJob" id="reverseIncrementalMigrationJob"
+          parent="abstractMigrationJobPerformable">
+        <property name="migrationContext" ref="reverseIncrementalMigrationContext"/>
+    </bean>
+
+    <bean class="com.sap.cx.boosters.commercedbsync.jobs.FullMigrationJob" id="reverseFullMigrationJob"
+          parent="abstractMigrationJobPerformable">
+        <property name="migrationContext" ref="reverseIncrementalMigrationContext"/>
+    </bean>
 </beans>

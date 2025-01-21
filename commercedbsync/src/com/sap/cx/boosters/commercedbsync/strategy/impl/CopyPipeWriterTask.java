@@ -357,7 +357,7 @@ class CopyPipeWriterTask extends RetriableTask {
                 bulkWriterStatement.clearBatch();
                 connection.commit();
                 ctx.getDatabaseCopyTaskRepository().markBatchCompleted(ctx.getContext(), ctx.getCopyItem(),
-                        dataSet.getBatchId());
+                        dataSet.getBatchId(), dataSet.getPartition());
                 long totalCount = ctx.getTotalCount().addAndGet(batchCount);
                 ctx.getDatabaseCopyTaskRepository().updateTaskProgress(ctx.getContext(), ctx.getCopyItem(), totalCount);
             }

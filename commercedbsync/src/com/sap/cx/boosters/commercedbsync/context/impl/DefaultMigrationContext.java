@@ -13,6 +13,7 @@ import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfigurationFactory;
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
 
@@ -23,6 +24,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MIGRATION_INTERNAL_TABLES_STORAGE_SOURCE;
+import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MIGRATION_INTERNAL_TABLES_STORAGE_TARGET;
+
 public class DefaultMigrationContext implements MigrationContext {
     protected final Configuration configuration;
     private final DataRepository dataSourceRepository;
@@ -30,18 +34,25 @@ public class DefaultMigrationContext implements MigrationContext {
     protected boolean deletionEnabled;
     protected boolean lpTableMigrationEnabled;
     protected Set<String> tableViewNames;
+    private final boolean reversed;
 
     public DefaultMigrationContext(final DataRepositoryFactory dataRepositoryFactory,
-            final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration)
-            throws Exception {
+            final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration,
+            final boolean reversed) throws Exception {
         this.configuration = configuration;
+        this.reversed = reversed;
         ensureDefaultLocale(configuration);
         final Set<DataSourceConfiguration> inputDataSourceConfigurations = getInputProfiles().stream()
                 .map(dataSourceConfigurationFactory::create).collect(Collectors.toSet());
         final Set<DataSourceConfiguration> outputDataSourceConfigurations = getOutputProfiles().stream()
                 .map(dataSourceConfigurationFactory::create).collect(Collectors.toSet());
-        this.dataSourceRepository = dataRepositoryFactory.create(this, inputDataSourceConfigurations);
-        this.dataTargetRepository = dataRepositoryFactory.create(this, outputDataSourceConfigurations);
+        if (reversed) {
+            this.dataSourceRepository = dataRepositoryFactory.create(this, outputDataSourceConfigurations);
+            this.dataTargetRepository = dataRepositoryFactory.create(this, inputDataSourceConfigurations);
+        } else {
+            this.dataSourceRepository = dataRepositoryFactory.create(this, inputDataSourceConfigurations);
+            this.dataTargetRepository = dataRepositoryFactory.create(this, outputDataSourceConfigurations);
+        }
     }
     private void ensureDefaultLocale(Configuration configuration) {
         String localeProperty = configuration.getString(CommercedbsyncConstants.MIGRATION_LOCALE_DEFAULT);
@@ -57,6 +68,13 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public DataRepository getDataTargetRepository() {
         return dataTargetRepository;
+    }
+
+    @Override
+    public DataRepository getDataRepository() {
+        return MIGRATION_INTERNAL_TABLES_STORAGE_TARGET.equalsIgnoreCase(getInternalTablesStorage())
+                ? getDataTargetRepository()
+                : getDataSourceRepository();
     }
 
     @Override
@@ -173,6 +191,11 @@ public class DefaultMigrationContext implements MigrationContext {
     }
 
     @Override
+    public Map<String, Set<String>> getBatchColumns() {
+        return getDynamicPropertyKeys(CommercedbsyncConstants.MIGRATION_DATA_COLUMNS_BATCH);
+    }
+
+    @Override
     public Set<String> getCustomTables() {
         return getListProperty(CommercedbsyncConstants.MIGRATION_DATA_TABLES_CUSTOM);
     }
@@ -185,6 +208,31 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public Set<String> getIncludedTables() {
         return getListProperty(CommercedbsyncConstants.MIGRATION_DATA_TABLES_INCLUDED);
+    }
+
+    @Override
+    public Set<String> getTablesOrderedAsFirst() {
+        return getListProperty(CommercedbsyncConstants.MIGRATION_DATA_TABLES_ORDERED_FIRST);
+    }
+
+    @Override
+    public Set<String> getTablesOrderedAsLast() {
+        return getListProperty(CommercedbsyncConstants.MIGRATION_DATA_TABLES_ORDERED_LAST);
+    }
+
+    @Override
+    public boolean isTablesOrdered() {
+        return CollectionUtils.isNotEmpty(getTablesOrderedAsFirst())
+                || CollectionUtils.isNotEmpty(getTablesOrderedAsLast());
+    }
+
+    @Override
+    public Set<String> getPartitionedTables() {
+        if (getDataSourceRepository().getDatabaseProvider().isHanaUsed()) {
+            return getListProperty(CommercedbsyncConstants.MIGRATION_DATA_TABLES_PARTITIONED);
+        } else {
+            return Set.of();
+        }
     }
 
     @Override
@@ -247,8 +295,20 @@ public class DefaultMigrationContext implements MigrationContext {
     }
 
     @Override
-    public boolean isDataExportEnabled() {
-        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_EXPORT_ENABLED);
+    public boolean isDataSynchronizationEnabled() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_SYNCHRONIZATION_ENABLED);
+    }
+
+    @Override
+    public String getInternalTablesStorage() {
+        final String migrationInternalTableStorage = getStringProperty(
+                CommercedbsyncConstants.MIGRATION_INTERNAL_TABLES_STORAGE);
+        if (!StringUtils.isBlank(migrationInternalTableStorage)) {
+            return migrationInternalTableStorage;
+        }
+        return isDataSynchronizationEnabled()
+                ? MIGRATION_INTERNAL_TABLES_STORAGE_SOURCE
+                : MIGRATION_INTERNAL_TABLES_STORAGE_TARGET;
     }
 
     @Override
@@ -336,6 +396,11 @@ public class DefaultMigrationContext implements MigrationContext {
         // resetting "cached" view names as they may have changed when reusing a context
         // in job iterations.
         this.tableViewNames = null;
+    }
+
+    @Override
+    public boolean isReversed() {
+        return this.reversed;
     }
 
     @Override

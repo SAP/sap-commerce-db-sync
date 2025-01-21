@@ -45,15 +45,7 @@ public class BatchMarkerDataReaderTask extends DataReaderTask {
         DataRepositoryAdapter adapter = getPipeTaskContext().getDataRepositoryAdapter();
         String table = getPipeTaskContext().getTable();
         long pageSize = getPipeTaskContext().getPageSize();
-        SeekQueryDefinition queryDefinition = new SeekQueryDefinition();
-        queryDefinition.setBatchId(batchId);
-        queryDefinition.setTable(table);
-        queryDefinition.setColumn(batchColumn);
-        queryDefinition.setLastColumnValue(lastValue);
-        queryDefinition.setNextColumnValue(nextValue);
-        queryDefinition.setBatchSize(pageSize);
-        queryDefinition.setDeletionEnabled(ctx.getMigrationContext().isDeletionEnabled());
-        queryDefinition.setLpTableEnabled(ctx.getMigrationContext().isLpTableMigrationEnabled());
+        SeekQueryDefinition queryDefinition = createSeekQueryDefinition(lastValue, nextValue, table, pageSize, ctx);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Executing markers query for {} with lastvalue: {}, nextvalue: {}, batchsize: {}", table,
                     lastValue, nextValue, pageSize);
@@ -64,5 +56,19 @@ public class BatchMarkerDataReaderTask extends DataReaderTask {
 
         getPipeTaskContext().getRecorder().record(PerformanceUnit.ROWS, pageSize);
         getPipeTaskContext().getPipe().put(MaybeFinished.of(page));
+    }
+
+    protected SeekQueryDefinition createSeekQueryDefinition(final Object lastValue, final Object nextValue,
+            final String table, final long pageSize, final CopyContext ctx) {
+        SeekQueryDefinition queryDefinition = new SeekQueryDefinition();
+        queryDefinition.setBatchId(batchId);
+        queryDefinition.setTable(table);
+        queryDefinition.setColumn(batchColumn);
+        queryDefinition.setLastColumnValue(lastValue);
+        queryDefinition.setNextColumnValue(nextValue);
+        queryDefinition.setBatchSize(pageSize);
+        queryDefinition.setDeletionEnabled(ctx.getMigrationContext().isDeletionEnabled());
+        queryDefinition.setLpTableEnabled(ctx.getMigrationContext().isLpTableMigrationEnabled());
+        return queryDefinition;
     }
 }

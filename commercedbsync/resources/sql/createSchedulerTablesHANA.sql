@@ -19,6 +19,12 @@ IF tablename = 'MIGRATIONTOOLKIT_TABLECOPYBATCHES' AND :found > 0
 	THEN
 DROP TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES;
 END IF;
+
+IF tablename = 'MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART' AND :found > 0
+	THEN
+DROP TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART;
+END IF;
+
 END;
 #
 CALL MIGRATION_PROCEDURE('MIGRATIONTOOLKIT_TABLECOPYTASKS');
@@ -28,6 +34,7 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
                                                  targetnodeId int NOT NULL,
                                                  migrationId NVARCHAR(255) NOT NULL,
                                                  pipelinename NVARCHAR(255) NOT NULL,
+                                                 itemorder int NOT NULL DEFAULT 0,
                                                  sourcetablename NVARCHAR(255) NOT NULL,
                                                  targettablename NVARCHAR(255) NOT NULL,
                                                  columnmap NVARCHAR(5000) NULL,
@@ -63,6 +70,21 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES (
                                                  lowerBoundary NVARCHAR(255) NOT NULL,
                                                  upperBoundary NVARCHAR(255) NULL,
                                                  PRIMARY KEY (migrationid, batchId, pipelinename)
+);
+
+#
+
+CALL MIGRATION_PROCEDURE('MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART');
+#
+
+CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART (
+                                                   migrationId NVARCHAR(255) NOT NULL,
+                                                   batchId int NOT NULL DEFAULT 0,
+                                                   pipelinename NVARCHAR(255) NOT NULL,
+                                                   lowerBoundary NVARCHAR(255) NOT NULL,
+                                                   upperBoundary NVARCHAR(255) NULL,
+                                                   partition VARCHAR(128) NOT NULL,
+                                                   PRIMARY KEY (migrationid, batchId, pipelinename, partition)
 );
 
 #

@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.io.Serializable;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,16 +34,12 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
     private static final Logger LOG = LoggerFactory.getLogger(CopyDatabaseTableEventListener.class.getName());
 
     private DatabaseMigrationCopyService databaseMigrationCopyService;
-
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
-
     private MigrationContext migrationContext;
-
     private PerformanceProfiler performanceProfiler;
-
     private ClusterService clusterService;
-
     private ConfigurationService configurationService;
+    private MigrationContext reverseMigrationContext;
 
     @Override
     protected void onEvent(final CopyDatabaseTableEvent event) {
@@ -53,8 +49,10 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
         try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_MIGRATIONID, migrationId);
                 MDC.MDCCloseable ignored2 = MDC.putCloseable(CommercedbsyncConstants.MDC_CLUSTERID,
                         String.valueOf(clusterService.getClusterId()))) {
-            CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),
-                    performanceProfiler);
+            CopyContext copyContext = event.isReversed()
+                    ? new CopyContext(migrationId, reverseMigrationContext, new LinkedHashSet<>(), performanceProfiler)
+                    : new CopyContext(migrationId, migrationContext, new LinkedHashSet<>(), performanceProfiler);
+
             Set<DatabaseCopyTask> copyTableTasks = databaseCopyTaskRepository.findPendingTasks(copyContext);
             Set<CopyContext.DataCopyItem> items = copyTableTasks.stream()
                     .map(task -> new CopyContext.DataCopyItem(task.getSourcetablename(), task.getTargettablename(),
@@ -63,7 +61,7 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
                                     ? new CopyContext.DataCopyItem.ChunkData(task.getChunk().getCurrentChunk(),
                                             task.getChunk().getChunkSize())
                                     : null))
-                    .collect(Collectors.toSet());
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
             copyContext.getCopyItems().addAll(items);
             databaseMigrationCopyService.copyAllAsync(copyContext);
 
@@ -102,5 +100,9 @@ public class CopyDatabaseTableEventListener extends AbstractEventListener<CopyDa
 
     public void setConfigurationService(ConfigurationService configurationService) {
         this.configurationService = configurationService;
+    }
+
+    public void setReverseMigrationContext(MigrationContext reverseMigrationContext) {
+        this.reverseMigrationContext = reverseMigrationContext;
     }
 }

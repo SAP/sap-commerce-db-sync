@@ -6,14 +6,13 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.impl;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import javax.sql.DataSource;
 
 import com.google.common.base.Joiner;
@@ -245,6 +244,53 @@ public class AzureDataRepository extends AbstractDataRepository {
     @Override
     protected String createRowCountQuery() {
         return "SELECT COUNT_BIG(*) FROM %s WHERE %s";
+    }
+
+    @Override
+    protected String createRowCountModifiedAfterQuery() {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE modifiedts > ? AND %s";
+    }
+
+    @Override
+    public long getRowCount(String table) throws SQLException {
+        List<String> conditionsList = new ArrayList<>(1);
+        processDefaultConditions(table, conditionsList);
+        String[] conditions = null;
+        if (conditionsList.size() > 0) {
+            conditions = conditionsList.toArray(new String[conditionsList.size()]);
+        }
+        try (Connection connection = getConnection();
+                Statement stmt = connection.createStatement();
+                ResultSet resultSet = stmt
+                        .executeQuery(String.format(createRowCountQuery(), table, expandConditions(conditions)))) {
+            long value = 0;
+            if (resultSet.next()) {
+                value = resultSet.getLong(1);
+            }
+            return value;
+        }
+    }
+
+    @Override
+    public long getRowCountModifiedAfter(String table, Instant time) throws SQLException {
+        List<String> conditionsList = new ArrayList<>(1);
+        processDefaultConditions(table, conditionsList);
+        String[] conditions = null;
+        if (conditionsList.size() > 0) {
+            conditions = conditionsList.toArray(new String[conditionsList.size()]);
+        }
+        try (Connection connection = getConnection()) {
+            try (PreparedStatement stmt = connection.prepareStatement(
+                    String.format(createRowCountModifiedAfterQuery(), table, expandConditions(conditions)))) {
+                stmt.setTimestamp(1, Timestamp.from(time));
+                ResultSet resultSet = stmt.executeQuery();
+                long value = 0;
+                if (resultSet.next()) {
+                    value = resultSet.getLong(1);
+                }
+                return value;
+            }
+        }
     }
 
     @Override

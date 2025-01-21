@@ -14,7 +14,6 @@ import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceCategory;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceRecorder;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DataCopyChunk;
 import de.hybris.platform.servicelayer.cluster.ClusterService;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +38,6 @@ import java.time.OffsetDateTime;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -63,6 +61,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     private static final String TABLECOPYSTATUS = MIGRATION_TABLESPREFIX + "TABLECOPYSTATUS";
     private static final String TABLECOPYTASKS = MIGRATION_TABLESPREFIX + "TABLECOPYTASKS";
     private static final String TABLECOPYBATCHES = MIGRATION_TABLESPREFIX + "TABLECOPYBATCHES";
+    private static final String TABLECOPYBATCHES_PART = MIGRATION_TABLESPREFIX + "TABLECOPYBATCHES_PART";
 
     @Override
     public String getMostRecentMigrationID(MigrationContext context) {
@@ -182,23 +181,24 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public synchronized void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount,
-            int targetNode) throws Exception {
+    public synchronized void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long itemOrder,
+            long sourceRowCount, int targetNode) throws Exception {
         String insert = "INSERT INTO " + TABLECOPYTASKS
-                + " (targetnodeid, pipelinename, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, batchsize, lastupdate, chunked, chunksize, chunknumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + " (targetnodeid, pipelinename, itemorder, sourcetablename, targettablename, columnmap, migrationid, sourcerowcount, batchsize, lastupdate, chunked, chunksize, chunknumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, targetNode);
             stmt.setObject(2, copyItem.getPipelineName());
-            stmt.setObject(3, copyItem.getSourceItem());
-            stmt.setObject(4, copyItem.getTargetItem());
-            stmt.setObject(5, new Gson().toJson(copyItem.getColumnMap()));
-            stmt.setObject(6, context.getMigrationId());
-            stmt.setObject(7, sourceRowCount);
-            stmt.setObject(8, copyItem.getBatchSize());
-            setTimestamp(stmt, 9, now());
-            stmt.setObject(10, copyItem.getChunkData() != null ? "1" : "0");
-            stmt.setObject(11, (copyItem.getChunkData() != null ? copyItem.getChunkData().getChunkSize() : null));
-            stmt.setObject(12, (copyItem.getChunkData() != null ? copyItem.getChunkData().getCurrentChunk() : null));
+            stmt.setObject(3, context.getMigrationContext().isTablesOrdered() ? itemOrder : 0);
+            stmt.setObject(4, copyItem.getSourceItem());
+            stmt.setObject(5, copyItem.getTargetItem());
+            stmt.setObject(6, new Gson().toJson(copyItem.getColumnMap()));
+            stmt.setObject(7, context.getMigrationId());
+            stmt.setObject(8, sourceRowCount);
+            stmt.setObject(9, copyItem.getBatchSize());
+            setTimestamp(stmt, 10, now());
+            stmt.setObject(11, copyItem.getChunkData() != null ? "1" : "0");
+            stmt.setObject(12, (copyItem.getChunkData() != null ? copyItem.getChunkData().getChunkSize() : null));
+            stmt.setObject(13, (copyItem.getChunkData() != null ? copyItem.getChunkData().getCurrentChunk() : null));
             stmt.executeUpdate();
         }
     }
@@ -234,6 +234,27 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
+    public void scheduleBatch(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId, Object lowerBoundary,
+            Object upperBoundary, String partition) throws Exception {
+        if (partition == null) {
+            scheduleBatch(context, copyItem, batchId, lowerBoundary, upperBoundary);
+        } else {
+            LOG.debug("Schedule Batch for {} with ID {}, partition {}", copyItem.getPipelineName(), batchId, partition);
+            String insert = "INSERT INTO " + TABLECOPYBATCHES_PART
+                    + " (migrationId, batchId, pipelinename, lowerBoundary, upperBoundary, partition) VALUES (?, ?, ?, ?, ?, ?)";
+            try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
+                stmt.setObject(1, context.getMigrationId());
+                stmt.setObject(2, batchId);
+                stmt.setObject(3, copyItem.getPipelineName());
+                stmt.setObject(4, lowerBoundary);
+                stmt.setObject(5, upperBoundary);
+                stmt.setObject(6, partition);
+                stmt.executeUpdate();
+            }
+        }
+    }
+
+    @Override
     public synchronized void markBatchCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId)
             throws Exception {
         LOG.debug("Mark batch completed for {} with ID {}", copyItem.getPipelineName(), batchId);
@@ -250,6 +271,29 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
+    public void markBatchCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId,
+            final String partition) throws Exception {
+        if (partition == null) {
+            markBatchCompleted(context, copyItem, batchId);
+        } else {
+            LOG.debug("Mark batch completed for {} with ID {}", copyItem.getPipelineName(), batchId);
+            String insert = "DELETE FROM " + TABLECOPYBATCHES_PART
+                    + " WHERE migrationId = ? AND batchId = ? AND pipelinename = ? AND partition = ?";
+            try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
+                stmt.setObject(1, context.getMigrationId());
+                stmt.setObject(2, batchId);
+                stmt.setObject(3, copyItem.getPipelineName());
+                stmt.setObject(4, partition);
+                // exactly one batch record should be affected
+                if (stmt.executeUpdate() != 1) {
+                    throw new IllegalStateException("No (exact) match for batch with id '" + batchId + "' found.");
+                }
+            }
+        }
+
+    }
+
+    @Override
     public synchronized void resetPipelineBatches(CopyContext context, CopyContext.DataCopyItem copyItem)
             throws Exception {
         String insert = "DELETE FROM " + TABLECOPYBATCHES + " WHERE migrationId=? AND pipelinename=?";
@@ -257,6 +301,23 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             stmt.setObject(1, context.getMigrationId());
             stmt.setObject(2, copyItem.getPipelineName());
             stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public void resetPipelineBatches(CopyContext context, CopyContext.DataCopyItem copyItem, String partition)
+            throws Exception {
+        if (partition == null) {
+            resetPipelineBatches(context, copyItem);
+        } else {
+            String insert = "DELETE FROM " + TABLECOPYBATCHES_PART
+                    + " WHERE migrationId = ? AND pipelinename = ? AND partition = ?";
+            try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
+                stmt.setObject(1, context.getMigrationId());
+                stmt.setObject(2, copyItem.getPipelineName());
+                stmt.setObject(3, partition);
+                stmt.executeUpdate();
+            }
         }
     }
 
@@ -275,6 +336,26 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         }
     }
 
+    @Override
+    public Set<DatabaseCopyBatch> findPendingBatchesForPipeline(CopyContext context, CopyContext.DataCopyItem item,
+            String partition) throws Exception {
+        if (partition == null) {
+            return findPendingBatchesForPipeline(context, item);
+        } else {
+            String sql = "SELECT * FROM " + TABLECOPYBATCHES_PART
+                    + " WHERE migrationid = ? AND pipelinename = ? and partition = ? ORDER BY batchId ASC";
+            try (Connection connection = getConnection(context);
+                    PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setObject(1, context.getMigrationId());
+                stmt.setObject(2, item.getPipelineName());
+                stmt.setObject(3, partition);
+                try (ResultSet resultSet = stmt.executeQuery()) {
+                    return convertToBatch(resultSet);
+                }
+            }
+        }
+    }
+
     private Timestamp now() {
         Instant now = java.time.Instant.now();
         Timestamp ts = new Timestamp(now.toEpochMilli());
@@ -286,14 +367,11 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     private Connection getConnection(MigrationContext context) throws Exception {
-        final DataRepository repository = !context.isDataExportEnabled()
-                ? context.getDataTargetRepository()
-                : context.getDataSourceRepository();
         /*
          * if (!repository.getDatabaseProvider().isMssqlUsed()) { throw new
          * IllegalStateException("Scheduler tables requires MSSQL database"); }
          */
-        return repository.getConnection();
+        return context.getDataRepository().getConnection();
     }
 
     @Override
@@ -335,8 +413,9 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
 
     @Override
     public Set<DatabaseCopyTask> findPendingTasks(CopyContext context) throws Exception {
+        final String orderBy = context.getMigrationContext().isTablesOrdered() ? "itemorder" : "sourcerowcount";
         String sql = "SELECT * FROM " + TABLECOPYTASKS
-                + " WHERE targetnodeid=? AND migrationid=? AND duration IS NULL ORDER BY sourcerowcount";
+                + " WHERE targetnodeid=? AND migrationid=? AND duration IS NULL ORDER BY " + orderBy;
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, getTargetNodeId());
@@ -349,8 +428,9 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
 
     @Override
     public Set<DatabaseCopyTask> findFailedTasks(CopyContext context) throws Exception {
+        final String orderBy = context.getMigrationContext().isTablesOrdered() ? "itemorder" : "sourcerowcount";
         String sql = "SELECT * FROM " + TABLECOPYTASKS
-                + " WHERE migrationid=? AND duration = '-1' AND failure = '1' ORDER BY sourcerowcount";
+                + " WHERE migrationid=? AND duration = '-1' AND failure = '1' ORDER BY " + orderBy;
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, context.getMigrationId());
@@ -527,7 +607,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     private Set<DatabaseCopyTask> convertToTask(ResultSet rs) throws Exception {
-        Set<DatabaseCopyTask> copyTasks = new HashSet<>();
+        Set<DatabaseCopyTask> copyTasks = new LinkedHashSet<>();
         while (rs.next()) {
             DatabaseCopyTask copyTask = new DatabaseCopyTask();
             copyTask.setTargetnodeId(rs.getInt("targetnodeId"));

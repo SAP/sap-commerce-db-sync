@@ -6,6 +6,7 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
     targetnodeId int NOT NULL,
     migrationId VARCHAR(255) NOT NULL,
     pipelinename VARCHAR(255) NOT NULL,
+    itemorder int NOT NULL DEFAULT 0,
     sourcetablename VARCHAR(255) NOT NULL,
     targettablename VARCHAR(255) NOT NULL,
     columnmap text NULL,
@@ -42,6 +43,22 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES (
     lowerBoundary VARCHAR(255) NOT NULL,
     upperBoundary VARCHAR(255) NULL,
     PRIMARY KEY (migrationid, batchId, pipelinename)
+);
+
+#
+
+DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART;
+
+#
+
+CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART (
+    migrationId VARCHAR(255) NOT NULL,
+    batchId int NOT NULL DEFAULT 0,
+    pipelinename VARCHAR(255) NOT NULL,
+    lowerBoundary VARCHAR(255) NOT NULL,
+    upperBoundary VARCHAR(255) NULL,
+    partition VARCHAR(128) NOT NULL,
+    PRIMARY KEY (migrationid, batchId, pipelinename, partition)
 );
 
 #

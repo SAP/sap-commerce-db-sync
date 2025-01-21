@@ -48,7 +48,7 @@ public class TransformFunctionGeneratorPreProcessor implements MigrationPreProce
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return context.getMigrationContext().isDataExportEnabled()
+        return context.getMigrationContext().isDataSynchronizationEnabled()
                 && context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isMssqlUsed();
     }
 }

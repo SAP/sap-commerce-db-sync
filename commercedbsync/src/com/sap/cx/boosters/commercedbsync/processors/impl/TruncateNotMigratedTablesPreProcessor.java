@@ -43,7 +43,7 @@ public class TruncateNotMigratedTablesPreProcessor implements MigrationPreProces
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return context.getMigrationContext().isDataExportEnabled()
+        return context.getMigrationContext().isDataSynchronizationEnabled()
                 && context.getMigrationContext().isFullDatabaseMigration()
                 && CollectionUtils.isNotEmpty(context.getMigrationContext().getIncludedTables());
     }

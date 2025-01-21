@@ -71,10 +71,8 @@ public class MSSQLUpdateStatisticsPostProcessor implements MigrationPostProcesso
                 return false;
             }
 
-            if (!status.isFailed() && !context.getMigrationContext().isDataExportEnabled()
-                    && context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isMssqlUsed()) {
-                return true;
-            }
+            return !status.isFailed() && !context.getMigrationContext().isDataSynchronizationEnabled()
+                    && context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isMssqlUsed();
 
         }
 

@@ -35,6 +35,11 @@ import de.hybris.bootstrap.ddl.DataBaseProvider;
 import de.hybris.bootstrap.ddl.DatabaseSettings;
 import de.hybris.bootstrap.ddl.HybrisPlatform;
 
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class HanaDataRepository extends AbstractDataRepository {
     private static final Logger LOG = LoggerFactory.getLogger(HanaDataRepository.class);
 
@@ -52,14 +57,21 @@ public class HanaDataRepository extends AbstractDataRepository {
 
     @Override
     protected String buildValueBatchQuery(SeekQueryDefinition queryDefinition, String... conditions) {
-        return String.format("select * from %s where %s order by %s limit %s", queryDefinition.getTable(),
-                expandConditions(conditions), queryDefinition.getColumn(), queryDefinition.getBatchSize());
+        if (queryDefinition.getPartition() == null) {
+            return String.format("select * from %s where %s order by %s limit %s", queryDefinition.getTable(),
+                    expandConditions(conditions), queryDefinition.getColumn(), queryDefinition.getBatchSize());
+        } else {
+            return String.format("select * from %s PARTITION(%s) where %s order by %s limit %s",
+                    queryDefinition.getTable(), queryDefinition.getPartition(), expandConditions(conditions),
+                    queryDefinition.getColumn(), queryDefinition.getBatchSize());
+        }
     }
 
     @Override
     protected String buildBatchMarkersQuery(MarkersQueryDefinition queryDefinition, String... conditions) {
-        String column = queryDefinition.getColumn();
-        // spotless:off
+        if (queryDefinition.getPartition() == null) {
+            String column = queryDefinition.getColumn();
+            // spotless:off
         return String.format("SELECT t.%s, t.rownr as \"rownum\" \n" +
                 "FROM\n" +
                 "(\n" +
@@ -69,8 +81,20 @@ public class HanaDataRepository extends AbstractDataRepository {
                 "WHERE mod(t.rownr,%s) = 0\n" +
                 "ORDER BY t.%s",
         // spotless:on
-                column, column, column, queryDefinition.getTable(), expandConditions(conditions),
-                queryDefinition.getBatchSize(), column);
+                    column, column, column, queryDefinition.getTable(), expandConditions(conditions),
+                    queryDefinition.getBatchSize(), column);
+        } else {
+            String column = queryDefinition.getColumn();
+            final var format = String.format(
+                    "SELECT t.%s, t.rownr as \"rownum\" \n" + "FROM\n" + "(\n"
+                            + "    SELECT %s, (ROW_NUMBER() OVER (ORDER BY %s))-1 AS rownr\n"
+                            + "    FROM %s PARTITION(%s)\n WHERE %s" + ") t\n" + "WHERE mod(t.rownr,%s) = 0\n"
+                            + "ORDER BY t.%s",
+                    column, column, column, queryDefinition.getTable(), queryDefinition.getPartition(),
+                    expandConditions(conditions), queryDefinition.getBatchSize(), column);
+            LOG.debug("buildBatchMarkersQuery={}", format);
+            return format;
+        }
     }
 
     @Override
@@ -185,9 +209,46 @@ public class HanaDataRepository extends AbstractDataRepository {
     }
 
     @Override
+    public List<String> getPartitions(String table) throws SQLException {
+        List<String> partitions = new ArrayList<>();
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
+            ResultSet resultSet = stmt.executeQuery(String.format(
+                    "SELECT PART_ID FROM TABLE_PARTITIONS where lower(TABLE_NAME) = lower('%s') and lower(SCHEMA_NAME) = lower('%s')",
+                    table, getDataSourceConfiguration().getSchema()));
+            while (resultSet.next()) {
+                partitions.add(resultSet.getString("PART_ID"));
+            }
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getPartitions result={}", Arrays.toString(partitions.toArray()));
+        }
+        return partitions;
+    }
+
+    @Override
     protected Platform createPlatform(DatabaseSettings databaseSettings, DataSource dataSource) {
         HybrisPlatform instance = MigrationHybrisHANAPlatform.build(databaseSettings);
         instance.setDataSource(dataSource);
         return instance;
+    }
+
+    @Override
+    public long getRowCount(String table, String currentPartition) throws SQLException {
+        List<String> conditionsList = new ArrayList<>(1);
+        processDefaultConditions(table, conditionsList);
+        String[] conditions = null;
+        if (conditionsList.size() > 0) {
+            conditions = conditionsList.toArray(new String[conditionsList.size()]);
+        }
+        try (Connection connection = getConnection();
+                Statement stmt = connection.createStatement();
+                ResultSet resultSet = stmt.executeQuery(String.format("select count(*) from %s PARTITION(%s) where %s",
+                        table, currentPartition, expandConditions(conditions)))) {
+            long value = 0;
+            if (resultSet.next()) {
+                value = resultSet.getLong(1);
+            }
+            return value;
+        }
     }
 }
