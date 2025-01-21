@@ -6,16 +6,16 @@
 
 package com.sap.cx.boosters.commercedbsync.adapter.impl;
 
+import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
+import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.adapter.DataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
-import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
-import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
-
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Controls the way the repository is accessed by adapting the most common
@@ -80,6 +80,11 @@ public class ContextualDataRepositoryAdapter implements DataRepositoryAdapter {
         } else {
             return repository.getBatchMarkersOrderedByColumn(queryDefinition);
         }
+    }
+
+    @Override
+    public List<String> getPartitions(String table) throws Exception {
+        return repository.getPartitions(table);
     }
 
     private Instant getIncrementalTimestamp(MigrationContext context) {

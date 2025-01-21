@@ -20,8 +20,8 @@ public class CopyDatabaseTableEvent extends OperationEvent {
     private final Map<String, Serializable> propertyOverrideMap;
 
     public CopyDatabaseTableEvent(final Integer sourceNodeId, final String migrationId,
-            Map<String, Serializable> propertyOverrideMap) {
-        super(sourceNodeId, migrationId);
+            final Map<String, Serializable> propertyOverrideMap, final boolean reversed) {
+        super(sourceNodeId, migrationId, reversed);
         this.propertyOverrideMap = propertyOverrideMap;
     }
 

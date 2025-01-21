@@ -239,6 +239,16 @@ public class NullRepository implements DataRepository {
     }
 
     @Override
+    public List<String> getPartitions(final String table) throws SQLException {
+        throw new InvalidDataSourceConfigurationException(this.message, this.dataSourceConfiguration);
+    }
+
+    @Override
+    public long getRowCount(final String table, final String currentPartition) throws Exception {
+        throw new InvalidDataSourceConfigurationException(this.message, this.dataSourceConfiguration);
+    }
+
+    @Override
     public String getDatabaseTimezone() {
         return null;
     }

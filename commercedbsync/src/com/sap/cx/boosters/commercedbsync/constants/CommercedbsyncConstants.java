@@ -21,7 +21,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADD_ENABLED = "migration.schema.target.columns.add.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED = "migration.schema.target.columns.remove.enabled";
     public static final String MIGRATION_TARGET_MAX_STAGE_MIGRATIONS = "migration.ds.target.db.max.stage.migrations";
-    public static final String MIGRATION_DATA_EXPORT_ENABLED = "migration.data.export.enabled";
+    public static final String MIGRATION_DATA_SYNCHRONIZATION_ENABLED = "migration.data.synchronization.enabled";
+    public static final String MIGRATION_INTERNAL_TABLES_STORAGE = "migration.internal.tables.storage";
     public static final String MIGRATION_SCHEMA_AUTOTRIGGER_ENABLED = "migration.schema.autotrigger.enabled";
     public static final String MIGRATION_DATA_FULLDATABASE = "migration.data.fulldatabase.enabled";
     public static final String MIGRATION_DATA_READER_BATCHSIZE = "migration.data.reader.batchsize";
@@ -36,6 +37,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_MAXPRALLELTABLECOPY = "migration.data.maxparalleltablecopy";
     public static final String MIGRATION_DATA_FAILONEERROR_ENABLED = "migration.data.failonerror.enabled";
     public static final String MIGRATION_DATA_COLUMNS_EXCLUDED = "migration.data.columns.excluded";
+    public static final String MIGRATION_DATA_COLUMNS_BATCH = "migration.data.columns.batch";
     public static final String MIGRATION_DATA_COLUMNS_NULLIFY = "migration.data.columns.nullify";
     public static final String MIGRATION_DATA_INDICES_DROP_ENABLED = "migration.data.indices.drop.enabled";
     public static final String MIGRATION_DATA_INDICES_DISABLE_ENABLED = "migration.data.indices.disable.enabled";
@@ -44,6 +46,9 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_TABLES_CUSTOM = "migration.data.tables.custom";
     public static final String MIGRATION_DATA_TABLES_EXCLUDED = "migration.data.tables.excluded";
     public static final String MIGRATION_DATA_TABLES_INCLUDED = "migration.data.tables.included";
+    public static final String MIGRATION_DATA_TABLES_ORDERED_FIRST = "migration.data.tables.order.first";
+    public static final String MIGRATION_DATA_TABLES_ORDERED_LAST = "migration.data.tables.order.last";
+    public static final String MIGRATION_DATA_TABLES_PARTITIONED = "migration.data.tables.partitioned";
     public static final String MIGRATION_CLUSTER_ENABLED = "migration.cluster.enabled";
     public static final String MIGRATION_DATA_INCREMENTAL_ENABLED = "migration.data.incremental.enabled";
     public static final String MIGRATION_DATA_INCREMENTAL_TABLES = "migration.data.incremental.tables";
@@ -112,6 +117,9 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
 
     // MSSQL Post Processing
     public static final String MIGRATION_DATA_MSSQL_UPDATE_STATISTICS_ENABLED = "migration.data.mssql.update.statistics.enabled";
+
+    public static final String MIGRATION_INTERNAL_TABLES_STORAGE_TARGET = "target";
+    public static final String MIGRATION_INTERNAL_TABLES_STORAGE_SOURCE = "source";
 
     private CommercedbsyncConstants() {
         // empty to avoid instantiating this constant class

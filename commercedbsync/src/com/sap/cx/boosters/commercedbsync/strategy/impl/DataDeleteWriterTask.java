@@ -12,6 +12,7 @@ import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceRecorder;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceUnit;
+import de.hybris.bootstrap.ddl.DataBaseProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,10 +62,18 @@ public class DataDeleteWriterTask extends RetriableTask {
             originalAutoCommit = connection.getAutoCommit();
 
             String sqlDelete;
-            if (ctx.getContext().getMigrationContext().getDataTargetRepository().getDatabaseProvider().isOracleUsed()) {
-                sqlDelete = getBulkDeleteStatementOracle(ctx.getCopyItem().getTargetItem(), PK);
+            String targetItem = ctx.getCopyItem().getTargetItem();
+            DataBaseProvider dbProvider = ctx.getContext().getMigrationContext().getDataTargetRepository()
+                    .getDatabaseProvider();
+
+            if (dbProvider.isOracleUsed()) {
+                sqlDelete = getBulkDeleteStatementOracle(targetItem, PK);
+            } else if (dbProvider.isPostgreSqlUsed()) {
+                sqlDelete = getBulkDeleteStatementPostgreSql(targetItem, PK);
+            } else if (dbProvider.isMySqlUsed()) {
+                sqlDelete = getBulkDeleteStatementMySql(targetItem, PK);
             } else {
-                sqlDelete = getBulkDeleteStatement(ctx.getCopyItem().getTargetItem(), PK);
+                sqlDelete = getBulkDeleteStatement(targetItem, PK);
             }
 
             try (PreparedStatement bulkWriterStatement = connection.prepareStatement(sqlDelete)) {
@@ -146,6 +155,28 @@ public class DataDeleteWriterTask extends RetriableTask {
         sqlBuilder.append("UPDATE SET t.HJMPTS = 0 "); // IS INSERT OR UPDATE
         sqlBuilder.append("DELETE WHERE " + String.format(" t.%s = s.%s ", columnId, columnId));// DELETE
         LOG.debug("MERGE-DELETE ORACLE " + sqlBuilder);
+        return sqlBuilder.toString();
+    }
+
+    private String getBulkDeleteStatementMySql(final String targetTableName, final String columnId) {
+        final StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append(String.format("DELETE t FROM %s t", targetTableName));
+        sqlBuilder.append("\n");
+        sqlBuilder.append(String.format("JOIN (SELECT ? AS %s) s ON t.%s = s.%s", columnId, columnId, columnId));
+        LOG.debug("DELETE MYSQL " + sqlBuilder);
+        return sqlBuilder.toString();
+    }
+
+    // PostgreSql >= 15
+    private String getBulkDeleteStatementPostgreSql(final String targetTableName, final String columnId) {
+        final StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append(String.format("MERGE INTO %s AS t", targetTableName));
+        sqlBuilder.append("\n");
+        sqlBuilder.append(String.format("USING (SELECT ? AS %s) AS s ON (t.%s = s.%s)", columnId, columnId, columnId));
+        sqlBuilder.append("\n");
+        sqlBuilder.append("WHEN MATCHED THEN DELETE");
+        sqlBuilder.append(";");
+        LOG.debug("MERGE-DELETE PostgreSQL: " + sqlBuilder);
         return sqlBuilder.toString();
     }
 }

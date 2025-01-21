@@ -83,12 +83,13 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
             nullifyColumns.addAll(context.getMigrationContext().getNullifyColumns().get(targetTableName));
             LOG.info("Nullify column(s): {}", nullifyColumns);
         }
-
+        final String query = isTopSupported(context)
+                ? "select TOP 1 * from %s where 0 = 1"
+                : "select * from %s where 0 = 1";
         List<String> columnsToCopy = new ArrayList<>();
         try (Connection sourceConnection = context.getMigrationContext().getDataSourceRepository().getConnection();
                 Statement stmt = sourceConnection.createStatement();
-                ResultSet metaResult = stmt
-                        .executeQuery(String.format("select * from %s where 0 = 1", item.getSourceItem()))) {
+                ResultSet metaResult = stmt.executeQuery(String.format(query, item.getSourceItem()))) {
             ResultSetMetaData sourceMeta = metaResult.getMetaData();
             int columnCount = sourceMeta.getColumnCount();
             for (int i = 1; i <= columnCount; i++) {
@@ -306,5 +307,10 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
         } else {
             return new CopyPipeWriterTask(dwc, dataSet, anonymizerConfigurator.getConfiguration());
         }
+    }
+
+    private boolean isTopSupported(final CopyContext context) {
+        return context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isMssqlUsed()
+                || context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isHanaUsed();
     }
 }

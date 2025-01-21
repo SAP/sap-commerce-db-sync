@@ -28,12 +28,15 @@ public class DefaultDataSet implements DataSet {
     private final int columnCount;
     private final List<DataColumn> columnOrder;
     private final List<List<Object>> result;
+    private final String partition;
 
-    public DefaultDataSet(int batchId, int columnCount, List<DataColumn> columnOrder, List<List<Object>> result) {
+    public DefaultDataSet(int batchId, int columnCount, List<DataColumn> columnOrder, List<List<Object>> result,
+            final String partition) {
         this.batchId = batchId;
         this.columnCount = columnCount;
         this.columnOrder = Collections.unmodifiableList(columnOrder);
         this.result = result.stream().map(Collections::unmodifiableList).collect(Collectors.toList());
+        this.partition = partition;
     }
 
     @Override
@@ -105,6 +108,10 @@ public class DefaultDataSet implements DataSet {
     @Override
     public DataColumn getColumn(String columnName) {
         return IterableUtils.get(columnOrder, findColumnIndex(columnName));
+    }
+    @Override
+    public String getPartition() {
+        return partition;
     }
 
     protected int findColumnIndex(String columnName) {

@@ -199,6 +199,10 @@ public abstract class AbstractDataRepository implements DataRepository {
         return "SELECT COUNT(*) FROM %s WHERE %s";
     }
 
+    protected String createRowCountModifiedAfterQuery() {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE modifiedts > ? AND %s";
+    }
+
     @Override
     public long getRowCount(String table) throws SQLException {
         List<String> conditions = new ArrayList<>(1);
@@ -268,19 +272,21 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     protected DefaultDataSet convertToDataSet(ResultSet resultSet) throws Exception {
-        return convertToDataSet(resultSet, Collections.emptySet());
+        return convertToDataSet(resultSet, Collections.emptySet(), null);
     }
 
-    protected DefaultDataSet convertToDataSet(int batchId, ResultSet resultSet) throws Exception {
-        return convertToDataSet(batchId, resultSet, Collections.emptySet());
-    }
-
-    protected DefaultDataSet convertToDataSet(ResultSet resultSet, Set<String> ignoreColumns) throws Exception {
-        return convertToDataSet(0, resultSet, ignoreColumns);
-    }
-
-    protected DefaultDataSet convertToDataSet(int batchId, ResultSet resultSet, Set<String> ignoreColumns)
+    protected DefaultDataSet convertToDataSet(int batchId, ResultSet resultSet, final String partition)
             throws Exception {
+        return convertToDataSet(batchId, resultSet, Collections.emptySet(), partition);
+    }
+
+    protected DefaultDataSet convertToDataSet(ResultSet resultSet, Set<String> ignoreColumns, final String partition)
+            throws Exception {
+        return convertToDataSet(0, resultSet, ignoreColumns, partition);
+    }
+
+    protected DefaultDataSet convertToDataSet(int batchId, ResultSet resultSet, Set<String> ignoreColumns,
+            final String partition) throws Exception {
         int realColumnCount = resultSet.getMetaData().getColumnCount();
         List<DataColumn> columnOrder = new ArrayList<>();
         int columnCount = 0;
@@ -308,7 +314,7 @@ public abstract class AbstractDataRepository implements DataRepository {
             }
             results.add(row);
         }
-        return new DefaultDataSet(batchId, columnCount, columnOrder, results);
+        return new DefaultDataSet(batchId, columnCount, columnOrder, results, partition);
     }
 
     @Override
@@ -628,7 +634,7 @@ public abstract class AbstractDataRepository implements DataRepository {
                 stmt.setObject(nextColumnConditionIndex, queryDefinition.getNextColumnValue());
             }
             ResultSet resultSet = stmt.executeQuery();
-            return convertToBatchDataSet(queryDefinition.getBatchId(), resultSet);
+            return convertToBatchDataSet(queryDefinition.getBatchId(), resultSet, queryDefinition.getPartition());
         }
     }
 
@@ -730,7 +736,11 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     protected DataSet convertToBatchDataSet(int batchId, ResultSet resultSet) throws Exception {
-        return convertToDataSet(batchId, resultSet);
+        return convertToDataSet(batchId, resultSet, null);
+    }
+
+    protected DataSet convertToBatchDataSet(int batchId, ResultSet resultSet, final String partition) throws Exception {
+        return convertToDataSet(batchId, resultSet, partition);
     }
 
     @Override
@@ -791,4 +801,14 @@ public abstract class AbstractDataRepository implements DataRepository {
 
     protected abstract String getBulkUpdateStatementParamList(List<String> columnsToCopy,
             List<String> columnsToCopyValues, List<String> upsertIDs);
+    @Override
+    public List<String> getPartitions(String table) throws SQLException {
+        throw new UnsupportedOperationException("getPartitions() -> This method is not available on all databases");
+    }
+
+    @Override
+    public long getRowCount(String table, String currentPartition) throws SQLException {
+        throw new UnsupportedOperationException(
+                "getRowCount(table,partition) -> This method is not available on all databases");
+    }
 }

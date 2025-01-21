@@ -54,8 +54,9 @@ public class OracleDataRepository extends AbstractDataRepository {
     }
 
     @Override
-    protected DataSet convertToBatchDataSet(int batchId, final ResultSet resultSet) throws Exception {
-        return convertToDataSet(batchId, resultSet, Collections.singleton("rn"));
+    protected DataSet convertToBatchDataSet(int batchId, final ResultSet resultSet, final String partition)
+            throws Exception {
+        return convertToDataSet(batchId, resultSet, Collections.singleton("rn"), partition);
     }
 
     @Override

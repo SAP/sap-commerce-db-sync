@@ -95,19 +95,29 @@ public interface DatabaseCopyTaskRepository {
      *            the nodeId to perform the copy
      * @throws Exception
      */
-    void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long sourceRowCount, int targetNode)
-            throws Exception;
+    void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long itemOrder, long sourceRowCount,
+            int targetNode) throws Exception;
 
     void rescheduleTask(CopyContext context, String pipelineName, int targetNodeId) throws Exception;
 
     void scheduleBatch(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId, Object lowerBoundary,
             Object upperBoundary) throws Exception;
 
-    void markBatchCompleted(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId) throws Exception;
+    void scheduleBatch(CopyContext context, DataCopyItem copyItem, int batchId, Object lowerBoundary,
+            Object upperBoundary, String partition) throws Exception;
+
+    void markBatchCompleted(CopyContext context, DataCopyItem copyItem, int batchId) throws Exception;
+
+    void markBatchCompleted(CopyContext context, DataCopyItem copyItem, int batchId, String partition) throws Exception;
 
     void resetPipelineBatches(CopyContext context, CopyContext.DataCopyItem copyItem) throws Exception;
 
+    void resetPipelineBatches(CopyContext context, DataCopyItem copyItem, String partition) throws Exception;
+
     Set<DatabaseCopyBatch> findPendingBatchesForPipeline(CopyContext context, CopyContext.DataCopyItem item)
+            throws Exception;
+
+    Set<DatabaseCopyBatch> findPendingBatchesForPipeline(CopyContext context, DataCopyItem item, String partition)
             throws Exception;
 
     Optional<DatabaseCopyTask> findPipeline(CopyContext context, CopyContext.DataCopyItem dataCopyItem)

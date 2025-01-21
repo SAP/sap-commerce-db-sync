@@ -41,7 +41,9 @@ public class PerformanceRecorder {
     }
 
     public void start() {
-        this.timer.start();
+        if (!this.timer.isRunning()) {
+            this.timer.start();
+        }
     }
 
     public void pause() {

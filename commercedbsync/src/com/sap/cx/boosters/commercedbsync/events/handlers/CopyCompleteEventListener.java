@@ -31,20 +31,19 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
     private static final Logger LOG = LoggerFactory.getLogger(CopyCompleteEventListener.class.getName());
 
     private MigrationContext migrationContext;
-
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
-
     private PerformanceProfiler performanceProfiler;
-
     private List<MigrationPostProcessor> postProcessors;
+    private MigrationContext reverseMigrationContext;
 
     @Override
     protected void onEvent(final CopyCompleteEvent event) {
         final String migrationId = event.getOperationId();
 
         LOG.info("Migration finished on Node {} with result {}", event.getSourceNodeId(), event.getCopyResult());
-        final CopyContext copyContext = new CopyContext(migrationId, migrationContext, new HashSet<>(),
-                performanceProfiler);
+        final CopyContext copyContext = event.isReversed()
+                ? new CopyContext(migrationId, reverseMigrationContext, new HashSet<>(), performanceProfiler)
+                : new CopyContext(migrationId, migrationContext, new HashSet<>(), performanceProfiler);
 
         executePostProcessors(copyContext);
     }
@@ -60,7 +59,6 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
             Transaction.current().execute(new TransactionBody() {
                 @Override
                 public Object execute() throws Exception {
-
                     final boolean eligibleForPostProcessing = databaseCopyTaskRepository.setMigrationStatus(copyContext,
                             MigrationProgress.PROCESSED, MigrationProgress.POSTPROCESSING)
                             || databaseCopyTaskRepository.setMigrationStatus(copyContext, MigrationProgress.ABORTED,
@@ -82,8 +80,8 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
             });
         } catch (final Exception e) {
             LOG.error("Error during PostProcessor execution", e);
-            if (e instanceof RuntimeException) {
-                throw (RuntimeException) e;
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
             } else {
                 throw new RuntimeException(e);
             }
@@ -104,5 +102,9 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     public void setPostProcessors(final List<MigrationPostProcessor> postProcessors) {
         this.postProcessors = postProcessors;
+    }
+
+    public void setReverseMigrationContext(final MigrationContext reverseMigrationContext) {
+        this.reverseMigrationContext = reverseMigrationContext;
     }
 }

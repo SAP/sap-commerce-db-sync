@@ -1,5 +1,10 @@
 # SAP Commerce DB Sync - Configuration Guide
 
+## DB Sync flows diagram
+
+![db sync flows diagram](../../docs/user/db-sync-flows.svg)
+
+
 ## Configuration reference
 
 [Configuration Reference](CONFIGURATION-REFERENCE.md) To get an overview of the configurable properties.

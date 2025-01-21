@@ -225,10 +225,10 @@ function fillResult(status) {
     sourceSchemaDiffTable.fnClearTable();
 
     if(status.diffResult.target.results.length > 0) {
-        targetSchemaDiffTable.fnAddData(status.diffResult.target.results.map((result) => [result[0], result[2]]));
+        targetSchemaDiffTable.fnAddData(status.diffResult.target.results.map((result) => [result[1], result[2]]));
     }
     if(status.diffResult.source.results.length > 0) {
-        sourceSchemaDiffTable.fnAddData(status.diffResult.source.results.map((result) => [result[0], result[2]]));
+        sourceSchemaDiffTable.fnAddData(status.diffResult.source.results.map((result) => [result[1], result[2]]));
     }
 
     sqlQueryEditor.setValue(status.sqlScript);

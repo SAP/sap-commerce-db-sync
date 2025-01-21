@@ -22,16 +22,15 @@ import java.util.Collections;
 import java.util.Set;
 
 public class DefaultIncrementalMigrationContext extends DefaultMigrationContext implements IncrementalMigrationContext {
-
     private static final Logger LOG = Logger.getLogger(DefaultIncrementalMigrationContext.class.getName());
     private Instant timestampInstant;
     private Set<String> incrementalTables;
     private Set<String> includedTables;
 
     public DefaultIncrementalMigrationContext(final DataRepositoryFactory dataRepositoryFactory,
-            final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration)
-            throws Exception {
-        super(dataRepositoryFactory, dataSourceConfigurationFactory, configuration);
+            final DataSourceConfigurationFactory dataSourceConfigurationFactory, final Configuration configuration,
+            final boolean reversed) throws Exception {
+        super(dataRepositoryFactory, dataSourceConfigurationFactory, configuration, reversed);
     }
 
     @Override

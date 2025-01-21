@@ -20,6 +20,7 @@ import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
 import com.sap.cx.boosters.commercedbsync.service.impl.BlobDatabaseMigrationReportStorageService;
+import com.sap.cx.boosters.commercedbsync.utils.LocalDateTypeAdapter;
 import com.sap.cx.boosters.commercedbsync.utils.MaskUtil;
 import com.sap.cx.boosters.commercedbsynchac.metric.MetricService;
 import de.hybris.platform.commercedbsynchac.data.*;
@@ -150,7 +151,7 @@ public class CommercemigrationhacController {
         model.addAttribute("isLogSql",
                 BooleanUtils.toBooleanDefaultIfNull(migrationContext.isLogSql(), DEFAULT_BOOLEAN_VAL));
         model.addAttribute("isSchedulerResumeEnabled", migrationContext.isSchedulerResumeEnabled());
-        model.addAttribute("isDataExportEnabled", migrationContext.isDataExportEnabled());
+        model.addAttribute("isDataExportEnabled", migrationContext.isDataSynchronizationEnabled());
         return "dataCopy";
     }
 
@@ -291,7 +292,7 @@ public class CommercemigrationhacController {
     @RequestMapping(value = "/copyData", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public MigrationStatus copyData(@RequestParam Map<String, Serializable> copyConfig) throws Exception {
-        if (migrationContext.isDataExportEnabled()) {
+        if (migrationContext.isDataSynchronizationEnabled()) {
             throw new IllegalStateException("Migration cannot be started from HAC");
         }
 
@@ -330,7 +331,7 @@ public class CommercemigrationhacController {
     @RequestMapping(value = "/abortCopy", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public String abortCopy(@RequestBody String migrationID) throws Exception {
-        if (migrationContext.isDataExportEnabled()) {
+        if (migrationContext.isDataSynchronizationEnabled()) {
             throw new IllegalStateException("Migration cannot be aborted from HAC");
         }
 
@@ -401,7 +402,11 @@ public class CommercemigrationhacController {
             throws Exception {
         logAction("Download migration report button clicked");
         response.setHeader("Content-Disposition", "attachment; filename=migration-report.json");
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        final GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.setPrettyPrinting();
+        gsonBuilder.registerTypeAdapter(LocalDateTime.class, new LocalDateTypeAdapter());
+        gsonBuilder.disableHtmlEscaping();
+        Gson gson = gsonBuilder.create();
         String json = gson.toJson(databaseMigrationService.getMigrationReport(migrationContext, migrationId));
         return json.getBytes(StandardCharsets.UTF_8.name());
     }

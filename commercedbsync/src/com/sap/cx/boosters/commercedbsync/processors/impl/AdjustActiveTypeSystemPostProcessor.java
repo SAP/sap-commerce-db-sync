@@ -73,7 +73,7 @@ public class AdjustActiveTypeSystemPostProcessor implements MigrationPostProcess
 
     @Override
     public boolean shouldExecute(CopyContext context) {
-        return !isPostProcesorDisabled() && !context.getMigrationContext().isDataExportEnabled()
+        return !isPostProcesorDisabled() && !context.getMigrationContext().isDataSynchronizationEnabled()
                 && context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isMssqlUsed();
     }
 

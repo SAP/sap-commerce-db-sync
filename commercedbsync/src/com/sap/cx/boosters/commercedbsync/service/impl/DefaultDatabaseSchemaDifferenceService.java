@@ -34,6 +34,7 @@ import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
 import org.apache.ddlutils.model.Table;
+import org.apache.ddlutils.platform.SqlBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -41,6 +42,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.time.LocalDateTime;
@@ -80,15 +83,9 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                     schemaDifferenceResult);
             if (databaseModelWithChanges.isHasSchemaDiff()) {
                 LOG.info("generateSchemaDifferencesSql..Schema Diff found - now to generate the SQLs ");
-                if (context.getDataTargetRepository().getDatabaseProvider().isHanaUsed()) {
-                    schemaSql = context.getDataTargetRepository().asPlatform().getAlterTablesSql(null,
-                            context.getDataTargetRepository().getDataSourceConfiguration().getSchema(), null,
-                            databaseModelWithChanges.getDatabase());
-                } else {
-                    schemaSql = context.getDataTargetRepository().asPlatform()
-                            .getAlterTablesSql(databaseModelWithChanges.getDatabase());
-                }
 
+                schemaSql = processChanges(context, schemaDifferenceResult.getTargetSchema().getDatabase(),
+                        databaseModelWithChanges.getDatabase());
                 schemaSql = postProcess(schemaSql, context);
                 LOG.info("generateSchemaDifferencesSql - generated DDL ALTER SQLs. ");
             }
@@ -96,6 +93,37 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         }
 
         return schemaSql;
+    }
+
+    protected void preProcessDatabaseModel(final MigrationContext migrationContext, final Database model,
+            final Set<TableCandidate> tableCandidates) {
+        for (Table table : model.getTables()) {
+            final Optional<TableCandidate> matchingTableCandidate = tableCandidates.stream()
+                    .filter(tableCandidate -> tableCandidate.getFullTableName().equals(table.getName())).findFirst();
+
+            if (matchingTableCandidate.isEmpty()) {
+                model.removeTable(table);
+            } else {
+                final String commonTableName = matchingTableCandidate.get().getCommonTableName();
+                if (migrationContext.getExcludedColumns().containsKey(commonTableName)) {
+                    migrationContext.getExcludedColumns().get(commonTableName).forEach(col -> {
+                        final Column excludedColumn = table.findColumn(col);
+                        table.removeColumn(excludedColumn);
+                    });
+                }
+            }
+        }
+    }
+
+    private String processChanges(final MigrationContext context, final Database currentModel,
+            final Database desiredModel) throws IOException {
+        final SqlBuilder sqlBuilder = context.getDataTargetRepository().asPlatform().getSqlBuilder();
+
+        try (StringWriter buffer = new StringWriter()) {
+            sqlBuilder.setWriter(buffer);
+            sqlBuilder.alterDatabase(currentModel, desiredModel, null);
+            return buffer.toString();
+        }
     }
 
     /*
@@ -199,7 +227,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             return dbStatus;
         }
         final SchemaDifference targetDiff = differenceResult.getTargetSchema();
-        final Database database = (Database) targetDiff.getDatabase().clone();
+        final Database database = getDatabaseModelClone(targetDiff.getDatabase());
 
         // add missing tables in target
         if (migrationContext.isAddMissingTablesToSchemaEnabled()) {
@@ -244,14 +272,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             final SchemaDifference sourceDiff = differenceResult.getSourceSchema();
             final List<TableKeyPair> missingTables = sourceDiff.getMissingTables();
             for (final TableKeyPair missingTable : missingTables) {
-                final Table tableClone = (Table) differenceResult.getTargetSchema().getDatabase()
-                        .findTable(missingTable.getLeftName(), false).clone();
-                tableClone.setName(missingTable.getRightName());
-                tableClone.setCatalog(
-                        migrationContext.getDataTargetRepository().getDataSourceConfiguration().getCatalog());
-                tableClone
-                        .setSchema(migrationContext.getDataTargetRepository().getDataSourceConfiguration().getSchema());
-                database.removeTable(tableClone);
+                final Table table = database.findTable(missingTable.getLeftName(), false);
+                database.removeTable(table);
                 LOG.info("getDatabaseModelWithChanges4TableCreation - missingTable.getRightName() ="
                         + missingTable.getRightName() + ", missingTable.getLeftName() = " + missingTable.getLeftName());
             }
@@ -280,6 +302,23 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return dbStatus;
     }
 
+    /*
+     * Database.clone() does not clone tables properly and adding a new column would
+     * result in it being present in both: cloned, and origin db models.
+     */
+    protected Database getDatabaseModelClone(final Database model) throws CloneNotSupportedException {
+        final Database database = new Database();
+        database.setName(model.getName());
+        database.setIdMethod(model.getIdMethod());
+        database.setIdMethod(model.getIdMethod());
+        database.setVersion(model.getVersion());
+        for (final Table table : model.getTables()) {
+            database.addTable((Table) table.clone());
+        }
+
+        return database;
+    }
+
     protected void writeReport(final String differenceSql) {
         try {
             final String fileName = String.format("schemaChanges-%s.sql", LocalDateTime.now().getNano());
@@ -304,13 +343,20 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     @Override
     public SchemaDifferenceResult createSchemaDifferenceResult(final MigrationContext migrationContext)
             throws Exception {
-        final SchemaDifference sourceSchemaDifference = getSchemaDifference(migrationContext, true);
-        final SchemaDifference targetSchemaDifference = getSchemaDifference(migrationContext, false);
+        final Set<TableCandidate> sourceTableCandidates = getTables(migrationContext,
+                copyItemProvider.getSourceTableCandidates(migrationContext));
+        final Set<TableCandidate> targetTableCandidates = getTables(migrationContext,
+                copyItemProvider.getTargetTableCandidates(migrationContext));
+        final SchemaDifference sourceSchemaDifference = getSchemaDifference(migrationContext, true,
+                sourceTableCandidates, targetTableCandidates);
+        final SchemaDifference targetSchemaDifference = getSchemaDifference(migrationContext, false,
+                sourceTableCandidates, targetTableCandidates);
         return new SchemaDifferenceResult(sourceSchemaDifference, targetSchemaDifference);
     }
 
     private SchemaDifference getSchemaDifference(final MigrationContext migrationContext,
-            final boolean useTargetAsRefDatabase) throws Exception {
+            final boolean useTargetAsRefDatabase, final Set<TableCandidate> sourceTableCandidates,
+            final Set<TableCandidate> targetTableCandidates) throws Exception {
         final DataRepository leftRepository = useTargetAsRefDatabase
                 ? migrationContext.getDataTargetRepository()
                 : migrationContext.getDataSourceRepository();
@@ -321,11 +367,11 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         LOG.info("computing SCHEMA diff, REF DB = " + leftRepository.getDatabaseProvider().getDbName()
                 + " vs Checking in DB = " + rightRepository.getDatabaseProvider().getDbName());
 
-        final Set<TableCandidate> tableCandidates = useTargetAsRefDatabase
-                ? copyItemProvider.getTargetTableCandidates(migrationContext)
-                : copyItemProvider.getSourceTableCandidates(migrationContext);
-
-        return computeDiff(migrationContext, leftRepository, rightRepository, tableCandidates);
+        return useTargetAsRefDatabase
+                ? computeDiff(migrationContext, leftRepository, rightRepository, targetTableCandidates,
+                        sourceTableCandidates)
+                : computeDiff(migrationContext, leftRepository, rightRepository, sourceTableCandidates,
+                        targetTableCandidates);
     }
 
     @Override
@@ -554,10 +600,12 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     }
 
     protected SchemaDifference computeDiff(final MigrationContext context, final DataRepository leftRepository,
-            final DataRepository rightRepository, final Set<TableCandidate> leftCandidates) {
-        final SchemaDifference schemaDifference = new SchemaDifference(rightRepository.asDatabase(),
+            final DataRepository rightRepository, final Set<TableCandidate> leftCandidates,
+            final Set<TableCandidate> rightCandidates) throws CloneNotSupportedException {
+        final Database database = (Database) rightRepository.asDatabase().clone();
+        preProcessDatabaseModel(context, database, rightCandidates);
+        final SchemaDifference schemaDifference = new SchemaDifference(database,
                 rightRepository.getDataSourceConfiguration().getTablePrefix());
-        final Set<TableCandidate> leftDatabaseTables = getTables(context, leftCandidates);
         LOG.info("LEFT Repo = " + leftRepository.getDatabaseProvider().getDbName());
         LOG.info("RIGHT Repo = " + rightRepository.getDatabaseProvider().getDbName());
 
@@ -571,7 +619,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         }
 
         // LOG.info(" -------------------------------");
-        for (final TableCandidate leftCandidate : leftDatabaseTables) {
+        for (final TableCandidate leftCandidate : leftCandidates) {
             LOG.info(" Checking if Left Table exists --> " + leftCandidate.getFullTableName());
             final Table leftTable = leftRepository.asDatabase().findTable(leftCandidate.getFullTableName(), false);
             if (leftTable == null) {

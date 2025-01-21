@@ -118,4 +118,8 @@ public interface DataRepository {
     void clearJdbcQueriesStore();
 
     String buildBulkUpsertStatement(String table, List<String> columnsToCopy, List<String> upsertIDs);
+
+    List<String> getPartitions(String table) throws SQLException;
+
+    long getRowCount(String table, String currentPartition) throws Exception;
 }

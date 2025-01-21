@@ -17,7 +17,7 @@ Carefully read the prerequisites and make sure you meet the requirements before 
 Before you begin, ensure you have met the following requirements:
 
 * Your code base is compatible with the SAP Commerce version required by SAP Commerce Cloud (at minimum).
-* The code base is exactly the same in both target and source systems. It includes:
+* The code base on source and destination systems is adjusted according to the guidance from [blog](https://community.sap.com/t5/crm-and-cx-blogs-by-sap/migration-and-upgrade-understanding-key-approaches/ba-p/13902274) page. It includes:
   * platform version
   * custom extensions
   * set of configured extensions

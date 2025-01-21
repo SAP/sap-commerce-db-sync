@@ -48,7 +48,7 @@ Go to the commercemigrationtest extension, like so:
 Alternatively go to the platformhome, and trigger it from there:
 
 ```
-platformhome>ant all integrationtests -Dtestclasses.packages=org.sap.move.commercemigrationtest.integration.*
+platformhome>ant all integrationtests -Dtestclasses.packages=com.sap.cx.boosters.commercedbsynctest.integration.*
 ```
 
 The integration tests are parameterized with predefined combinations of source and target databases.

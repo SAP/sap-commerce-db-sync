@@ -7,6 +7,7 @@
 package com.sap.cx.boosters.commercedbsync.context;
 
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
+import org.slf4j.Logger;
 
 import java.sql.SQLException;
 import java.time.Instant;
@@ -21,6 +22,8 @@ public interface MigrationContext {
     DataRepository getDataSourceRepository();
 
     DataRepository getDataTargetRepository();
+
+    DataRepository getDataRepository();
 
     boolean isMigrationTriggeredByUpdateProcess();
 
@@ -78,11 +81,21 @@ public interface MigrationContext {
 
     Map<String, Set<String>> getNullifyColumns();
 
+    Map<String, Set<String>> getBatchColumns();
+
     Set<String> getCustomTables();
 
     Set<String> getExcludedTables();
 
     Set<String> getIncludedTables();
+
+    Set<String> getTablesOrderedAsFirst();
+
+    Set<String> getTablesOrderedAsLast();
+
+    boolean isTablesOrdered();
+
+    Set<String> getPartitionedTables();
 
     boolean isDropAllIndexesEnabled();
 
@@ -102,13 +115,17 @@ public interface MigrationContext {
 
     int getDataPipeCapacity();
 
+    boolean isReversed();
+
     int getStalledTimeout();
 
     String getFileStorageConnectionString();
 
     int getMaxTargetStagedMigrations();
 
-    boolean isDataExportEnabled();
+    boolean isDataSynchronizationEnabled();
+
+    String getInternalTablesStorage();
 
     boolean isDeletionEnabled();
 
@@ -204,4 +221,41 @@ public interface MigrationContext {
     Set<String> getTablesForViews();
 
     String getViewColumnPrefixFor(String tableName);
+
+    default void dumpLog(Logger logger) {
+        logger.info("-------- MIGRATION CONTEXT - START ----------");
+
+        logger.info("isAddMissingColumnsToSchemaEnabled={}", isAddMissingColumnsToSchemaEnabled());
+        logger.info("isAddMissingTablesToSchemaEnabled={}", isAddMissingTablesToSchemaEnabled());
+        logger.info("isAuditTableMigrationEnabled={}", isAuditTableMigrationEnabled());
+        logger.info("isClusterMode={}", isClusterMode());
+        logger.info("isDeletionEnabled={}", isDeletionEnabled());
+        logger.info("isDisableAllIndexesEnabled={}", isDisableAllIndexesEnabled());
+        logger.info("isDropAllIndexesEnabled={}", isDropAllIndexesEnabled());
+        logger.info("isFailOnErrorEnabled={}", isFailOnErrorEnabled());
+        logger.info("isIncrementalModeEnabled={}", isIncrementalModeEnabled());
+        logger.info("isMigrationTriggeredByUpdateProcess={}", isMigrationTriggeredByUpdateProcess());
+        logger.info("isRemoveMissingColumnsToSchemaEnabled={}", isRemoveMissingColumnsToSchemaEnabled());
+        logger.info("isRemoveMissingTablesToSchemaEnabled={}", isRemoveMissingTablesToSchemaEnabled());
+        logger.info("isSchemaMigrationAutoTriggerEnabled={}", isSchemaMigrationAutoTriggerEnabled());
+        logger.info("isSchemaMigrationEnabled={}", isSchemaMigrationEnabled());
+        logger.info("isTruncateEnabled={}", isTruncateEnabled());
+        logger.info("getIncludedTables={}", getIncludedTables());
+        logger.info("getExcludedTables={}", getExcludedTables());
+        logger.info("getIncrementalTables={}", getIncrementalTables());
+        logger.info("getTablesOrderedAsFirst={}", getTablesOrderedAsFirst());
+        logger.info("getTablesOrderedAsLast={}", getTablesOrderedAsLast());
+        logger.info("getTruncateExcludedTables={}", getTruncateExcludedTables());
+        logger.info("getCustomTables={}", getCustomTables());
+        logger.info("getIncrementalTimestamp={}", getIncrementalTimestamp());
+        logger.info("Source TS Name={}", getDataSourceRepository().getDataSourceConfiguration().getTypeSystemName());
+        logger.info("Source TS Suffix={}",
+                getDataSourceRepository().getDataSourceConfiguration().getTypeSystemSuffix());
+        logger.info("Target TS Name={}", getDataTargetRepository().getDataSourceConfiguration().getTypeSystemName());
+        logger.info("Target TS Suffix={}",
+                getDataTargetRepository().getDataSourceConfiguration().getTypeSystemSuffix());
+        logger.info("getItemTypeViewNamePattern={}", getItemTypeViewNamePattern());
+
+        logger.info("-------- MIGRATION CONTEXT - END ----------");
+    }
 }
