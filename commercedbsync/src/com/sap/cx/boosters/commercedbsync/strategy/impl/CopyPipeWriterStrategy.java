@@ -310,7 +310,7 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
     }
 
     private boolean isTopSupported(final CopyContext context) {
-        return context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isMssqlUsed()
-                || context.getMigrationContext().getDataTargetRepository().getDatabaseProvider().isHanaUsed();
+        return context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isMssqlUsed()
+                || context.getMigrationContext().getDataSourceRepository().getDatabaseProvider().isHanaUsed();
     }
 }
