@@ -6,19 +6,16 @@
 
 package com.sap.cx.boosters.commercedbsync.logging;
 
-import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.blob.CloudAppendBlob;
-import com.microsoft.azure.storage.blob.CloudBlobClient;
-import com.microsoft.azure.storage.blob.CloudBlobContainer;
-import com.microsoft.azure.storage.blob.CloudBlobDirectory;
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.specialized.AppendBlobClient;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,6 +42,7 @@ public class JDBCQueriesStore {
     private final String dbConnectionString;
     private final Collection<JdbcQueryLog> queryLogs;
     private final MigrationContext context;
+    private BlobServiceClient blobServiceClient;
 
     private final boolean isSourceDB;
     // Unique id of the file in file storage where the jdbc store(s) across
@@ -105,16 +103,14 @@ public class JDBCQueriesStore {
     }
 
     public Pair<byte[], String> getLogFile(final String migrationId) {
-        final String logFileName = getLogFileName(migrationId, true);
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference("jdbclogs");
-            CloudBlockBlob zippedLogBlobFile = jdbcLogsDirectory.getBlockBlobReference(logFileName);
+            final BlockBlobClient zippedLogBlobFile = getZippedLogBlobFile(migrationId);
             zippedLogBlobFile.download(baos);
-            return Pair.of(baos.toByteArray(), logFileName);
+            return Pair.of(baos.toByteArray(), getLogFileName(migrationId, true));
         } catch (Exception e) {
             String errorMessage = String.format(
                     "Log file %s for datasource %s does not exist in storage %s or is currently being created",
-                    logFileName, dbConnectionString, context.getFileStorageContainerName());
+                    getLogFileName(migrationId, true), dbConnectionString, context.getFileStorageContainerName());
             LOG.error(errorMessage, e);
             return Pair.of(errorMessage.getBytes(StandardCharsets.UTF_8), getLogFileName(migrationId, false));
         }
@@ -127,8 +123,7 @@ public class JDBCQueriesStore {
 
     private void flushQueryLogsToAppendingFile() {
         try {
-            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference(JDBCLOGS_DIRECTORY);
-            CloudAppendBlob sharedStoreLogFile = jdbcLogsDirectory.getAppendBlobReference(sharedStoreLogFileName);
+            final AppendBlobClient sharedStoreLogFile = getSharedStoreLogFile();
             byte[] queryLogsBytes = getQueryLogsAsString().getBytes(StandardCharsets.UTF_8.name());
             try (InputStream is = new ByteArrayInputStream(queryLogsBytes)) {
                 sharedStoreLogFile.appendBlock(is, queryLogsBytes.length);
@@ -148,13 +143,11 @@ public class JDBCQueriesStore {
 
     private void compressAppendingFileContent(final String migrationId) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            CloudBlobDirectory jdbcLogsDirectory = getContainer().getDirectoryReference(JDBCLOGS_DIRECTORY);
-            CloudAppendBlob sharedStoreLogFile = jdbcLogsDirectory.getAppendBlobReference(this.sharedStoreLogFileName);
-            sharedStoreLogFile.download(baos);
+            final AppendBlobClient sharedStoreLogFile = getSharedStoreLogFile();
+            sharedStoreLogFile.downloadStream(baos);
             byte[] zippedLogBytes = FileUtils.zipBytes(getLogFileName(migrationId, false), baos.toByteArray());
-            CloudBlockBlob zippedLogBlobFile = jdbcLogsDirectory
-                    .getBlockBlobReference(getLogFileName(migrationId, true));
-            zippedLogBlobFile.uploadFromByteArray(zippedLogBytes, 0, zippedLogBytes.length);
+            final BlockBlobClient zippedLogBlobFile = getZippedLogBlobFile(migrationId);
+            zippedLogBlobFile.upload(new ByteArrayInputStream(zippedLogBytes), zippedLogBytes.length);
         } catch (Exception e) {
             LOG.error("Failed to compress query logs from file {} in storage {} for datasource {}",
                     getLogFileName(migrationId, false), context.getFileStorageConnectionString(), dbConnectionString,
@@ -164,34 +157,43 @@ public class JDBCQueriesStore {
 
     private void resetAppendingFile() {
         try {
-            CloudBlobClient blobClient = getCloudBlobClient();
-            CloudBlobDirectory jdbcLogsDirectory = blobClient
-                    .getContainerReference(context.getFileStorageContainerName()).getDirectoryReference("jdbclogs");
-            CloudAppendBlob logBlobFile = jdbcLogsDirectory.getAppendBlobReference(sharedStoreLogFileName);
-            logBlobFile.createOrReplace();
+            getSharedStoreLogFile().create(true);
         } catch (Exception e) {
             LOG.error("Failed to create or replace appending file {} in storage {} for datasource {}",
                     sharedStoreLogFileName, context.getFileStorageContainerName(), dbConnectionString, e);
         }
     }
 
-    private CloudBlobClient getCloudBlobClient() throws URISyntaxException, InvalidKeyException {
-        // if file storage connection string is not set, do not try to connect to the
-        // storage
+    protected BlobServiceClient getBlobServiceClient() throws Exception {
         if (context.getFileStorageConnectionString() == null) {
             throw new IllegalArgumentException("File storage connection string not set");
         }
-        CloudStorageAccount account = CloudStorageAccount.parse(context.getFileStorageConnectionString());
-        return account.createCloudBlobClient();
+
+        if (blobServiceClient == null) {
+            blobServiceClient = new BlobServiceClientBuilder()
+                    .connectionString(context.getFileStorageConnectionString()).buildClient();
+        }
+
+        return blobServiceClient;
     }
 
-    private CloudBlobContainer getContainer() throws Exception {
-        CloudBlobContainer containerReference = getCloudBlobClient()
-                .getContainerReference(context.getFileStorageContainerName());
+    protected BlobContainerClient getContainerClient() throws Exception {
+        final BlobContainerClient containerClient = getBlobServiceClient()
+                .getBlobContainerClient(context.getFileStorageContainerName());;
+        containerClient.createIfNotExists();
+        return containerClient;
+    }
 
-        containerReference.createIfNotExists();
+    protected AppendBlobClient getSharedStoreLogFile() throws Exception {
+        final AppendBlobClient appendBlobClient = getContainerClient()
+                .getBlobClient(JDBCLOGS_DIRECTORY + "/" + sharedStoreLogFileName).getAppendBlobClient();
+        appendBlobClient.createIfNotExists();
+        return appendBlobClient;
+    }
 
-        return containerReference;
+    protected BlockBlobClient getZippedLogBlobFile(final String migrationId) throws Exception {
+        final String logFileName = getLogFileName(migrationId, true);
+        return getContainerClient().getBlobClient(JDBCLOGS_DIRECTORY + "/" + logFileName).getBlockBlobClient();
     }
 
     private String getLogFileName(final String migrationId, final boolean isZipped) {

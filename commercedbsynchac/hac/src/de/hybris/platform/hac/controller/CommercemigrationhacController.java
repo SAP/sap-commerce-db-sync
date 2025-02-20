@@ -6,10 +6,10 @@
 
 package de.hybris.platform.hac.controller;
 
+import com.azure.storage.blob.BlobClient;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.sap.cx.boosters.commercedbsync.MigrationStatus;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.Serializable;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -451,13 +452,13 @@ public class CommercemigrationhacController {
     @ResponseBody
     public List<ReportResultData> loadMigrationReports() {
         try {
-            List<CloudBlockBlob> blobs = blobDatabaseMigrationReportStorageService.listAllReports();
+            List<BlobClient> blobs = blobDatabaseMigrationReportStorageService.listAllReports();
             List<ReportResultData> result = new ArrayList<>();
             blobs.forEach(blob -> {
                 ReportResultData reportResultData = new ReportResultData();
                 reportResultData.setModifiedTimestamp(getSortableTimestamp(blob));
-                reportResultData.setReportId(blob.getName());
-                reportResultData.setPrimaryUri(blob.getUri().toString());
+                reportResultData.setReportId(blob.getBlobName());
+                reportResultData.setPrimaryUri(URI.create(blob.getBlobUrl()).toString());
                 result.add(reportResultData);
             });
             return result;
@@ -467,11 +468,11 @@ public class CommercemigrationhacController {
         return null;
     }
 
-    private String getSortableTimestamp(CloudBlockBlob blob) {
+    private String getSortableTimestamp(BlobClient blob) {
         if (blob != null && blob.getProperties() != null) {
-            Date lastModified = blob.getProperties().getLastModified();
+            OffsetDateTime lastModified = blob.getProperties().getLastModified();
             if (lastModified != null) {
-                return DATE_TIME_FORMATTER.format(lastModified);
+                return DATE_TIME_FORMATTER.format(Date.from(lastModified.toInstant()));
             }
         }
         return Strings.EMPTY;

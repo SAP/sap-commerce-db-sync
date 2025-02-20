@@ -6,13 +6,11 @@
 
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
-import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.NameValidator;
-import com.microsoft.azure.storage.blob.CloudBlob;
-import com.microsoft.azure.storage.blob.CloudBlobClient;
-import com.microsoft.azure.storage.blob.CloudBlobContainer;
-import com.microsoft.azure.storage.blob.CloudBlockBlob;
-import com.microsoft.azure.storage.blob.ListBlobItem;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.specialized.BlockBlobClient;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportStorageService;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -31,24 +29,25 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
     private static final Logger LOG = LoggerFactory
             .getLogger(BlobDatabaseMigrationReportStorageService.class.getName());
 
-    private CloudBlobClient cloudBlobClient;
+    private BlobServiceClient blobServiceClient;
 
     private MigrationContext migrationContext;
 
     protected void init() throws Exception {
         LOG.info("Connecting to blob storage {}", migrationContext.getFileStorageConnectionString());
-        CloudStorageAccount account = CloudStorageAccount.parse(migrationContext.getFileStorageConnectionString());
-        this.cloudBlobClient = account.createCloudBlobClient();
+        this.blobServiceClient = new BlobServiceClientBuilder()
+                .connectionString(migrationContext.getFileStorageConnectionString()).buildClient();
     }
 
     @Override
     public void store(String fileName, InputStream inputStream) throws Exception {
         final String containerName = migrationContext.getFileStorageContainerName();
         if (inputStream != null) {
-            CloudBlockBlob blob = getContainer(containerName, true).getBlockBlobReference(fileName);
+            final BlockBlobClient blobClient = getContainerClient(containerName, true).getBlobClient(fileName)
+                    .getBlockBlobClient();
             byte[] bytes = IOUtils.toByteArray(inputStream);
-            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-            blob.upload(bis, bytes.length);
+            final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            blobClient.upload(bis, bytes.length);
             bis.close();
             LOG.info("File {} written to blob storage at {}/{}", fileName, containerName, fileName);
         } else {
@@ -57,22 +56,21 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
         }
     }
 
-    protected CloudBlobContainer getContainer(String name, boolean createIfNotExists) throws Exception {
-        CloudBlobContainer containerReference = getCloudBlobClient().getContainerReference(name);
+    protected BlobContainerClient getContainerClient(String name, boolean createIfNotExists) throws Exception {
+        final BlobContainerClient containerClient = getBlobServiceClient().getBlobContainerClient(name);
         if (createIfNotExists) {
-            containerReference.createIfNotExists();
+            containerClient.createIfNotExists();
         }
-        return containerReference;
+        return containerClient;
     }
 
-    public List<CloudBlockBlob> listAllReports() throws Exception {
-        getCloudBlobClient();
+    public List<BlobClient> listAllReports() throws Exception {
         final String containerName = migrationContext.getFileStorageContainerName();
-        Iterable<ListBlobItem> migrationBlobs = cloudBlobClient.getContainerReference(containerName).listBlobs();
-        List<CloudBlockBlob> result = new ArrayList<>();
-        migrationBlobs.forEach(blob -> {
-            if (blob instanceof CloudBlockBlob && ((CloudBlockBlob) blob).getName().endsWith(".json")) {
-                result.add((CloudBlockBlob) blob);
+        final List<BlobClient> result = new ArrayList<>();
+        final BlobContainerClient containerClient = getContainerClient(containerName, true);
+        containerClient.listBlobs().forEach(blob -> {
+            if (!blob.isPrefix() && blob.getName().endsWith(".json")) {
+                result.add(containerClient.getBlobClient(blob.getName()));
             }
         });
         return result;
@@ -81,14 +79,13 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
     public byte[] getReport(String reportId) throws Exception {
         checkReportIdValid(reportId);
         final String containerName = migrationContext.getFileStorageContainerName();
-        CloudBlob blob = cloudBlobClient.getContainerReference(containerName).getBlobReferenceFromServer(reportId);
-        ByteArrayOutputStream result = new ByteArrayOutputStream();
-        blob.download(result);
+        final BlobClient blobClient = getContainerClient(containerName, false).getBlobClient(reportId);
+        final ByteArrayOutputStream result = new ByteArrayOutputStream();
+        blobClient.downloadStream(result);
         return result.toByteArray();
     }
 
     private void checkReportIdValid(String reportId) {
-        NameValidator.validateFileName(reportId);
         if (StringUtils.contains(reportId, "/")) {
             throw new IllegalArgumentException("Invalid report id provided");
         }
@@ -97,17 +94,17 @@ public class BlobDatabaseMigrationReportStorageService implements DatabaseMigrat
         }
     }
 
-    protected CloudBlobClient getCloudBlobClient() throws Exception {
-        if (cloudBlobClient == null) {
+    protected BlobServiceClient getBlobServiceClient() throws Exception {
+        if (blobServiceClient == null) {
             init();
         }
-        return cloudBlobClient;
+        return blobServiceClient;
     }
 
     @Override
     public boolean validateConnection() {
         try {
-            getCloudBlobClient().listContainers();
+            getBlobServiceClient().listBlobContainers();
         } catch (Exception e) {
             return false;
         }
