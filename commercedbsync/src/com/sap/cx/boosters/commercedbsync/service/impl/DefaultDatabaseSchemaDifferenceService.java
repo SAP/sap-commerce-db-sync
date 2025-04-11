@@ -99,7 +99,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             final Set<TableCandidate> tableCandidates) {
         for (Table table : model.getTables()) {
             final Optional<TableCandidate> matchingTableCandidate = tableCandidates.stream()
-                    .filter(tableCandidate -> tableCandidate.getFullTableName().equals(table.getName())).findFirst();
+                    .filter(tableCandidate -> tableCandidate.getFullTableName().equalsIgnoreCase(table.getName()))
+                    .findFirst();
 
             if (matchingTableCandidate.isEmpty()) {
                 model.removeTable(table);
