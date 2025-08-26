@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -9,8 +9,8 @@ package com.sap.cx.boosters.commercedbsync.context.impl;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfigurationFactory;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import com.sap.cx.boosters.commercedbsync.context.IncrementalMigrationContext;
 import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;

@@ -1,12 +1,10 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.concurrent;
-
-import javax.annotation.concurrent.ThreadSafe;
 
 /**
  * Used to separate database reading and writing operations, after reading data
@@ -15,7 +13,6 @@ import javax.annotation.concurrent.ThreadSafe;
  *
  * @param <T>
  */
-@ThreadSafe
 public interface DataPipe<T> {
     void requestAbort(Exception e);
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -93,6 +93,12 @@ public class AzureIncrementalDataRepository extends AzureDataRepository {
         } else {
             return super.getBatchOrderedByColumn(queryDefinition, time);
         }
+    }
+
+    @Override
+    protected String createRowCountModifiedAfterQuery(String table) {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE " + getTimeStampColumn(table) + " > ?";
+
     }
 
     private String buildValueBatchQueryForDeletion(SeekQueryDefinition queryDefinition, String... conditions) {

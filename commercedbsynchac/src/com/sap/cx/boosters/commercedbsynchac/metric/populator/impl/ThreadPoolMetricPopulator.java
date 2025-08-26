@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,7 +10,7 @@ import com.sap.cx.boosters.commercedbsync.concurrent.DataThreadPoolFactory;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsynchac.metric.populator.MetricPopulator;
 import de.hybris.platform.commercedbsynchac.data.MetricData;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class ThreadPoolMetricPopulator implements MetricPopulator {
 

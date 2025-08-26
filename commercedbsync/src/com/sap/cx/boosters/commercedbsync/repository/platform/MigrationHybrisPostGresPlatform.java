@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -33,7 +33,7 @@ public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implemen
     public static HybrisPlatform build(DatabaseSettings databaseSettings) {
         MigrationHybrisPostGresPlatform instance = new MigrationHybrisPostGresPlatform();
         instance.provideCustomMapping();
-        instance.setSqlBuilder(new MigrationHybrisPostGresBuilder(instance));
+        instance.setSqlBuilder(new MigrationHybrisPostGresBuilder(instance, databaseSettings));
         instance.setModelReader(new MigrationPostgreSqlModelReader(instance));
         return instance;
     }
@@ -43,17 +43,17 @@ public class MigrationHybrisPostGresPlatform extends PostgreSqlPlatform implemen
         platformInfo.setMaxIdentifierLength(63);
         platformInfo.setMaxColumnNameLength(30);
         platformInfo.addNativeTypeMapping(Types.NVARCHAR, "VARCHAR", Types.VARCHAR);
-        platformInfo.addNativeTypeMapping(Types.NCHAR, "int2", Types.TINYINT);
-        platformInfo.addNativeTypeMapping(Types.CHAR, "int2", Types.TINYINT);
+        platformInfo.addNativeTypeMapping(Types.NCHAR, "SMALLINT", Types.TINYINT);
+        platformInfo.addNativeTypeMapping(Types.CHAR, "SMALLINT", Types.TINYINT);
         platformInfo.setHasSize(Types.CHAR, false);
         platformInfo.setHasSize(Types.NCHAR, false);
         platformInfo.setHasSize(Types.NVARCHAR, true);
         platformInfo.setHasSize(Types.VARCHAR, true);
-        platformInfo.addNativeTypeMapping(Types.BIGINT, "int8");
-        platformInfo.addNativeTypeMapping(Types.INTEGER, "int");
-        platformInfo.addNativeTypeMapping(Types.SMALLINT, "int2");
-        platformInfo.addNativeTypeMapping(Types.TINYINT, "int2");
-        platformInfo.addNativeTypeMapping(Types.DOUBLE, "float8");
+        platformInfo.addNativeTypeMapping(Types.BIGINT, "BIGINT");
+        platformInfo.addNativeTypeMapping(Types.INTEGER, "INTEGER");
+        platformInfo.addNativeTypeMapping(Types.SMALLINT, "SMALLINT");
+        platformInfo.addNativeTypeMapping(Types.TINYINT, "SMALLINT");
+        platformInfo.addNativeTypeMapping(Types.DOUBLE, "DOUBLE PRECISION", Types.DOUBLE);
     }
 
     @Override

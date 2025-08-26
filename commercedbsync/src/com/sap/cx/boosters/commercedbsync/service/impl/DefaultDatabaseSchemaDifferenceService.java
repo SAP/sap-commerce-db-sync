@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -28,7 +28,7 @@ import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceServic
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;

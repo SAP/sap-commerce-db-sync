@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -12,7 +12,7 @@ import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

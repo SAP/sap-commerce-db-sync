@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -154,7 +154,7 @@ public class PostGresDataRepository extends AbstractDataRepository {
         sqlBuilder.append("INSERT INTO ").append(table).append(" \n");
         sqlBuilder
                 .append(getBulkInsertStatementParamList(columnsToCopy, Collections.nCopies(columnsToCopy.size(), "?")));
-        sqlBuilder.append(String.format(" ON CONFLICT (%s) DO UPDATE ", upsertIDs.get(0))).append('\n');
+        sqlBuilder.append(String.format(" ON CONFLICT (%s) DO UPDATE ", String.join(", ", upsertIDs))).append('\n');
         sqlBuilder.append(getBulkUpdateStatementParamList(columnsToCopy, Collections.emptyList(), upsertIDs));
 
         return sqlBuilder.toString();

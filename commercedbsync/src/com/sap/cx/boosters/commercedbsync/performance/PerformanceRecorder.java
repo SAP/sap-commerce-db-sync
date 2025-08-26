@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,7 +10,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.AtomicDouble;
 
-import javax.annotation.concurrent.ThreadSafe;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -81,7 +80,6 @@ public class PerformanceRecorder {
         return "PerformanceRecorder{name=" + getName() + ",{" + Joiner.on("},{").join(getRecords().values()) + "}}";
     }
 
-    @ThreadSafe
     public static class PerformanceAggregation {
 
         private final Stopwatch timer;

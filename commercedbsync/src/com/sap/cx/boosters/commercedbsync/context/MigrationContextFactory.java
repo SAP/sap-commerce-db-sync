@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -11,7 +11,7 @@ import com.sap.cx.boosters.commercedbsync.context.impl.DefaultIncrementalMigrati
 import com.sap.cx.boosters.commercedbsync.context.impl.DefaultMigrationContext;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfigurationFactory;
 import com.sap.cx.boosters.commercedbsync.repository.impl.DataRepositoryFactory;
-import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration2.Configuration;
 
 public class MigrationContextFactory {
     final DataRepositoryFactory dataRepositoryFactory;

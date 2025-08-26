@@ -38,18 +38,11 @@ INSERT_UPDATE CompositeEntry;code[unique=true];executableCronJob(code)
                             ;reverseMigrateTableEntry;reverseFullMigrationJob
                             ;reverseMigrateIncrementalEntry;reverseIncrementalMigrationJob
 
-INSERT_UPDATE CompositeCronJob;code[unique=true];job(code);sessionLanguage(isoCode)[default=en];
-                              ;compositeDatabaseMigrationJob;compositeJobPerformable;
-                              ;compositeTableMigrationJob;compositeJobPerformable;
-                              ;compositeIncrementalMigrationJob;compositeJobPerformable;
-                              ;compositeReverseTableMigrationJob;compositeJobPerformable;
-                              ;compositeReverseIncrementalMigrationJob;compositeJobPerformable;
-
-INSERT_UPDATE CompositeCronJob;code[unique=true];compositeEntries(code)[mode = append]
-                              ;compositeDatabaseMigrationJob;prepForDbMigrationEntry,migrateDatabaseEntry
-                              ;compositeTableMigrationJob;prepForTableMigrationEntry,migrateTableEntry
-                              ;compositeIncrementalMigrationJob;prepForIncrementalMigrationEntry,migrateIncrementalEntry
-                              ;compositeReverseTableMigrationjob;prepForReverseTableMigrationEntry,reverseMigrateTableEntry
-                              ;compositeReverseIncrementalMigrationJob;prepForReverseIncrementalMigrationEntry,reverseMigrateIncrementalEntry
+INSERT_UPDATE CompositeCronJob;code[unique=true];job(code);compositeEntries(code)[mode = append];sessionLanguage(isoCode)[default=en]
+                              ;compositeDatabaseMigrationJob;compositeJobPerformable;prepForDbMigrationEntry,migrateDatabaseEntry;
+                              ;compositeTableMigrationJob;compositeJobPerformable;prepForTableMigrationEntry,migrateTableEntry;
+                              ;compositeIncrementalMigrationJob;compositeJobPerformable;prepForIncrementalMigrationEntry,migrateIncrementalEntry;
+                              ;compositeReverseTableMigrationjob;compositeJobPerformable;prepForReverseTableMigrationEntry,reverseMigrateTableEntry;
+                              ;compositeReverseIncrementalMigrationJob;compositeJobPerformable;prepForReverseIncrementalMigrationEntry,reverseMigrateIncrementalEntry;
 
 

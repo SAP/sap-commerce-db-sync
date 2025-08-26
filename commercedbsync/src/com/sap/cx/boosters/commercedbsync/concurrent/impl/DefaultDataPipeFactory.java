@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -26,8 +26,8 @@ import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
 import com.sap.cx.boosters.commercedbsync.views.TableViewGenerator;
 
 import de.hybris.platform.core.Registry;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.fest.util.Collections;
 import com.sap.cx.boosters.commercedbsync.DataThreadPoolConfig;
 import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyBatch;
@@ -194,7 +194,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                             Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                                     .findPendingBatchesForPipeline(context, copyItem, partition);
                             batchMarkersList = new ArrayList<>(pendingBatchesForPipeline.stream()
-                                    .map(b -> Collections.list(b.getLowerBoundary())).toList());
+                                    .map(b -> List.of(b.getLowerBoundary())).toList());
                             taskRepository.resetPipelineBatches(context, copyItem, partition);
                             createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkersList,
                                     copyItem, chunkedTable, partition);
@@ -202,8 +202,8 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     } else {
                         Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                                 .findPendingBatchesForPipeline(context, copyItem);
-                        batchMarkersList = pendingBatchesForPipeline.stream()
-                                .map(b -> Collections.list(b.getLowerBoundary())).collect(Collectors.toList());
+                        batchMarkersList = pendingBatchesForPipeline.stream().map(b -> List.of(b.getLowerBoundary()))
+                                .collect(Collectors.toList());
                         taskRepository.resetPipelineBatches(context, copyItem);
                         createDataReaderTasks(workerExecutor, pipeTaskContext, batchColumn, batchMarkersList, copyItem,
                                 chunkedTable, null);
@@ -280,7 +280,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 if (nextIndex < batchMarkersList.size()) {
                     nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
                 }
-                if (!Collections.isEmpty(lastBatchMarkerRow)) {
+                if (!CollectionUtils.isEmpty(lastBatchMarkerRow)) {
                     Object lastBatchValue = lastBatchMarkerRow.get(0);
                     Object nextValue = nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null);
                     // check if nextValue is null and allow Pair(value, null) only if it is last
