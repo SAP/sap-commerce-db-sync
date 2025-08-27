@@ -95,6 +95,12 @@ public class AzureIncrementalDataRepository extends AzureDataRepository {
         }
     }
 
+    @Override
+    protected String createRowCountModifiedAfterQuery(String table) {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE " + getTimeStampColumn(table) + " > ?";
+
+    }
+
     private String buildValueBatchQueryForDeletion(SeekQueryDefinition queryDefinition, String... conditions) {
         return String.format("SELECT TOP %s * FROM %s WHERE %s ORDER BY %s", queryDefinition.getBatchSize(),
                 deletionTable, expandConditions(conditions), queryDefinition.getColumn());

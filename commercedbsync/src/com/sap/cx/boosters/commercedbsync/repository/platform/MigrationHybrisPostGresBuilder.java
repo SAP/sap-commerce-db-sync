@@ -6,18 +6,19 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.platform;
 
+import de.hybris.bootstrap.ddl.DatabaseSettings;
+import de.hybris.bootstrap.ddl.sql.HybrisPostgreSqlBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.TypeMap;
-import org.apache.ddlutils.platform.postgresql.PostgreSqlBuilder;
 
 import java.sql.Types;
 
-public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
+public class MigrationHybrisPostGresBuilder extends HybrisPostgreSqlBuilder {
 
-    public MigrationHybrisPostGresBuilder(Platform platform) {
-        super(platform);
+    public MigrationHybrisPostGresBuilder(Platform platform, DatabaseSettings databaseSettings) {
+        super(platform, databaseSettings);
     }
 
     @Override
@@ -40,7 +41,7 @@ public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
         if (sizeSpec != null) {
             if (this.getPlatformInfo().hasSize(column.getTypeCode())) {
                 sqlType.append("(");
-                sqlType.append(detectSize(column));
+                sqlType.append(sizeSpec);
                 sqlType.append(")");
             } else if (this.getPlatformInfo().hasPrecisionAndScale(column.getTypeCode())) {
                 sqlType.append("(");
@@ -53,28 +54,6 @@ public class MigrationHybrisPostGresBuilder extends PostgreSqlBuilder {
 
         sqlType.append(sizePos >= 0 ? nativeType.substring(sizePos + "{0}".length()) : "");
         return sqlType.toString();
-    }
-
-    // ddlutils cannot handle "complex" sizes ootb, therefore adding support here
-    private String detectSize(Column column) {
-        if (this.getPlatformInfo().hasSize(column.getTypeCode())) {
-            if (column.getTypeCode() == Types.NVARCHAR) {
-                if (column.getSizeAsInt() > 4000) {
-                    return "MAX";
-                }
-            }
-            if (column.getTypeCode() == Types.VARCHAR) {
-                if (column.getSizeAsInt() > 8000) {
-                    return "MAX";
-                }
-            }
-            if (column.getTypeCode() == Types.VARBINARY) {
-                if (column.getSizeAsInt() > 8000) {
-                    return "MAX";
-                }
-            }
-        }
-        return column.getSize();
     }
 
     @Override

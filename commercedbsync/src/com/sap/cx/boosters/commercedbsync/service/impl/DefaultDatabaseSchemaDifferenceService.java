@@ -128,9 +128,9 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     }
 
     /*
-     * ORACLE_TARGET - START This a TEMP fix, it is difficlt to get from from Sql
-     * Server NVARCHAR(255), NVARCHAR(MAX) to convert properly into to Orcale's
-     * VARCHAR2(255) and CLOB respectively. Therefore when the schema script output
+     * ORACLE_TARGET - START This a TEMP fix, it is difficult to get from from Sql
+     * Server NVARCHAR(255), NVARCHAR(MAX) to convert properly into to Oracle's
+     * VARCHAR2(255) and CLOB respectively. Therefore, when the schema script output
      * has VARCHAR2(2147483647) which is from SqlServer's NVARCHAR(max), then we
      * just make it CLOB. Alternatively check if something can be done via the
      * mappings in OracleDataRepository.

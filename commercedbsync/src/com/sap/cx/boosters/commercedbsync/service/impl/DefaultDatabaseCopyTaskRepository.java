@@ -367,10 +367,6 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     private Connection getConnection(MigrationContext context) throws Exception {
-        /*
-         * if (!repository.getDatabaseProvider().isMssqlUsed()) { throw new
-         * IllegalStateException("Scheduler tables requires MSSQL database"); }
-         */
         return context.getDataRepository().getConnection();
     }
 

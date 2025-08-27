@@ -247,11 +247,6 @@ public class AzureDataRepository extends AbstractDataRepository {
     }
 
     @Override
-    protected String createRowCountModifiedAfterQuery() {
-        return "SELECT COUNT_BIG(*) FROM %s WHERE modifiedts > ? AND %s";
-    }
-
-    @Override
     public long getRowCount(String table) throws SQLException {
         List<String> conditionsList = new ArrayList<>(1);
         processDefaultConditions(table, conditionsList);
@@ -281,7 +276,7 @@ public class AzureDataRepository extends AbstractDataRepository {
         }
         try (Connection connection = getConnection()) {
             try (PreparedStatement stmt = connection.prepareStatement(
-                    String.format(createRowCountModifiedAfterQuery(), table, expandConditions(conditions)))) {
+                    String.format(createRowCountModifiedAfterQuery(table), table, expandConditions(conditions)))) {
                 stmt.setTimestamp(1, Timestamp.from(time));
                 ResultSet resultSet = stmt.executeQuery();
                 long value = 0;

@@ -77,6 +77,7 @@ public abstract class AbstractDataRepository implements DataRepository {
     // one store per data repository
     private final JDBCQueriesStore jdbcQueriesStore;
     private final Map<String, DataSource> dataSourceHolder = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> knownAuditTables = new ConcurrentHashMap<>();
 
     private final DataSourceConfiguration dataSourceConfiguration;
     private final MigrationDataSourceFactory migrationDataSourceFactory;
@@ -199,8 +200,8 @@ public abstract class AbstractDataRepository implements DataRepository {
         return "SELECT COUNT(*) FROM %s WHERE %s";
     }
 
-    protected String createRowCountModifiedAfterQuery() {
-        return "SELECT COUNT_BIG(*) FROM %s WHERE modifiedts > ? AND %s";
+    protected String createRowCountModifiedAfterQuery(String table) {
+        return "SELECT COUNT_BIG(*) FROM %s WHERE " + getTimeStampColumn(table) + " > ? AND %s";
     }
 
     @Override
@@ -228,7 +229,7 @@ public abstract class AbstractDataRepository implements DataRepository {
     @Override
     public long getRowCountModifiedAfter(String table, Instant time) throws SQLException {
         List<String> conditions = new ArrayList<>(1);
-        conditions.add("modifiedts > ?");
+        conditions.add(getTimeStampColumn(table) + " > ?");
         processDefaultConditions(table, conditions);
 
         try (Connection connection = getConnection()) {
@@ -262,8 +263,9 @@ public abstract class AbstractDataRepository implements DataRepository {
         List<String> conditions = new ArrayList<>(1);
         processDefaultConditions(table, conditions);
         try (Connection connection = getConnection()) {
-            try (PreparedStatement stmt = connection.prepareStatement(String
-                    .format("SELECT * FROM %s WHERE modifiedts > ? AND %s", table, expandConditions(conditions)))) {
+            try (PreparedStatement stmt = connection
+                    .prepareStatement(String.format("SELECT * FROM %s WHERE %s > ? AND %s", table,
+                            getTimeStampColumn(table), expandConditions(conditions)))) {
                 stmt.setTimestamp(1, Timestamp.from(time));
                 ResultSet resultSet = stmt.executeQuery();
                 return convertToDataSet(resultSet);
@@ -513,23 +515,25 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     @Override
-    public boolean isAuditTable(String table) throws Exception {
-        String tablePrefix = getDataSourceConfiguration().getTablePrefix();
-        String query = String.format("SELECT count(*) from %s%s WHERE AuditTableName = ? OR AuditTableName = ?",
-                StringUtils.defaultIfBlank(tablePrefix, ""), CommercedbsyncConstants.DEPLOYMENTS_TABLE);
-        try (Connection connection = getConnection(); PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setObject(1, StringUtils.removeStartIgnoreCase(table, tablePrefix));
-            stmt.setObject(2, table);
-            try (ResultSet rs = stmt.executeQuery()) {
-                boolean isAudit = false;
-                if (rs.next()) {
-                    isAudit = rs.getInt(1) > 0;
+    public boolean isAuditTable(final String table) throws Exception {
+        return knownAuditTables.computeIfAbsent(table, t -> {
+            String tablePrefix = getDataSourceConfiguration().getTablePrefix();
+            String query = String.format("SELECT count(*) from %s%s WHERE AuditTableName = ? OR AuditTableName = ?",
+                    StringUtils.defaultIfBlank(tablePrefix, ""), CommercedbsyncConstants.DEPLOYMENTS_TABLE);
+            try (Connection connection = getConnection(); PreparedStatement stmt = connection.prepareStatement(query)) {
+                stmt.setObject(1, StringUtils.removeStartIgnoreCase(table, tablePrefix));
+                stmt.setObject(2, table);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    boolean isAudit = false;
+                    if (rs.next()) {
+                        isAudit = rs.getInt(1) > 0;
+                    }
+                    return isAudit;
                 }
-                return isAudit;
+            } catch (SQLException ignored) {
+                return false;
             }
-        } catch (SQLException ignored) {
-            return false;
-        }
+        });
     }
 
     protected abstract String createAllTableNamesQuery();
@@ -561,7 +565,7 @@ public abstract class AbstractDataRepository implements DataRepository {
         List<String> conditionsList = new ArrayList<>(1);
         processDefaultConditions(queryDefinition.getTable(), conditionsList);
         if (time != null) {
-            conditionsList.add("modifiedts > ?");
+            conditionsList.add(getTimeStampColumn(queryDefinition.getTable()) + " > ?");
         }
         String[] conditions = null;
         if (!conditionsList.isEmpty()) {
@@ -603,7 +607,7 @@ public abstract class AbstractDataRepository implements DataRepository {
         int conditionIndex = 1;
         int timeConditionIndex = 0;
         if (time != null) {
-            conditionsList.add("modifiedts > ?");
+            conditionsList.add(getTimeStampColumn(queryDefinition.getTable()) + " > ?");
             timeConditionIndex = conditionIndex++;
         }
         int lastColumnConditionIndex = 0;
@@ -657,8 +661,9 @@ public abstract class AbstractDataRepository implements DataRepository {
         // get batches with modifiedts >= configured time for incremental migration
         List<String> conditionsList = new ArrayList<>(2);
         processDefaultConditions(queryDefinition.getTable(), conditionsList);
+
         if (time != null) {
-            conditionsList.add("modifiedts > ?");
+            conditionsList.add(getTimeStampColumn(queryDefinition.getTable()) + " > ?");
         }
         String[] conditions = null;
         if (!conditionsList.isEmpty()) {
@@ -741,6 +746,19 @@ public abstract class AbstractDataRepository implements DataRepository {
 
     protected DataSet convertToBatchDataSet(int batchId, ResultSet resultSet, final String partition) throws Exception {
         return convertToDataSet(batchId, resultSet, partition);
+    }
+
+    protected String getTimeStampColumn(String tableName) {
+        try {
+            if (isAuditTable(tableName)) {
+                return "currenttimestamp";
+            }
+        } catch (Exception e) {
+            // Log an error if there is an issue checking if the table is an audit table
+            LOG.error("Error checking if table is an audit table", e);
+        }
+        // Default to using the modified timestamp column
+        return "modifiedts";
     }
 
     @Override
