@@ -87,6 +87,8 @@ public class CommercemigrationhacController {
     @Autowired
     BlobDatabaseMigrationReportStorageService blobDatabaseMigrationReportStorageService;
 
+    private long lastStartRequest = -1;
+
     private final boolean useCodeMirrorWebJar;
 
     public CommercemigrationhacController() {
@@ -296,6 +298,12 @@ public class CommercemigrationhacController {
         if (migrationContext.isDataSynchronizationEnabled()) {
             throw new IllegalStateException("Migration cannot be started from HAC");
         }
+
+        if (lastStartRequest > 0 && (System.currentTimeMillis() - lastStartRequest) < 5000) {
+            throw new IllegalStateException("Please wait at least 5 seconds before starting a migration again");
+        }
+
+        lastStartRequest = System.currentTimeMillis();
 
         String currentMigrationId = databaseMigrationService.getMigrationID(migrationContext);
         MigrationStatus migrationStatus = new MigrationStatus();
