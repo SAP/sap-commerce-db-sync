@@ -72,8 +72,8 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART (
     pipelinename NVARCHAR2(255) NOT NULL,
     lowerBoundary NVARCHAR2(255) NOT NULL,
     upperBoundary NVARCHAR2(255) NULL,
-    partition VARCHAR(128) NOT NULL,
-    PRIMARY KEY (migrationid, batchId, pipelinename, partition)
+    partKey VARCHAR(128) NOT NULL,
+    PRIMARY KEY (migrationid, batchId, pipelinename, partKey)
 )
 /
 

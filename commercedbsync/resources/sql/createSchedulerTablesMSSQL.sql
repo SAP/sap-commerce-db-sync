@@ -48,8 +48,8 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART (
                                                    pipelinename NVARCHAR(255) NOT NULL,
                                                    lowerBoundary NVARCHAR(255) NOT NULL,
                                                    upperBoundary NVARCHAR(255) NULL,
-                                                   partition VARCHAR(128) NOT NULL,
-                                                   PRIMARY KEY (migrationid, batchId, pipelinename, partition)
+                                                   partKey VARCHAR(128) NOT NULL,
+                                                   PRIMARY KEY (migrationid, batchId, pipelinename, partKey)
 );
 
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYSTATUS;
