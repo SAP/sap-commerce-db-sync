@@ -25,6 +25,7 @@ public class DefaultMigrationContextValidator implements MigrationContextValidat
 
     private static final String DB_URL_PROPERTY_KEY = "db.url";
     private static final String DISABLE_UNLOCKING = "system.unlocking.disabled";
+    private static final String DISABLE_SOURCE_DB_CHECK = "migration.disable.source.db.check";
     private ConfigurationService configurationService;
 
     @Override
@@ -41,12 +42,11 @@ public class DefaultMigrationContextValidator implements MigrationContextValidat
             return; // in this mode, source DB can (should?) be set to CCv2 instance
         }
 
-        // Canonically the target should always be the CCV2 DB and we have to verify
-        // nobody is trying to copy *from* that
         final String sourceDbUrl = context.getDataSourceRepository().getDataSourceConfiguration().getConnectionString();
         final String ccv2ManagedDB = getConfigurationService().getConfiguration().getString(DB_URL_PROPERTY_KEY);
 
-        if (sourceDbUrl.equals(ccv2ManagedDB)) {
+        if (!getConfigurationService().getConfiguration().getBoolean(DISABLE_SOURCE_DB_CHECK, false)
+                && sourceDbUrl.equals(ccv2ManagedDB)) {
             throw new RuntimeException(
                     "Invalid data source configuration - cannot use the CCV2-managed database as the source.");
         }
