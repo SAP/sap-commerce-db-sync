@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -28,7 +28,7 @@ import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceServic
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import javax.annotation.Nullable;
+import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -128,9 +128,9 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     }
 
     /*
-     * ORACLE_TARGET - START This a TEMP fix, it is difficlt to get from from Sql
-     * Server NVARCHAR(255), NVARCHAR(MAX) to convert properly into to Orcale's
-     * VARCHAR2(255) and CLOB respectively. Therefore when the schema script output
+     * ORACLE_TARGET - START This a TEMP fix, it is difficult to get from from Sql
+     * Server NVARCHAR(255), NVARCHAR(MAX) to convert properly into to Oracle's
+     * VARCHAR2(255) and CLOB respectively. Therefore, when the schema script output
      * has VARCHAR2(2147483647) which is from SqlServer's NVARCHAR(max), then we
      * just make it CLOB. Alternatively check if something can be done via the
      * mappings in OracleDataRepository.

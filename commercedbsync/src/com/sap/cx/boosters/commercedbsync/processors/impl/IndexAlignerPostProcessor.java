@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.model.Database;
 import org.apache.ddlutils.model.Index;

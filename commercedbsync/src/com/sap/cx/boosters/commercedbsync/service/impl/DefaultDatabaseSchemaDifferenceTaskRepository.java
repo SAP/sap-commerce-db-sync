@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,7 +10,6 @@ import com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.context.SchemaDifferenceContext;
-import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
@@ -200,13 +199,11 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     }
 
     private Connection getConnection(SchemaDifferenceContext context) throws Exception {
-        final MigrationContext migrationContext = context.getMigrationContext();
+        return getConnection(context.getMigrationContext());
+    }
 
-        final DataRepository repository = !migrationContext.isDataSynchronizationEnabled()
-                ? migrationContext.getDataTargetRepository()
-                : migrationContext.getDataSourceRepository();
-
-        return repository.getConnection();
+    private Connection getConnection(MigrationContext context) throws Exception {
+        return context.getDataRepository().getConnection();
     }
 
     /**

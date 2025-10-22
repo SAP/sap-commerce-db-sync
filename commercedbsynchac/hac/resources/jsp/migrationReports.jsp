@@ -2,7 +2,7 @@
 <%@ taglib prefix="hac" uri="/WEB-INF/custom.tld" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <%--
-  ~  Copyright: 2022 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+  ~  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
   ~  License: Apache-2.0
   ~
   --%>

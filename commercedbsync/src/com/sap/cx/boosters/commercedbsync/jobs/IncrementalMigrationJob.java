@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -25,10 +25,10 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.MigrationStatus;
 import com.sap.cx.boosters.commercedbsync.model.cron.IncrementalMigrationCronJobModel;
 import org.slf4j.Logger;

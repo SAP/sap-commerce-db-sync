@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -10,7 +10,7 @@ import com.google.common.base.Predicates;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.filter.DataCopyTableFilter;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Set;
 import java.util.function.Predicate;

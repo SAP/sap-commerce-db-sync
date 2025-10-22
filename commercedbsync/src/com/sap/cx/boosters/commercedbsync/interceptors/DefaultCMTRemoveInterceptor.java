@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -19,9 +19,9 @@ import de.hybris.platform.util.Config;
 
 import java.util.Collections;
 import java.util.List;
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.enums.ItemChangeType;
 import com.sap.cx.boosters.commercedbsync.model.ItemDeletionMarkerModel;
 import org.slf4j.Logger;

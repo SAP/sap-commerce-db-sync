@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -241,7 +241,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         } else {
             LOG.debug("Schedule Batch for {} with ID {}, partition {}", copyItem.getPipelineName(), batchId, partition);
             String insert = "INSERT INTO " + TABLECOPYBATCHES_PART
-                    + " (migrationId, batchId, pipelinename, lowerBoundary, upperBoundary, partition) VALUES (?, ?, ?, ?, ?, ?)";
+                    + " (migrationId, batchId, pipelinename, lowerBoundary, upperBoundary, partKey) VALUES (?, ?, ?, ?, ?, ?)";
             try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
                 stmt.setObject(1, context.getMigrationId());
                 stmt.setObject(2, batchId);
@@ -278,7 +278,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         } else {
             LOG.debug("Mark batch completed for {} with ID {}", copyItem.getPipelineName(), batchId);
             String insert = "DELETE FROM " + TABLECOPYBATCHES_PART
-                    + " WHERE migrationId = ? AND batchId = ? AND pipelinename = ? AND partition = ?";
+                    + " WHERE migrationId = ? AND batchId = ? AND pipelinename = ? AND partKey = ?";
             try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
                 stmt.setObject(1, context.getMigrationId());
                 stmt.setObject(2, batchId);
@@ -311,7 +311,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             resetPipelineBatches(context, copyItem);
         } else {
             String insert = "DELETE FROM " + TABLECOPYBATCHES_PART
-                    + " WHERE migrationId = ? AND pipelinename = ? AND partition = ?";
+                    + " WHERE migrationId = ? AND pipelinename = ? AND partKey = ?";
             try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
                 stmt.setObject(1, context.getMigrationId());
                 stmt.setObject(2, copyItem.getPipelineName());
@@ -343,7 +343,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             return findPendingBatchesForPipeline(context, item);
         } else {
             String sql = "SELECT * FROM " + TABLECOPYBATCHES_PART
-                    + " WHERE migrationid = ? AND pipelinename = ? and partition = ? ORDER BY batchId ASC";
+                    + " WHERE migrationid = ? AND pipelinename = ? and partKey = ? ORDER BY batchId ASC";
             try (Connection connection = getConnection(context);
                     PreparedStatement stmt = connection.prepareStatement(sql)) {
                 stmt.setObject(1, context.getMigrationId());
@@ -367,10 +367,6 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     private Connection getConnection(MigrationContext context) throws Exception {
-        /*
-         * if (!repository.getDatabaseProvider().isMssqlUsed()) { throw new
-         * IllegalStateException("Scheduler tables requires MSSQL database"); }
-         */
         return context.getDataRepository().getConnection();
     }
 

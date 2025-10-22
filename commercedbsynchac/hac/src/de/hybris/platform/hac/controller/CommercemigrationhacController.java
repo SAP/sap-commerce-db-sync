@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -26,9 +26,9 @@ import com.sap.cx.boosters.commercedbsynchac.metric.MetricService;
 import de.hybris.platform.commercedbsynchac.data.*;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
 import de.hybris.platform.servicelayer.user.UserService;
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
@@ -43,7 +43,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.Serializable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -58,7 +58,7 @@ import java.util.*;
  *
  */
 @Controller
-@RequestMapping("/commercedbsynchac/**")
+@RequestMapping("/commercedbsynchac")
 public class CommercemigrationhacController {
 
     private static final String DEFAULT_EMPTY_VAL = "[NOT SET]";
@@ -86,6 +86,8 @@ public class CommercemigrationhacController {
 
     @Autowired
     BlobDatabaseMigrationReportStorageService blobDatabaseMigrationReportStorageService;
+
+    private long lastStartRequest = -1;
 
     private final boolean useCodeMirrorWebJar;
 
@@ -296,6 +298,12 @@ public class CommercemigrationhacController {
         if (migrationContext.isDataSynchronizationEnabled()) {
             throw new IllegalStateException("Migration cannot be started from HAC");
         }
+
+        if (lastStartRequest > 0 && (System.currentTimeMillis() - lastStartRequest) < 5000) {
+            throw new IllegalStateException("Please wait at least 5 seconds before starting a migration again");
+        }
+
+        lastStartRequest = System.currentTimeMillis();
 
         String currentMigrationId = databaseMigrationService.getMigrationID(migrationContext);
         MigrationStatus migrationStatus = new MigrationStatus();

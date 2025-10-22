@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -13,7 +13,6 @@ import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.dataset.DataColumn;
 import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 
-import javax.annotation.concurrent.Immutable;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 import static java.sql.Types.CHAR;
 import static java.sql.Types.SMALLINT;
 
-@Immutable
 public class DefaultDataSet implements DataSet {
 
     private final int batchId;

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -16,7 +16,7 @@ import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
 import com.sap.cx.boosters.commercedbsync.strategy.PipeWriterStrategy;
 import de.hybris.bootstrap.ddl.DataBaseProvider;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.DataThreadPoolConfig;
 import com.sap.cx.boosters.commercedbsync.concurrent.DataPipe;
 import com.sap.cx.boosters.commercedbsync.concurrent.DataThreadPoolConfigBuilder;

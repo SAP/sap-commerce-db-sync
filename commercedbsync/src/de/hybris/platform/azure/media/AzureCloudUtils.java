@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2023 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -9,7 +9,7 @@ package de.hybris.platform.azure.media;
 import de.hybris.platform.core.Registry;
 import de.hybris.platform.media.storage.MediaStorageConfigService;
 import de.hybris.platform.util.Config;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class AzureCloudUtils {
     private static final int MIN_AZURE_MEDIA_FOLDER_QUALIFIER_SIZE = 3;

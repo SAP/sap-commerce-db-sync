@@ -64,7 +64,7 @@ Features and changes [presentation video](https://sapvideoa35699dc5.hana.ondeman
 
 # Requirements
 
-- SAP Commerce (>=1811)
+- SAP Commerce (>=2211-jdk21.x)
 - Tested with source databases:
   - Azure SQL
   - MySQL (5.7)
