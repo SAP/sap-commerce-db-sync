@@ -29,12 +29,15 @@ public class DefaultDataSet implements DataSet {
     private final List<DataColumn> columnOrder;
     private final List<List<Object>> result;
     private final String partition;
+    private final List<String> columnNames;
 
     public DefaultDataSet(int batchId, int columnCount, List<DataColumn> columnOrder, List<List<Object>> result,
             final String partition) {
         this.batchId = batchId;
         this.columnCount = columnCount;
         this.columnOrder = Collections.unmodifiableList(columnOrder);
+        this.columnNames =
+				columnOrder.stream().map(DataColumn::getColumnName).map(String::toLowerCase).toList();
         this.result = result.stream().map(Collections::unmodifiableList).collect(Collectors.toList());
         this.partition = partition;
     }
@@ -97,7 +100,7 @@ public class DefaultDataSet implements DataSet {
         if (StringUtils.isEmpty(column)) {
             return false;
         }
-        return columnOrder.stream().map(DataColumn::getColumnName).anyMatch(column::equalsIgnoreCase);
+        return columnNames.contains(column.toLowerCase());
     }
 
     @Override
@@ -115,8 +118,7 @@ public class DefaultDataSet implements DataSet {
     }
 
     protected int findColumnIndex(String columnName) {
-        return IterableUtils.indexOf(columnOrder,
-                dataColumn -> dataColumn.getColumnName().equalsIgnoreCase(columnName));
+        return columnNames.indexOf(columnName.toLowerCase());
     }
 
     public String toString() {
