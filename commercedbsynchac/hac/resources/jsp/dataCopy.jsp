@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib prefix="hac" uri="/WEB-INF/custom.tld" %>
 <%--
   ~  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
@@ -16,10 +16,7 @@
     <script type="text/javascript" src="<c:url value="/static/js/configPanel.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/dataCopy.js"/>"></script>
     <script type="text/javascript" src="<c:url value="/static/js/migrationMetrics.js"/>"></script>
-    <script type="text/javascript" src="<c:url value="/static/js/chartjs/Chart.min.js"/>"></script>
-    <script type="text/javascript">
-        Chart.platform.disableCSSInjection = true;
-    </script>
+    <script type="text/javascript" src="<c:url value="/static/js/chartjs/chart.umd.js"/>"></script>
 
 </head>
 <body>

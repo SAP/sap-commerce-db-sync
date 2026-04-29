@@ -1,17 +1,22 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.profile.impl;
 
+import com.google.common.base.Splitter;
 import de.hybris.bootstrap.ddl.tools.persistenceinfo.PersistenceInformation;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.profile.DataSourceConfiguration;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 /**
  * Contains the JDBC DataSource Configuration
@@ -34,6 +39,9 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
     private int minIdle;
     private boolean removedAbandoned;
     private long maxLifeTime;
+    private long idleTimeout;
+    private long keepaliveTime;
+    private Properties driverProperties;
 
     public DefaultDataSourceConfiguration(Configuration configuration, String profile) {
         this.profile = profile;
@@ -120,6 +128,21 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         return maxLifeTime;
     }
 
+    @Override
+    public long getIdleTimeout() {
+        return idleTimeout;
+    }
+
+    @Override
+    public long getKeepaliveTime() {
+        return keepaliveTime;
+    }
+
+    @Override
+    public Properties getDriverProperties() {
+        return driverProperties;
+    }
+
     protected void load(Configuration configuration, String profile) {
         this.driver = getProfileProperty(profile, configuration, "db.driver");
         this.connectionString = getProfileProperty(profile, configuration, "db.url");
@@ -139,6 +162,9 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
         this.removedAbandoned = Boolean
                 .parseBoolean(getProfileProperty(profile, configuration, "db.connection.removeabandoned"));
         this.maxLifeTime = parseLong(getProfileProperty(profile, configuration, "db.connection.pool.maxlifetime"));
+        this.idleTimeout = parseLong(getProfileProperty(profile, configuration, "db.connection.pool.idletimeout"));
+        this.keepaliveTime = parseLong(getProfileProperty(profile, configuration, "db.connection.pool.keepalivetime"));
+        this.driverProperties = parseProperties(getProfileProperty(profile, configuration, "db.driver.properties"));
     }
 
     protected String getNormalProperty(Configuration configuration, String key) {
@@ -152,12 +178,28 @@ public class DefaultDataSourceConfiguration implements DataSourceConfiguration {
             return Integer.parseInt(value);
         }
     }
+
     protected long parseLong(String value) {
         if (StringUtils.isEmpty(value)) {
             return 0;
         } else {
             return Long.parseLong(value);
         }
+    }
+
+    protected Properties parseProperties(String value) {
+        Properties properties = new Properties();
+
+        if (StringUtils.isNotEmpty(value)) {
+            try {
+                properties.load(new StringReader(Splitter.on(",").omitEmptyStrings().trimResults().splitToList(value)
+                        .stream().collect(Collectors.joining(System.lineSeparator()))));
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to load driver properties", e);
+            }
+        }
+
+        return properties;
     }
 
     protected String getProfileProperty(final String profile, final Configuration configuration, final String key) {

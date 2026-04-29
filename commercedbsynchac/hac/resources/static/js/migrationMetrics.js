@@ -52,30 +52,31 @@ function createChart(metric) {
             labels: []
         },
         options: {
-            legend: {
-                display: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltips: {
+                    callbacks: {
+                        label: (context) => {
+                            const dataset = context.dataset.data;
+                            const value = context.parsed;
+                            const total = dataset[0] + dataset[1];
+                            const percentage = (value / total * 100).toFixed(1);
+                            return `${value} MB (${percentage}%)`;
+                        },
+                        title: function (tooltipItem, data) {
+                            return data.labels[tooltipItem[0].index];
+                        }
+                    }
+                }
             },
             tooltips: {
-                callbacks: {
-                    label: function (tooltipItem, data) {
-                        var dataset = data.datasets[tooltipItem.datasetIndex];
-                        var meta = dataset._meta[Object.keys(dataset._meta)[0]];
-                        var total = meta.total;
-                        var currentValue = dataset.data[tooltipItem.index];
-                        var percentage = parseFloat((currentValue / total * 100).toFixed(1));
-                        return currentValue + ' (' + percentage + '%)';
-                    },
-                    title: function (tooltipItem, data) {
-                        return data.labels[tooltipItem[0].index];
-                    }
-                },
                 backgroundColor: "rgb(255,255,255,0.95)",
                 titleFontColor: "rgb(0,0,0)",
                 bodyFontColor: "rgb(0,0,0)"
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
             }
         }
     });

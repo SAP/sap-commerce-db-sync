@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -62,7 +62,7 @@ public class NullRepository implements DataRepository {
     }
 
     @Override
-    public Set<TypeSystemTable> getAllTypeSystemTables() throws Exception {
+    public Set<TypeSystemTable> getAllTypeSystemTables(Set<String> allTableNames) throws Exception {
         throw new InvalidDataSourceConfigurationException(this.message, this.dataSourceConfiguration);
     }
 

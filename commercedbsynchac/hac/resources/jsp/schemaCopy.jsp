@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib prefix="hac" uri="/WEB-INF/custom.tld" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <%--
@@ -68,7 +68,7 @@
                             <div id="schemaDiffWrapper">
                                 <h3>Target Schema</h3>
                                 <p>Target Schema is missing the following elements which are present in Source Schema </p>
-                                <table id="targetSchemaDiffTable">
+                                <table id="targetSchemaDiffTable" class="stripe cell-border">
                                     <thead>
                                         <tr>
                                             <th>Missing Table</th>
@@ -81,7 +81,7 @@
                                 </table>
                                 <h3>Source Schema</h3>
                                 <p>Source Schema is missing the following elements which are present in Target Schema </p>
-                                <table id="sourceSchemaDiffTable">
+                                <table id="sourceSchemaDiffTable" class="stripe cell-border">
                                     <thead>
                                         <tr>
                                             <th>Missing Table</th>

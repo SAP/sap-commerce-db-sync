@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -60,6 +60,22 @@ public interface MigrationContext {
      * @return int if configured or null if not defined for the given tableName
      */
     Long getClusterChunkSize(final String tableName);
+
+    default String getClusterNodeGroup() {
+        return null;
+    }
+
+    default String getClusterNodeGroup(String tableName) {
+        return null;
+    }
+
+    default Long getFixedRowsCount(String tableName) {
+        return -1L;
+    }
+
+    default String getAdditionalCondition(String tableName) {
+        return null;
+    }
 
     boolean isTruncateEnabled();
 
@@ -134,6 +150,8 @@ public interface MigrationContext {
     boolean isSchedulerResumeEnabled();
 
     boolean isMssqlUpdateStatisticsEnabled();
+
+    boolean isAdjustTimestampsToUTC();
 
     boolean isFullDatabaseMigration();
 

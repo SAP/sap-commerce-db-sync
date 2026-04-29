@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -71,8 +71,8 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
 
         logMigrationContext(context.getMigrationContext());
 
-        int ownNodeId = databaseOperationSchedulerAlgorithm.getOwnNodeId();
         if (!CollectionUtils.isEmpty(context.getCopyItems())) {
+            int ownNodeId = databaseOperationSchedulerAlgorithm.getOwnNodeId();
             DataRepositoryAdapter dataRepositoryAdapter = new ContextualDataRepositoryAdapter(
                     context.getMigrationContext().getDataSourceRepository());
             List<Pair<CopyContext.DataCopyItem, Long>> itemsToSchedule = generateSchedulerItemList(context,
@@ -83,12 +83,12 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 CopyContext.DataCopyItem dataCopyItem = itemToSchedule.getLeft();
                 final long sourceRowCount = itemToSchedule.getRight();
                 if (sourceRowCount > 0) {
-                    final int destinationNodeId = databaseOperationSchedulerAlgorithm.next();
+                    final int destinationNodeId = databaseOperationSchedulerAlgorithm
+                            .next(dataCopyItem.getSourceItem());
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, ++itemOrder, sourceRowCount,
                             destinationNodeId);
                 } else {
-                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, itemOrder++, sourceRowCount,
-                            ownNodeId);
+                    databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, -1, sourceRowCount, ownNodeId);
                     databaseCopyTaskRepository.markTaskCompleted(context, dataCopyItem, "0");
                     if (!context.getMigrationContext().isIncrementalModeEnabled()
                             && context.getMigrationContext().isTruncateEnabled()) {
@@ -115,9 +115,13 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             throw new IllegalStateException("No pending failed table copy tasks found to be resumed");
         }
 
+        failedTasks.stream().map(DatabaseCopyTask::getSourcetablename)
+                .forEach(databaseOperationSchedulerAlgorithm::next);
+        databaseOperationSchedulerAlgorithm.reset();
+
         for (DatabaseCopyTask failedTask : failedTasks) {
             databaseCopyTaskRepository.rescheduleTask(copyContext, failedTask.getPipelinename(),
-                    databaseOperationSchedulerAlgorithm.next());
+                    databaseOperationSchedulerAlgorithm.next(failedTask.getSourcetablename()));
         }
         databaseCopyTaskRepository.resetMigration(copyContext);
         startMonitorThread(copyContext);
@@ -134,16 +138,30 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
     }
 
     private List<Pair<CopyContext.DataCopyItem, Long>> generateSchedulerItemList(CopyContext context,
-            DataRepositoryAdapter dataRepositoryAdapter) throws Exception {
+            DataRepositoryAdapter dataRepositoryAdapter) {
         List<Pair<CopyContext.DataCopyItem, Long>> pairs = new ArrayList<>();
         for (CopyContext.DataCopyItem copyItem : context.getCopyItems()) {
             LOG.debug("Counting rows in table: {}", copyItem.getSourceItem());
-            final long rowCount = dataRepositoryAdapter.getRowCount(context.getMigrationContext(),
-                    copyItem.getSourceItem());
-            List<Pair<CopyContext.DataCopyItem, Long>> splitItems = clusterTableSplittingStrategy.split(copyItem,
-                    rowCount, databaseOperationSchedulerAlgorithm.getNodeIds().size());
-            pairs.addAll(splitItems);
+            final long rowCount = Optional.of(context.getMigrationContext().getFixedRowsCount(copyItem.getSourceItem()))
+                    .filter(count -> {
+                        if (count > 0) {
+                            LOG.debug("Using fixed rows count for table: {}", copyItem.getSourceItem());
+                        }
+
+                        return count >= 0;
+                    }).orElseGet(() -> {
+                        try {
+                            return dataRepositoryAdapter.getRowCount(context.getMigrationContext(),
+                                    copyItem.getSourceItem());
+                        } catch (Exception e) {
+                            LOG.error("Counting rows in table: {} failed", copyItem.getSourceItem(), e);
+                            throw new RuntimeException("Rows count failed", e);
+                        }
+                    });
             LOG.debug("Found {} rows in table: {}", rowCount, copyItem.getSourceItem());
+            List<Pair<CopyContext.DataCopyItem, Long>> splitItems = clusterTableSplittingStrategy.split(copyItem,
+                    rowCount, databaseOperationSchedulerAlgorithm.getNodeIds(copyItem.getSourceItem()).size());
+            pairs.addAll(splitItems);
         }
         // we sort the items to make sure big tables are assigned to nodes in a fair way
         return pairs.stream().sorted(Comparator.comparingLong(customizedTablesOrder(context)))
@@ -283,9 +301,16 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
          * Notifies nodes about termination
          */
         private void notifyFinished() {
+            boolean completed = false;
+
+            try {
+                completed = databaseCopyTaskRepository.getMigrationStatus(context).isCompleted();
+            } catch (Exception ignore) {
+                // skip this
+            }
             final CopyCompleteEvent completeEvent = new CopyCompleteEvent(
                     databaseOperationSchedulerAlgorithm.getOwnNodeId(), context.getMigrationId(),
-                    context.getMigrationContext().isReversed());
+                    context.getMigrationContext().isReversed(), completed);
             eventService.publishEvent(completeEvent);
         }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -24,7 +24,7 @@ public class MigrationPrepJob extends AbstractMigrationJobPerformable {
             databaseMigrationService.prepareMigration(migrationContext);
         } catch (final Exception e) {
             caughtExeption = true;
-            LOG.error(" Exception caught: message= " + e.getMessage(), e);
+            LOG.error(" Exception caught: message= {}", e.getMessage(), e);
         }
         return new PerformResult(caughtExeption ? CronJobResult.FAILURE : CronJobResult.SUCCESS,
                 CronJobStatus.FINISHED);

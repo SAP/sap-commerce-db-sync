@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -264,24 +264,32 @@ public class CommercemigrationhacController {
 
     @RequestMapping(value = "/schemaStatus", method = RequestMethod.GET)
     @ResponseBody
-    public SchemaDifferenceStatus schemaStatus(@RequestParam String schemaDifferenceId) throws Exception {
-        final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
-                .getSchemaDifferenceStatusById(schemaDifferenceId, migrationContext);
-        if (schemaDifferenceStatus != null) {
-            prepareStateForJsonSerialization(schemaDifferenceStatus);
+    public ResponseEntity<?> schemaStatus(@RequestParam String schemaDifferenceId) throws Exception {
+        try {
+            final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
+                    .getSchemaDifferenceStatusById(schemaDifferenceId, migrationContext);
+            if (schemaDifferenceStatus != null) {
+                prepareStateForJsonSerialization(schemaDifferenceStatus);
+            }
+            return ResponseEntity.ok(schemaDifferenceStatus);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        return schemaDifferenceStatus;
     }
 
     @RequestMapping(value = "/lastSchemaStatus", method = RequestMethod.GET)
     @ResponseBody
-    public SchemaDifferenceStatus lastSchemaStatus() throws Exception {
-        final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
-                .getMostRecentSchemaDifference(migrationContext);
-        if (schemaDifferenceStatus != null) {
-            prepareStateForJsonSerialization(schemaDifferenceStatus);
+    public ResponseEntity<?> lastSchemaStatus() throws Exception {
+        try {
+            final SchemaDifferenceStatus schemaDifferenceStatus = databaseSchemaDifferenceService
+                    .getMostRecentSchemaDifference(migrationContext);
+            if (schemaDifferenceStatus != null) {
+                prepareStateForJsonSerialization(schemaDifferenceStatus);
+            }
+            return ResponseEntity.ok(schemaDifferenceStatus);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        return schemaDifferenceStatus;
     }
 
     @RequestMapping(value = "/abortSchema", method = RequestMethod.POST)
@@ -334,7 +342,9 @@ public class CommercemigrationhacController {
             copyConfig.replace(CommercedbsyncConstants.MIGRATION_SCHEDULER_RESUME_ENABLED, false);
         }
 
-        return databaseMigrationService.getMigrationState(migrationContext, currentMigrationId);
+        migrationStatus = databaseMigrationService.getMigrationState(migrationContext, currentMigrationId);
+        prepareStateForJsonSerialization(migrationStatus);
+        return migrationStatus;
     }
 
     @RequestMapping(value = "/abortCopy", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)

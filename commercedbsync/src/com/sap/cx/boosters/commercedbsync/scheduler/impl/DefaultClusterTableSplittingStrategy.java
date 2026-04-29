@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -15,8 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DefaultClusterTableSplittingStrategy implements ClusterTableSplittingStrategy {
-    private static final long DEFAULT_ROW_THRESHOLD = 100000; // Fallback threshold
-
     protected final MigrationContext migrationContext;
 
     public DefaultClusterTableSplittingStrategy(MigrationContext migrationContext) {
@@ -26,15 +24,20 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
     @Override
     public List<Pair<CopyContext.DataCopyItem, Long>> split(CopyContext.DataCopyItem item, Long rowCount,
             int numNodes) {
+        if (numNodes <= 0) {
+            throw new IllegalStateException(
+                    "No available nodes to perform split for pipeline: " + item.getPipelineName());
+        }
+
         List<Pair<CopyContext.DataCopyItem, Long>> virtualItems = new ArrayList<>();
         // doesn't matter if chunking is enabled - we need cluster as well
-        Long chunkSize = migrationContext.getClusterChunkSize(item.getTargetItem());
+        Long chunkSize = migrationContext.getClusterChunkSize(item.getSourceItem());
         // global/table chunk size is set (> 0) and there are cluster nodes
         boolean chunkingEnabled = chunkSize > 0 && numNodes > 1;
         // Determine the optimal split size dynamically based on row count and number of
         // nodes
         long splitSize = Math.max(chunkSize,
-                (int) Math.ceil(rowCount / numNodes / item.getBatchSize()) * item.getBatchSize());
+                (long) Math.ceil((double) rowCount / numNodes / item.getBatchSize()) * item.getBatchSize());
 
         // Handle not chunking, empty tables (rowCount == 0) or rowCounts extending
         // splitSize
@@ -59,6 +62,13 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
             CopyContext.DataCopyItem virtualItem = createVirtualItem(item,
                     new CopyContext.DataCopyItem.ChunkData(fullSplits, splitSize));
             virtualItems.add(Pair.of(virtualItem, remainingRows));
+        }
+
+        long totalRows = virtualItems.stream().mapToLong(Pair::getValue).sum();
+
+        if (totalRows != rowCount) {
+            throw new IllegalStateException("Split failed with unexpected number of total rows: %d expected: %d"
+                    .formatted(totalRows, rowCount));
         }
 
         return virtualItems;

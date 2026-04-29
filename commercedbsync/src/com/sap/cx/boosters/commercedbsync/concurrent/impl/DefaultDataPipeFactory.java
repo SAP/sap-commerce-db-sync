@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -121,7 +121,9 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             PipeTaskContext pipeTaskContext = new PipeTaskContext(context, pipe, table, dataRepositoryAdapter,
                     batchSize, recorder, taskRepository);
 
+            Set<String> batchColumns = Set.of();
             String batchColumn = "";
+
             // help.sap.com/viewer/d0224eca81e249cb821f2cdf45a82ace/LATEST/en-US/08a27931a21441b59094c8a6aa2a880e.html
             final Set<String> allColumnNames = context.getMigrationContext().getDataSourceRepository()
                     .getAllColumnNames(table);
@@ -130,12 +132,24 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             } else if (allColumnNames.contains("ID")
                     && context.getMigrationContext().getDataSourceRepository().isAuditTable(table)) {
                 batchColumn = "ID";
+            } else {
+                batchColumns = getBatchColumns(context, table);
+
+                if (batchColumns.size() == 1) {
+                    batchColumn = batchColumns.iterator().next();
+
+                    if (!allColumnNames.contains(batchColumn)) {
+                        LOG.warn("Invalid batch column '{}' provided for table '{}'", batchColumn,
+                                copyItem.getSourceItem());
+                        batchColumn = "";
+                    }
+                }
             }
+
             LOG.debug("Using batchColumn: {}", batchColumn.isEmpty() ? "NONE" : batchColumn);
 
             if (batchColumn.isEmpty()) {
                 // trying offset queries with unique index columns
-                Set<String> batchColumns = getBatchColumns(context, table);
                 if (!batchColumns.isEmpty()) {
                     taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.OFFSET.toString());
                     taskRepository.updateTaskKeyColumns(context, copyItem, batchColumns);

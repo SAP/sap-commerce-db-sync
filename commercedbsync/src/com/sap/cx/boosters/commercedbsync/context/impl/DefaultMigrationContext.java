@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -126,7 +126,7 @@ public class DefaultMigrationContext implements MigrationContext {
     public Integer getReaderBatchSize(final String tableName) {
         String tblConfKey = CommercedbsyncConstants.MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE.replace("{table}",
                 tableName);
-        return configuration.getInteger(tblConfKey, getReaderBatchSize());
+        return configuration.getInteger(tblConfKey.toLowerCase(), getReaderBatchSize());
     }
 
     @Override
@@ -138,7 +138,32 @@ public class DefaultMigrationContext implements MigrationContext {
     public Long getClusterChunkSize(final String tableName) {
         String tblConfKey = CommercedbsyncConstants.MIGRATION_CLUSTER_CHUNK_SIZE_FOR_TABLE.replace("{table}",
                 tableName);
-        return configuration.getLong(tblConfKey, getClusterChunkSize());
+        return configuration.getLong(tblConfKey.toLowerCase(), getClusterChunkSize());
+    }
+
+    @Override
+    public String getClusterNodeGroup() {
+        return configuration.getString(CommercedbsyncConstants.MIGRATION_CLUSTER_NODE_GROUP, null);
+    }
+
+    @Override
+    public String getClusterNodeGroup(final String tableName) {
+        String tblConfKey = CommercedbsyncConstants.MIGRATION_CLUSTER_NODE_GROUP_FOR_TABLE.replace("{table}",
+                tableName);
+        return configuration.getString(tblConfKey.toLowerCase(), getClusterNodeGroup());
+    }
+
+    @Override
+    public Long getFixedRowsCount(final String tableName) {
+        String tblConfKey = CommercedbsyncConstants.MIGRATION_FIXED_ROWS_FOR_TABLE.replace("{table}", tableName);
+        return configuration.getLong(tblConfKey.toLowerCase(), -1);
+    }
+
+    @Override
+    public String getAdditionalCondition(String tableName) {
+        String tblConfKey = CommercedbsyncConstants.MIGRATION_ADDITIONAL_CONDITION_FOR_TABLE.replace("{table}",
+                tableName);
+        return StringUtils.trimToNull(configuration.getString(tblConfKey.toLowerCase(), null));
     }
 
     @Override
@@ -319,6 +344,11 @@ public class DefaultMigrationContext implements MigrationContext {
     @Override
     public boolean isMssqlUpdateStatisticsEnabled() {
         return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_MSSQL_UPDATE_STATISTICS_ENABLED);
+    }
+
+    @Override
+    public boolean isAdjustTimestampsToUTC() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_DATA_ADJUST_TIMESTAMPS_TO_UTC);
     }
 
     @Override

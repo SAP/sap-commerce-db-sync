@@ -1,10 +1,12 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.service;
+
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -18,4 +20,6 @@ public interface DatabaseMigrationDataTypeMapperService {
      * Converts BLOB, CLOB and NCLOB Data
      */
     Object dataTypeMapper(final Object sourceColumnValue, final int jdbcType) throws IOException, SQLException;
+
+    void beforeMigration(final MigrationContext context);
 }

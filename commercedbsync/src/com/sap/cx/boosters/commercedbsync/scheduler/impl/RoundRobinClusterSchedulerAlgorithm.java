@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -42,7 +42,7 @@ public class RoundRobinClusterSchedulerAlgorithm implements DatabaseOperationSch
     }
 
     @Override
-    public List<Integer> getNodeIds() {
+    public List<Integer> getNodeIds(String tableName) {
         if (nodeIds == null) {
             nodeIds = ImmutableList.copyOf(detectClusterNodes());
         }
@@ -50,11 +50,11 @@ public class RoundRobinClusterSchedulerAlgorithm implements DatabaseOperationSch
     }
 
     @Override
-    public int next() {
-        if (nodeIndex >= (getNodeIds().size())) {
+    public int next(String tableName) {
+        if (nodeIndex >= (getNodeIds(tableName).size())) {
             nodeIndex = 0;
         }
-        return getNodeIds().get(nodeIndex++);
+        return getNodeIds(tableName).get(nodeIndex++);
     }
 
     public void reset() {

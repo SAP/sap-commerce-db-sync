@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -38,7 +38,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     @Override
     public String getMostRecentSchemaDifferenceId(SchemaDifferenceContext context) {
-        String query = "SELECT schemaDifferenceId FROM " + SCHEMADIFFSTATUS + " ORDER BY startAt DESC";
+        String query = "SELECT schemaDifferenceId FROM %s ORDER BY startAt DESC".formatted(SCHEMADIFFSTATUS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(query)) {
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -52,7 +52,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     @Override
     public synchronized void createSchemaDifferenceStatus(SchemaDifferenceContext context) throws Exception {
-        String insert = "INSERT INTO " + SCHEMADIFFSTATUS + " (schemaDifferenceId) VALUES (?)";
+        String insert = "INSERT INTO %s (schemaDifferenceId) VALUES (?)".formatted(SCHEMADIFFSTATUS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, context.getSchemaDifferenceId());
             stmt.executeUpdate();
@@ -62,7 +62,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     @Override
     public synchronized void setSchemaDifferenceStatus(SchemaDifferenceContext context,
             SchemaDifferenceProgress progress) throws Exception {
-        final String update = "UPDATE " + SCHEMADIFFSTATUS + " SET status = ? WHERE schemaDifferenceId = ?";
+        final String update = "UPDATE %s SET status = ? WHERE schemaDifferenceId = ?".formatted(SCHEMADIFFSTATUS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(update)) {
             stmt.setObject(1, progress.name());
             stmt.setObject(2, context.getSchemaDifferenceId());
@@ -72,7 +72,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     @Override
     public SchemaDifferenceStatus getSchemaDifferenceStatus(SchemaDifferenceContext context) throws Exception {
-        String query = "SELECT * FROM " + SCHEMADIFFSTATUS + " WHERE schemaDifferenceId = ?";
+        String query = "SELECT * FROM %s WHERE schemaDifferenceId = ?".formatted(SCHEMADIFFSTATUS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, context.getSchemaDifferenceId());
             try (ResultSet rs = stmt.executeQuery()) {
@@ -90,8 +90,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     @Override
     public SchemaDifferenceResultData getSchemaDifferenceResultData(SchemaDifferenceContext context,
             String referenceDatabase) throws Exception {
-        String query = "SELECT missingTableLeftName, missingTableRightName, missingColumnName FROM " + SCHEMADIFFS
-                + " WHERE schemaDifferenceId = ? AND referenceDatabase = ?";
+        String query = "SELECT missingTableLeftName, missingTableRightName, missingColumnName FROM %s WHERE schemaDifferenceId = ? AND referenceDatabase = ?"
+                .formatted(SCHEMADIFFS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setObject(1, context.getSchemaDifferenceId());
             stmt.setObject(2, referenceDatabase);
@@ -105,8 +105,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     public void saveSchemaDifference(SchemaDifferenceContext context,
             DefaultDatabaseSchemaDifferenceService.SchemaDifference schemaDifference, String referenceDatabase)
             throws Exception {
-        String insert = "INSERT INTO " + SCHEMADIFFS
-                + " (schemaDifferenceId, referenceDatabase, missingTableLeftName, missingTableRightName, missingColumnName) VALUES (?, ?, ?, ?, ?)";
+        String insert = "INSERT INTO %s (schemaDifferenceId, referenceDatabase, missingTableLeftName, missingTableRightName, missingColumnName) VALUES (?, ?, ?, ?, ?)"
+                .formatted(SCHEMADIFFS);
 
         List<String[]> data = new ArrayList<>();
         schemaDifference.getMissingTables().forEach(missingTable -> {
@@ -135,7 +135,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     @Override
     public void saveSqlScript(SchemaDifferenceContext context, String sqlScript) throws Exception {
-        String sql = "UPDATE " + SCHEMADIFFSTATUS + " SET sqlScript = ?, lastupdate = ? WHERE schemaDifferenceId = ?";
+        String sql = "UPDATE %s SET sqlScript = ?, lastUpdate = ? WHERE schemaDifferenceId = ?"
+                .formatted(SCHEMADIFFSTATUS);
 
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, sqlScript);
@@ -147,7 +148,7 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     @Override
     public synchronized void scheduleTask(SchemaDifferenceContext context, String pipelinename) throws Exception {
-        String insert = "INSERT INTO " + SCHEMADIFFTASKS + " (schemaDifferenceId, pipelinename) VALUES (?, ?)";
+        String insert = "INSERT INTO %s (schemaDifferenceId, pipelineName) VALUES (?, ?)".formatted(SCHEMADIFFTASKS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(insert)) {
             stmt.setObject(1, context.getSchemaDifferenceId());
             stmt.setObject(2, pipelinename);
@@ -159,8 +160,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     public synchronized void markTaskCompleted(final SchemaDifferenceContext context, final String pipelinename,
             final String duration, final float durationseconds) throws Exception {
         Objects.requireNonNull(duration, "duration must not be null");
-        String sql = "UPDATE " + SCHEMADIFFTASKS
-                + " SET duration = ?, durationinseconds = ?, lastupdate = ? WHERE schemaDifferenceId = ? AND pipelinename = ? AND duration IS NULL";
+        String sql = "UPDATE %s SET duration = ?, durationInSeconds = ?, lastUpdate = ? WHERE schemaDifferenceId = ? AND pipelineName = ? AND duration IS NULL"
+                .formatted(SCHEMADIFFTASKS);
 
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, duration);
@@ -176,8 +177,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
     public synchronized void markTaskFailed(SchemaDifferenceContext context, String pipelinename, Exception error)
             throws Exception {
 
-        String sql = "UPDATE " + SCHEMADIFFTASKS
-                + " SET failure = '1', duration = '-1', error = ?, lastupdate = ? WHERE schemaDifferenceId = ? AND pipelinename = ? AND failure = '0'";
+        String sql = "UPDATE %s SET failure = '1', duration = '-1', error = ?, lastUpdate = ? WHERE schemaDifferenceId = ? AND pipelineName = ? AND failure = '0'"
+                .formatted(SCHEMADIFFTASKS);
 
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {

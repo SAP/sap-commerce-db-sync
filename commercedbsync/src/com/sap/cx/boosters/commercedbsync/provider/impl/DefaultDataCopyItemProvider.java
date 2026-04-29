@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -137,7 +137,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
         tableCandidates.add(createTableCandidate(repository, "metainformations", tablePrefix));
 
         // add tables listed in "ydeployments"
-        final Set<TypeSystemTable> allTypeSystemTables = repository.getAllTypeSystemTables();
+        final Set<TypeSystemTable> allTypeSystemTables = repository.getAllTypeSystemTables(allTableNames);
         allTypeSystemTables.forEach(t -> {
             tableCandidates.add(createTableCandidate(repository, t.getTableName(), tablePrefix));
 

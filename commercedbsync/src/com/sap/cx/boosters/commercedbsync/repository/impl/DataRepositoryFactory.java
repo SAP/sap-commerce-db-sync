@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -55,7 +55,7 @@ public class DataRepositoryFactory {
     }
 
     protected DataRepository doCreate(DataSourceConfiguration dataSourceConfiguration,
-            MigrationContext migrationContext) throws Exception {
+            MigrationContext migrationContext) {
         String connectionString = dataSourceConfiguration.getConnectionString();
         if (Strings.isNullOrEmpty(connectionString)) {
             throw new RuntimeException(

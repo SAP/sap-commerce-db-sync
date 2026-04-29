@@ -1,4 +1,4 @@
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
 <%@ taglib prefix="hac" uri="/WEB-INF/custom.tld" %>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <%--
@@ -27,7 +27,7 @@
     <div class="marginLeft marginBottom">
         <h2>Migration Reports</h2>
         <div id="reportsWrapper" data-url="<c:url value="/commercedbsynchac/loadMigrationReports"/>" data-downloadUrl="<c:url value="/commercedbsynchac/downloadLogsReport"/>">
-            <table id="reportsTable">
+            <table id="reportsTable" class="stripe cell-border">
                 <thead>
                 <tr>
                     <th>Report id</th>

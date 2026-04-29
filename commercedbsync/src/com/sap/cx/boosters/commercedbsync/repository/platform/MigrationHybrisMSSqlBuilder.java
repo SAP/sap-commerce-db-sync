@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -12,6 +12,7 @@ import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 
 import java.sql.Types;
+import java.util.Set;
 
 public class MigrationHybrisMSSqlBuilder extends HybrisMSSqlBuilder {
 
@@ -22,12 +23,23 @@ public class MigrationHybrisMSSqlBuilder extends HybrisMSSqlBuilder {
     @Override
     protected String getSqlType(Column column) {
         /*
-         * core-advanced-deployment.xml:661 TODO implement more generic mapper for
+         * core-advanced-deployment.xml:884 TODO implement more generic mapper for
          * special attrs
          */
         if ("InheritancePathString".equalsIgnoreCase(column.getName())) {
-            return "varchar(1800)";
+            return "NVARCHAR(4000)";
         }
+
+        if (column.getTypeCode() == Types.NUMERIC) {
+            if (column.getSizeAsInt() == 20 && column.getScale() == 0) {
+                return "BIGINT";
+            } else if (column.getSizeAsInt() == 1 && column.getScale() == 0) {
+                return "TINYINT"; // no option here to check if primitive boolean, hence no default
+            } else if (isKnownCharacterColumn(column)) {
+                return "CHAR(4) DEFAULT ''";
+            }
+        }
+
         String nativeType = this.getNativeType(column);
         int sizePos = nativeType.indexOf("{0}");
         StringBuilder sqlType = new StringBuilder();
@@ -76,4 +88,11 @@ public class MigrationHybrisMSSqlBuilder extends HybrisMSSqlBuilder {
         }
         return column.getSize();
     }
+
+    private boolean isKnownCharacterColumn(Column column) {
+        return CHAR_COLUMNS.contains(column.getName().toLowerCase());
+    }
+
+    private static final Set<String> CHAR_COLUMNS = Set.of("p_fieldseparator", "p_quotecharacter",
+            "p_commentcharacter");
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -460,14 +460,13 @@ public abstract class AbstractDataRepository implements DataRepository {
     }
 
     @Override
-    public Set<TypeSystemTable> getAllTypeSystemTables() throws SQLException {
+    public Set<TypeSystemTable> getAllTypeSystemTables(Set<String> allTableNames) throws SQLException {
         if (StringUtils.isEmpty(getDataSourceConfiguration().getTypeSystemName())) {
             throw new RuntimeException("No type system name specified. Check the properties");
         }
         String tablePrefix = getDataSourceConfiguration().getTablePrefix();
         String yDeploymentsTable = StringUtils.defaultIfBlank(tablePrefix, "")
                 + CommercedbsyncConstants.DEPLOYMENTS_TABLE;
-        Set<String> allTableNames = getAllTableNames();
         if (!allTableNames.contains(yDeploymentsTable)) {
             return Collections.emptySet();
         }
@@ -713,6 +712,12 @@ public abstract class AbstractDataRepository implements DataRepository {
         String tsCondition = getTsCondition(table);
         if (StringUtils.isNotEmpty(tsCondition)) {
             conditionsList.add(tsCondition);
+        } else {
+            String additionalCondition = migrationContext.getAdditionalCondition(table);
+
+            if (StringUtils.isNotEmpty(additionalCondition)) {
+                conditionsList.add(additionalCondition);
+            }
         }
     }
 

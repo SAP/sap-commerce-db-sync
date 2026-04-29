@@ -122,6 +122,7 @@
         <property name="copyItemProvider" ref="dataCopyItemProvider"/>
         <property name="performanceProfiler" ref="performanceProfiler"/>
         <property name="databaseMigrationReportService" ref="databaseMigrationReportService"/>
+        <property name="databaseMigrationDataTypeMapperService" ref="databaseMigrationDataTypeMapperService"/>
         <property name="schemaDifferenceService" ref="schemaDifferenceService"/>
         <property name="configurationService" ref="configurationService" />
         <property name="migrationContextValidator" ref="migrationContextValidator"/>
@@ -134,7 +135,7 @@
                 <ref bean="typeInfoTableGeneratorPreProcessor"/>
                 <ref bean="viewGeneratorPreProcessor"/>
             </util:list>
-        </property>        
+        </property>
     </bean>
 
     <bean id="clusterTableSplittingStrategy"
@@ -156,12 +157,19 @@
           class="com.sap.cx.boosters.commercedbsync.scheduler.impl.DefaultDatabaseSchemaDifferenceScheduler">
         <property name="databaseSchemaDifferenceTaskRepository" ref="databaseSchemaDifferenceTaskRepository" />
     </bean>
-
+    <!--
     <alias name="roundRobinClusterSchedulerAlgorithm" alias="clusterSchedulerAlgorithm"/>
     <bean id="roundRobinClusterSchedulerAlgorithm"
           class="com.sap.cx.boosters.commercedbsync.scheduler.impl.RoundRobinClusterSchedulerAlgorithm">
         <constructor-arg ref="migrationContext"/>
         <constructor-arg ref="clusterService"/>
+    </bean>
+    -->
+    <alias name="clusterAwareSchedulerAlgorithm" alias="clusterSchedulerAlgorithm"/>
+    <bean id="clusterAwareSchedulerAlgorithm"
+          class="com.sap.cx.boosters.commercedbsync.scheduler.impl.ClusterAwareSchedulerAlgorithm">
+        <constructor-arg ref="migrationContext"/>
+        <constructor-arg ref="eventService"/>
     </bean>
 
     <alias name="pipeDatabaseMigrationCopyService" alias="databaseMigrationCopyService"/>
@@ -225,7 +233,7 @@
             class="com.sap.cx.boosters.commercedbsync.processors.impl.TypeInfoTableGeneratorPreProcessor">
 		<property name="flexibleSearchService" ref="flexibleSearchService"/>
         <property name="configurationService" ref="configurationService"/>
-	</bean>            
+	</bean>
     <bean id="viewGeneratorPreProcessor"
             class="com.sap.cx.boosters.commercedbsync.processors.impl.ViewGeneratorPreProcessor"/>
 

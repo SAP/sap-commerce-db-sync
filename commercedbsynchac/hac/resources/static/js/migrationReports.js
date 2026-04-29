@@ -7,7 +7,7 @@
 var reportsTable;
 
 $(document).ready(function () {
-    reportsTable = $('#reportsTable').dataTable({
+    reportsTable = $('#reportsTable').DataTable({
         "bStateSave": true,
         "bAutoWidth": false,
         "aLengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'all']]
@@ -17,7 +17,7 @@ $(document).ready(function () {
 
 function loadMigrationReports() {
     $('#logsWrapper').fadeOut();
-    reportsTable.fnClearTable();
+    reportsTable.clear().draw();
     const token = $("meta[name='_csrf']").attr("content");
     const url = $('#reportsWrapper').attr('data-url');
     $.ajax({
@@ -31,12 +31,13 @@ function loadMigrationReports() {
             if (data.length > 0) {
                 data.forEach((report) => {
                     let strippedMigrationId = report.reportId;
-                    reportsTable.fnAddData([
+                    reportsTable.row.add([
                         strippedMigrationId,
                         report.modifiedTimestamp,
                         '<button onclick=downloadReport('+JSON.stringify(strippedMigrationId)+') id="buttonCopyReport">Download Report</button>'
                     ])
                 });
+                reportsTable.draw();
             }
         },
         error: hac.global.err
