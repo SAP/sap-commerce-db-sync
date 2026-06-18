@@ -9,7 +9,17 @@
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="beans.xsd">
 
     <bean class="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData">
-        <property name="results" type="java.lang.String[][]"/>
+         <property name="differences" type="java.util.List&lt;de.hybris.platform.commercedbsynchac.data.DifferenceItemData&gt;"/>
+    </bean>
+
+    <bean class="de.hybris.platform.commercedbsynchac.data.DifferenceItemData">
+        <property name="leftName" type="java.lang.String"/>
+        <property name="rightName" type="java.lang.String"/>
+        <property name="column" type="java.lang.String"/>
+        <property name="leftType" type="java.lang.String"/>
+        <property name="rightType" type="java.lang.String"/>
+        <property name="tableMissing" type="java.lang.boolean"/>
+        <property name="columnMissing" type="java.lang.boolean"/>
     </bean>
 
     <bean class="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData">

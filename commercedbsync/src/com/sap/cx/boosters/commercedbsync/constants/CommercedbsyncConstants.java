@@ -20,6 +20,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_TARGET_TABLES_REMOVE_ENABLED = "migration.schema.target.tables.remove.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADD_ENABLED = "migration.schema.target.columns.add.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED = "migration.schema.target.columns.remove.enabled";
+    public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADJUST_ENABLED = "migration.schema.target.columns.adjust.enabled";
     public static final String MIGRATION_TARGET_MAX_STAGE_MIGRATIONS = "migration.ds.target.db.max.stage.migrations";
     public static final String MIGRATION_DATA_SYNCHRONIZATION_ENABLED = "migration.data.synchronization.enabled";
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE = "migration.internal.tables.storage";
@@ -125,6 +126,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
 
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE_TARGET = "target";
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE_SOURCE = "source";
+
+    public static final int UNUSED_CLUSTER_ID = -1;
 
     private CommercedbsyncConstants() {
         // empty to avoid instantiating this constant class

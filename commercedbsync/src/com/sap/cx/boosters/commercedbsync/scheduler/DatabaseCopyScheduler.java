@@ -24,4 +24,6 @@ public interface DatabaseCopyScheduler {
     boolean isAborted(CopyContext context) throws Exception;
 
     void abort(CopyContext context) throws Exception;
+
+    void notifyAboutAvailability(CopyContext context);
 }

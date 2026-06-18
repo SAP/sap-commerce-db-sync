@@ -7,7 +7,6 @@
 package com.sap.cx.boosters.commercedbsync.dataset.impl;
 
 import com.github.freva.asciitable.AsciiTable;
-import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import com.sap.cx.boosters.commercedbsync.dataset.DataColumn;
@@ -15,7 +14,6 @@ import com.sap.cx.boosters.commercedbsync.dataset.DataSet;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static java.sql.Types.CHAR;
 import static java.sql.Types.SMALLINT;
@@ -25,6 +23,7 @@ public class DefaultDataSet implements DataSet {
     private final int batchId;
     private final int columnCount;
     private final List<DataColumn> columnOrder;
+    private final List<String> columnNames;
     private final List<List<Object>> result;
     private final String partition;
 
@@ -33,7 +32,8 @@ public class DefaultDataSet implements DataSet {
         this.batchId = batchId;
         this.columnCount = columnCount;
         this.columnOrder = Collections.unmodifiableList(columnOrder);
-        this.result = result.stream().map(Collections::unmodifiableList).collect(Collectors.toList());
+        this.columnNames = columnOrder.stream().map(DataColumn::getColumnNameLowerCase).toList();
+        this.result = result.stream().map(Collections::unmodifiableList).toList();
         this.partition = partition;
     }
 
@@ -66,7 +66,7 @@ public class DefaultDataSet implements DataSet {
                     if (sourceColumn.getPrecision() == 4 && targetColumnType == SMALLINT) {
                         if (columnValue instanceof String && ((String) columnValue).length() == 4) {
                             columnValue = (int) (((String) columnValue).charAt(0)); // cannot use trim() to not loose
-                                                                                    // \n, \t, space etc chars
+                            // \n, \t, space etc chars
                         }
                     }
                     break;
@@ -95,17 +95,17 @@ public class DefaultDataSet implements DataSet {
         if (StringUtils.isEmpty(column)) {
             return false;
         }
-        return columnOrder.stream().map(DataColumn::getColumnName).anyMatch(column::equalsIgnoreCase);
+        return columnNames.contains(column.toLowerCase());
     }
 
     @Override
     public DataColumn getColumn(int columnIndex) {
-        return IterableUtils.get(columnOrder, columnIndex);
+        return columnOrder.get(columnIndex);
     }
 
     @Override
     public DataColumn getColumn(String columnName) {
-        return IterableUtils.get(columnOrder, findColumnIndex(columnName));
+        return columnOrder.get(findColumnIndex(columnName));
     }
     @Override
     public String getPartition() {
@@ -113,8 +113,7 @@ public class DefaultDataSet implements DataSet {
     }
 
     protected int findColumnIndex(String columnName) {
-        return IterableUtils.indexOf(columnOrder,
-                dataColumn -> dataColumn.getColumnName().equalsIgnoreCase(columnName));
+        return columnNames.indexOf(columnName.toLowerCase());
     }
 
     public String toString() {

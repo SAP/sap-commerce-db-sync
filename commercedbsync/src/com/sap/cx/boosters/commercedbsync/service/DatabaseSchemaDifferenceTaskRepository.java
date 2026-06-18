@@ -9,8 +9,6 @@ package com.sap.cx.boosters.commercedbsync.service;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
 import com.sap.cx.boosters.commercedbsync.context.SchemaDifferenceContext;
-import com.sap.cx.boosters.commercedbsync.service.impl.DefaultDatabaseSchemaDifferenceService;
-import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 
 /**
  * Repository to manage Schema Difference Status
@@ -57,32 +55,6 @@ public interface DatabaseSchemaDifferenceTaskRepository {
     SchemaDifferenceStatus getSchemaDifferenceStatus(SchemaDifferenceContext context) throws Exception;
 
     /**
-     * Retrieves the Schema Difference Result Data
-     *
-     * @param context
-     *            the schema difference context
-     * @param referenceDatabase
-     *            the reference database (source/target)
-     * @return
-     * @throws Exception
-     */
-    SchemaDifferenceResultData getSchemaDifferenceResultData(SchemaDifferenceContext context, String referenceDatabase)
-            throws Exception;
-
-    /**
-     * Creates a new Schema Difference Result record
-     *
-     * @param context
-     *            the schema difference context
-     * @param referenceDatabase
-     *            the reference database (source/target)
-     * @throws Exception
-     */
-    void saveSchemaDifference(SchemaDifferenceContext context,
-            DefaultDatabaseSchemaDifferenceService.SchemaDifference schemaDifference, String referenceDatabase)
-            throws Exception;
-
-    /**
      * Updates SQL Script in Schema Difference Status record
      *
      * @param context
@@ -92,6 +64,17 @@ public interface DatabaseSchemaDifferenceTaskRepository {
      * @throws Exception
      */
     void saveSqlScript(SchemaDifferenceContext context, String sqlScript) throws Exception;
+
+    /**
+     * Updates JSON representation of detected differences
+     *
+     * @param context
+     *            the schema difference context
+     * @param json
+     *            differences JSON
+     * @throws Exception
+     */
+    void saveDifferencesJson(SchemaDifferenceContext context, String json) throws Exception;
 
     /**
      * Schedules a Schema Difference Task

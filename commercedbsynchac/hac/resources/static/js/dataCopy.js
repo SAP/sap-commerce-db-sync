@@ -295,7 +295,10 @@
                         if (playFinishSoundCheckbox && $(playFinishSoundCheckbox).is(':checked')) {
                             playFinishSound();
                         }
+                    }
+                    if (status.completed || status.aborted) {
                         clearInterval(pollInterval);
+                        pollInterval = null;
                     }
                 },
                 error: function(xhr, status, error) {
@@ -319,11 +322,11 @@
                     message += `FAILED! Reason: ${entry.error}`;
                     p.classList.add("failed");
                 }else if (entry.completed) {
-                    message += `Completed in ${entry.duration}`;
+                    message += `Completed ${entry.duration !== '0' ? 'in ' + entry.duration + ` (avg reader throughput: ${entry.avgReaderRowThroughput} rows/s, avg writer throughput: ${entry.avgWriterRowThroughput} rows/s)` : '(empty table)'}`;
                     p.classList.add("completed");
                 } else {
                     let progress = Math.max(0, entry.sourcerowcount > 0 ? (entry.targetrowcount / entry.sourcerowcount * 100) : 100).toFixed(1);
-                    message += `In progress (${progress}%), node ID: ${entry.targetnodeId}, avg reader throughput: ${entry.avgReaderRowThroughput} rows/s`
+                    message += `In progress (${progress}%), node ID: ${entry.targetnodeId < 0 ? 'UNASSIGNED' : entry.targetnodeId}, avg reader throughput: ${entry.avgReaderRowThroughput} rows/s, avg writer throughput: ${entry.avgWriterRowThroughput} rows/s`
                 }
                 p.textContent = message;
                 logContainer.appendChild(p);

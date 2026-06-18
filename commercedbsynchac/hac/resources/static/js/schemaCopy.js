@@ -224,11 +224,22 @@ function fillResult(status) {
     targetSchemaDiffTable.clear();
     sourceSchemaDiffTable.clear();
 
-    if(status.diffResult.target.results.length > 0) {
-        status.diffResult.target.results.forEach((result) => targetSchemaDiffTable.row.add([result[1], result[2]]));
+    if (status.diffResult.target.differences.length > 0) {
+        status.diffResult.target.differences.filter(d => d.tableMissing).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, '', '']));
+        status.diffResult.target.differences.filter(d => d.columnMissing).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, d.column, '']));
+        status.diffResult.target.differences.filter(d => d.leftType && d.rightType).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, '', `${d.column}: ${d.rightType} &rarr; ${d.leftType}`]));
     }
-    if(status.diffResult.source.results.length > 0) {
-        status.diffResult.source.results.forEach((result) => sourceSchemaDiffTable.row.add([result[1], result[2]]));
+
+    if (status.diffResult.source.differences.length > 0) {
+        status.diffResult.source.differences.filter(d => d.tableMissing).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, '', '']));
+        status.diffResult.source.differences.filter(d => d.columnMissing).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, d.column, '']));
+        status.diffResult.source.differences.filter(d => d.leftType && d.rightType).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, '', `${d.column}: ${d.rightType} &rarr; ${d.leftType}`]));
     }
 
     targetSchemaDiffTable.draw();

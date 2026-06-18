@@ -62,7 +62,7 @@ public class DefaultDataThreadPoolFactory implements DataThreadPoolFactory {
         }
         executor.initialize();
         monitor.subscribe(executor);
-        LOG.debug("Creating executor with parameters: Pool Size:{}", corePoolSize);
+        LOG.debug("Creating executor with parameters: corePoolSize = {}", corePoolSize);
         return executor;
     }
 

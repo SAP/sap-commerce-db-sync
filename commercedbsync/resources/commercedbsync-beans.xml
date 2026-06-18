@@ -36,6 +36,7 @@
         <property name="status" type="com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress"/>
         <property name="diffResult" type="de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData"/>
         <property name="sqlScript" type="String" />
+        <property name="diffJson" type="String" />
     </bean>
 
     <bean class="com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask">

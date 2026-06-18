@@ -9,12 +9,18 @@ package com.sap.cx.boosters.commercedbsync.scheduler.impl;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.scheduler.ClusterTableSplittingStrategy;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class DefaultClusterTableSplittingStrategy implements ClusterTableSplittingStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultClusterTableSplittingStrategy.class);
+
     protected final MigrationContext migrationContext;
 
     public DefaultClusterTableSplittingStrategy(MigrationContext migrationContext) {
@@ -47,6 +53,13 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
             return virtualItems;
         }
 
+        // warn about potential misconfiguration
+        Optional.ofNullable(migrationContext.getClusterNodeGroup(item.getSourceItem())).filter(StringUtils::isNotEmpty)
+                .ifPresent(nodeGroup -> LOG.warn(
+                        "Table '{}' is configured to be migrated in chunks, however it's also assigned to fixed node group"
+                                + " ({}). This setup may not be what was intended and can even cause performance degradation",
+                        item.getSourceItem(), nodeGroup));
+
         int fullSplits = (int) (rowCount / splitSize);
         long remainingRows = rowCount % splitSize;
 
@@ -70,6 +83,9 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
             throw new IllegalStateException("Split failed with unexpected number of total rows: %d expected: %d"
                     .formatted(totalRows, rowCount));
         }
+
+        LOG.debug("Table '{}' will be migrated in {} chunks, each of {} rows", item.getSourceItem(),
+                virtualItems.size(), splitSize);
 
         return virtualItems;
     }

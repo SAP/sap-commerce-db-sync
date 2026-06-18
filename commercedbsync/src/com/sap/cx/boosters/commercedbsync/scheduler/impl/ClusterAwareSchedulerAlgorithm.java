@@ -111,7 +111,7 @@ public class ClusterAwareSchedulerAlgorithm implements DatabaseOperationSchedule
                 }
 
                 return nodeIdsForGroup.get(groupIndices.compute(clusterNodeGroup,
-                        (k, v) -> (v == null || v >= nodeIdsForGroup.size()) ? 0 : v + 1));
+                        (k, v) -> (v == null || v + 1 >= nodeIdsForGroup.size()) ? 0 : v + 1));
             }
         }
 
@@ -173,8 +173,7 @@ public class ClusterAwareSchedulerAlgorithm implements DatabaseOperationSchedule
         if (migrationContext.isClusterMode()) {
             LOG.debug("Registering cluster notification listener to gather cluster details");
 
-            eventService.registerEventListener(
-                    new com.sap.cx.boosters.commercedbsync.scheduler.impl.ClusterAwareSchedulerAlgorithm.ClusterNotificationEventListener());
+            eventService.registerEventListener(new ClusterNotificationEventListener());
 
             Registry.registerTenantListener(new TenantListener() {
                 @Override

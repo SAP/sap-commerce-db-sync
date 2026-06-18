@@ -113,6 +113,11 @@ public class DefaultMigrationContext implements MigrationContext {
     }
 
     @Override
+    public boolean isAdjustColumnTypesOnSchemaEnabled() {
+        return getBooleanProperty(CommercedbsyncConstants.MIGRATION_SCHEMA_TARGET_COLUMNS_ADJUST_ENABLED);
+    }
+
+    @Override
     public boolean isSchemaMigrationAutoTriggerEnabled() {
         return getBooleanProperty(CommercedbsyncConstants.MIGRATION_SCHEMA_AUTOTRIGGER_ENABLED);
     }

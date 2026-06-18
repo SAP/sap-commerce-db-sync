@@ -68,10 +68,8 @@ public class CopyPipeWriterStrategy implements PipeWriterStrategy<DataSet> {
         final DataBaseProvider dbProvider = context.getMigrationContext().getDataTargetRepository()
                 .getDatabaseProvider();
         String targetTableName = item.getTargetItem();
-        String sourceTableName = item.getSourceItem()
-                + (item.getChunkData() != null ? item.getChunkData().getCurrentChunk() : "");
         PerformanceRecorder performanceRecorder = context.getPerformanceProfiler()
-                .createRecorder(PerformanceCategory.DB_WRITE, sourceTableName);
+                .createRecorder(PerformanceCategory.DB_WRITE, item);
         performanceRecorder.start();
         Set<String> excludedColumns = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (context.getMigrationContext().getExcludedColumns().containsKey(targetTableName)) {

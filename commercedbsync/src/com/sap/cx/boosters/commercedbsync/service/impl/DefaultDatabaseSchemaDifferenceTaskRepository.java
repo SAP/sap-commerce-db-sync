@@ -12,7 +12,6 @@ import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.context.SchemaDifferenceContext;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData;
-import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -34,7 +33,6 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
     private static final String SCHEMADIFFSTATUS = MIGRATION_TABLESPREFIX + "SCHEMADIFFSTATUS";
     private static final String SCHEMADIFFTASKS = MIGRATION_TABLESPREFIX + "SCHEMADIFFTASKS";
-    private static final String SCHEMADIFFS = MIGRATION_TABLESPREFIX + "SCHEMADIFFS";
 
     @Override
     public String getMostRecentSchemaDifferenceId(SchemaDifferenceContext context) {
@@ -79,57 +77,8 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
                 if (!rs.next()) {
                     throw new IllegalStateException("Unable to get schema difference status for given ID.");
                 }
-                SchemaDifferenceStatus status = convertToStatus(rs);
-                status.getDiffResult().setSource(getSchemaDifferenceResultData(context, "source"));
-                status.getDiffResult().setTarget(getSchemaDifferenceResultData(context, "target"));
-                return status;
+                return convertToStatus(rs);
             }
-        }
-    }
-
-    @Override
-    public SchemaDifferenceResultData getSchemaDifferenceResultData(SchemaDifferenceContext context,
-            String referenceDatabase) throws Exception {
-        String query = "SELECT missingTableLeftName, missingTableRightName, missingColumnName FROM %s WHERE schemaDifferenceId = ? AND referenceDatabase = ?"
-                .formatted(SCHEMADIFFS);
-        try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setObject(1, context.getSchemaDifferenceId());
-            stmt.setObject(2, referenceDatabase);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return convertToResult(rs);
-            }
-        }
-    }
-
-    @Override
-    public void saveSchemaDifference(SchemaDifferenceContext context,
-            DefaultDatabaseSchemaDifferenceService.SchemaDifference schemaDifference, String referenceDatabase)
-            throws Exception {
-        String insert = "INSERT INTO %s (schemaDifferenceId, referenceDatabase, missingTableLeftName, missingTableRightName, missingColumnName) VALUES (?, ?, ?, ?, ?)"
-                .formatted(SCHEMADIFFS);
-
-        List<String[]> data = new ArrayList<>();
-        schemaDifference.getMissingTables().forEach(missingTable -> {
-            data.add(new String[]{missingTable.getLeftName(), missingTable.getRightName(), StringUtils.EMPTY});
-        });
-
-        schemaDifference.getMissingColumnsInTable().asMap().forEach((tableKeyPair, columns) -> {
-            columns.forEach(column -> {
-                data.add(new String[]{tableKeyPair.getLeftName(), tableKeyPair.getRightName(), column});
-            });
-        });
-
-        try (Connection connection = getConnection(context);
-                PreparedStatement stmt = connection.prepareStatement(insert)) {
-            for (String[] result : data) {
-                stmt.setObject(1, context.getSchemaDifferenceId());
-                stmt.setObject(2, referenceDatabase);
-                stmt.setObject(3, result[0]);
-                stmt.setObject(4, result[1]);
-                stmt.setObject(5, result[2]);
-                stmt.addBatch();
-            }
-            stmt.executeBatch();
         }
     }
 
@@ -140,6 +89,19 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
 
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, sqlScript);
+            stmt.setObject(2, now());
+            stmt.setObject(3, context.getSchemaDifferenceId());
+            stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public void saveDifferencesJson(SchemaDifferenceContext context, String json) throws Exception {
+        String sql = "UPDATE %s SET diffJson = ?, lastUpdate = ? WHERE schemaDifferenceId = ?"
+                .formatted(SCHEMADIFFSTATUS);
+
+        try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setObject(1, json);
             stmt.setObject(2, now());
             stmt.setObject(3, context.getSchemaDifferenceId());
             stmt.executeUpdate();
@@ -224,43 +186,10 @@ public class DefaultDatabaseSchemaDifferenceTaskRepository implements DatabaseSc
         status.setFailed(rs.getInt("failed") > 0);
         status.setAborted(SchemaDifferenceProgress.ABORTED == status.getStatus());
         status.setDiffResult(new SchemaDifferenceResultContainerData());
-        final String sqlScript = rs.getString("sqlScript");
-        status.setSqlScript(sqlScript == null ? StringUtils.EMPTY : sqlScript);
+        status.setSqlScript(StringUtils.trimToEmpty(rs.getString("sqlScript")));
+        status.setDiffJson(StringUtils.trimToNull(rs.getString("diffJson")));
 
         return status;
-    }
-
-    /**
-     * @param rs
-     *            result set to convert
-     * @return the equivalent SchemaDifferenceResultData
-     * @throws Exception
-     */
-    private SchemaDifferenceResultData convertToResult(ResultSet rs) throws Exception {
-        SchemaDifferenceResultData resultData = new SchemaDifferenceResultData();
-
-        Map<DefaultDatabaseSchemaDifferenceService.TableKeyPair, String> map = new HashMap<>();
-        while (rs.next()) {
-            final DefaultDatabaseSchemaDifferenceService.TableKeyPair tableKeyPair = new DefaultDatabaseSchemaDifferenceService.TableKeyPair(
-                    rs.getString("missingTableLeftName"), rs.getString("missingTableRightName"));
-            final String missingColumnName = rs.getString("missingColumnName") == null
-                    ? StringUtils.EMPTY
-                    : rs.getString("missingColumnName");
-            map.merge(tableKeyPair, missingColumnName,
-                    (oldValue, newValue) -> String.join(MISSING_COLUMN_DELIMITER, oldValue, newValue));
-        }
-
-        String[][] results = new String[map.size()][3];
-        int count = 0;
-        for (Map.Entry<DefaultDatabaseSchemaDifferenceService.TableKeyPair, String> entry : map.entrySet()) {
-            results[count][0] = entry.getKey().getLeftName();
-            results[count][1] = entry.getKey().getRightName();
-            results[count][2] = entry.getValue();
-            count++;
-        }
-        resultData.setResults(results);
-
-        return resultData;
     }
 
     private LocalDateTime getDateTime(ResultSet rs, String column) throws Exception {

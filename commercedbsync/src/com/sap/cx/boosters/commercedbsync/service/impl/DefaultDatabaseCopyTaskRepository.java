@@ -47,6 +47,7 @@ import java.util.TimeZone;
 import java.util.function.Predicate;
 
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MIGRATION_TABLESPREFIX;
+import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.UNUSED_CLUSTER_ID;
 
 /**
  * Repository to manage the status on of the migration copy tasks across the
@@ -90,7 +91,15 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
 
     @Override
     public synchronized void resetMigration(CopyContext context) throws Exception {
-        String update = "UPDATE %s SET completed = total - failed, status = ?, failed = ?, lastUpdate = ? WHERE migrationId = ?"
+        String update = "UPDATE %s SET targetNodeId = ?, duration = NULL WHERE migrationId = ? AND sourceRowCount > 0 AND targetRowCount < sourceRowCount"
+                .formatted(TABLECOPYTASKS);
+        try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(update)) {
+            stmt.setObject(1, UNUSED_CLUSTER_ID);
+            stmt.setObject(2, context.getMigrationId());
+            stmt.executeUpdate();
+        }
+
+        update = "UPDATE %s SET completed = total - failed, status = ?, failed = ?, lastUpdate = ? WHERE migrationId = ?"
                 .formatted(TABLECOPYSTATUS);
         try (Connection conn = getConnection(context); PreparedStatement stmt = conn.prepareStatement(update)) {
             stmt.setObject(1, MigrationProgress.RUNNING.name());
@@ -205,8 +214,9 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     @Override
-    public synchronized void rescheduleTask(CopyContext context, String pipelineName, int targetNode) throws Exception {
-        String sql = "UPDATE %s SET failure = '0', duration = NULL, error = '', targetNodeId = ?, lastUpdate = ? WHERE migrationId = ? AND pipelineName = ? "
+    public synchronized boolean rescheduleTask(CopyContext context, String pipelineName, int targetNode)
+            throws Exception {
+        String sql = "UPDATE %s SET failure = '0', duration = NULL, error = '', targetNodeId = ?, lastUpdate = ? WHERE migrationId = ? AND pipelineName = ? AND targetNodeId = ?"
                 .formatted(TABLECOPYTASKS);
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -214,7 +224,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             setTimestamp(stmt, 2, now());
             stmt.setObject(3, context.getMigrationId());
             stmt.setObject(4, pipelineName);
-            stmt.executeUpdate();
+            stmt.setObject(5, UNUSED_CLUSTER_ID);
+            return stmt.executeUpdate() > 0;
         }
     }
 
@@ -358,8 +369,23 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         }
     }
 
+    @Override
+    public boolean hasPendingBatchesForPipeline(CopyContext context, CopyContext.DataCopyItem item, boolean partitioned)
+            throws Exception {
+        String sql = "SELECT COUNT(1) FROM %s WHERE migrationId = ? AND pipelineName = ?"
+                .formatted(partitioned ? TABLECOPYBATCHES_PART : TABLECOPYBATCHES);
+        try (Connection connection = getConnection(context);
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setObject(1, context.getMigrationId());
+            stmt.setObject(2, item.getPipelineName());
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
+
     private Timestamp now() {
-        Instant now = java.time.Instant.now();
+        Instant now = Instant.now();
         Timestamp ts = new Timestamp(now.toEpochMilli());
         return ts;
     }
@@ -413,12 +439,27 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     @Override
     public Set<DatabaseCopyTask> findPendingTasks(CopyContext context) throws Exception {
         final String orderBy = context.getMigrationContext().isTablesOrdered() ? "itemOrder" : "sourceRowCount";
-        String sql = "SELECT * FROM %s WHERE targetNodeId = ? AND migrationId = ? AND duration IS NULL ORDER BY %s"
+        String sql = "SELECT * FROM %s WHERE migrationId = ? AND targetNodeId = ? AND duration IS NULL ORDER BY %s"
                 .formatted(TABLECOPYTASKS, orderBy);
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setObject(1, getTargetNodeId());
-            stmt.setObject(2, context.getMigrationId());
+            stmt.setObject(1, context.getMigrationId());
+            stmt.setObject(2, getTargetNodeId());
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                return convertToTask(resultSet);
+            }
+        }
+    }
+
+    @Override
+    public Set<DatabaseCopyTask> findQueuedPendingTasks(CopyContext context) throws Exception {
+        final String orderBy = context.getMigrationContext().isTablesOrdered() ? "itemOrder" : "sourceRowCount";
+        String sql = "SELECT * FROM %s WHERE migrationId = ? AND targetNodeId = ? AND duration IS NULL ORDER BY %s"
+                .formatted(TABLECOPYTASKS, orderBy);
+        try (Connection connection = getConnection(context);
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setObject(1, context.getMigrationId());
+            stmt.setObject(2, UNUSED_CLUSTER_ID);
             try (ResultSet resultSet = stmt.executeQuery()) {
                 return convertToTask(resultSet);
             }
@@ -448,8 +489,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, itemCount);
             setTimestamp(stmt, 2, now());
-            stmt.setObject(3, getAvgPerformanceValue(context, PerformanceCategory.DB_WRITE, copyItem.getTargetItem()));
-            stmt.setObject(4, getAvgPerformanceValue(context, PerformanceCategory.DB_READ, copyItem.getSourceItem()));
+            stmt.setObject(3, getAvgPerformanceValue(context, PerformanceCategory.DB_WRITE, copyItem));
+            stmt.setObject(4, getAvgPerformanceValue(context, PerformanceCategory.DB_READ, copyItem));
             stmt.setObject(5, getTargetNodeId());
             stmt.setObject(6, context.getMigrationId());
             stmt.setObject(7, copyItem.getPipelineName());
@@ -468,7 +509,7 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
 
     @Override
     public synchronized void markTaskCompleted(final CopyContext context, final CopyContext.DataCopyItem copyItem,
-            final String duration, final float durationseconds) throws Exception {
+            final String duration, final float durationSeconds) throws Exception {
         Objects.requireNonNull(duration, "duration must not be null");
         // spotless:off
         String sql = "UPDATE %s SET duration = ?, lastUpdate = ?, avgWriterRowThroughput = ?, avgReaderRowThroughput = ?, durationInSeconds = ? WHERE targetNodeId = ? AND migrationId = ? AND pipelineName = ? AND duration IS NULL".formatted(TABLECOPYTASKS);
@@ -477,15 +518,30 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setObject(1, duration);
             setTimestamp(stmt, 2, now());
-            stmt.setObject(3, getAvgPerformanceValue(context, PerformanceCategory.DB_WRITE, copyItem.getTargetItem()));
-            stmt.setObject(4, getAvgPerformanceValue(context, PerformanceCategory.DB_READ, copyItem.getSourceItem()));
-            stmt.setFloat(5, durationseconds);
+            stmt.setObject(3, getAvgPerformanceValue(context, PerformanceCategory.DB_WRITE, copyItem));
+            stmt.setObject(4, getAvgPerformanceValue(context, PerformanceCategory.DB_READ, copyItem));
+            stmt.setFloat(5, durationSeconds);
             stmt.setObject(6, getTargetNodeId());
             stmt.setObject(7, context.getMigrationId());
             stmt.setObject(8, copyItem.getPipelineName());
             stmt.executeUpdate();
         }
         mutePerformanceRecorder(context, copyItem);
+    }
+
+    @Override
+    public int countQueuedTasks(CopyContext context) throws Exception {
+        // spotless:off
+        String sql = "SELECT COUNT(1) FROM %s WHERE migrationId = ? AND targetNodeId = ?".formatted(TABLECOPYTASKS);
+        // spotless:on
+        try (Connection connection = getConnection(context);
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setObject(1, context.getMigrationId());
+            stmt.setObject(2, UNUSED_CLUSTER_ID);
+            try (ResultSet resultSet = stmt.executeQuery()) {
+                return resultSet.next() ? resultSet.getInt(1) : -1;
+            }
+        }
     }
 
     @Override
@@ -513,12 +569,14 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     @Override
     public synchronized void markRemainingTasksAborted(CopyContext context) throws Exception {
         // spotless:off
-        String sql = "UPDATE %s SET failure = '1', duration = '-1', error = 'Aborted', lastUpdate = ? WHERE migrationId = ? AND duration IS NULL AND failure = '0'".formatted(TABLECOPYTASKS);
+        String sql = "UPDATE %s SET failure = '1', duration = '-1', targetNodeId = ?, error = 'Aborted', lastUpdate = ? WHERE migrationId = ? AND duration IS NULL AND failure = '0'"
+                .formatted(TABLECOPYTASKS);
         // spotless:on
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
-            setTimestamp(stmt, 1, now());
-            stmt.setObject(2, context.getMigrationId());
+            stmt.setObject(1, UNUSED_CLUSTER_ID);
+            setTimestamp(stmt, 2, now());
+            stmt.setObject(3, context.getMigrationId());
             stmt.executeUpdate();
         }
     }
@@ -668,8 +726,9 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
         return copyBatches;
     }
 
-    private double getAvgPerformanceValue(CopyContext context, PerformanceCategory category, String tableName) {
-        PerformanceRecorder recorder = context.getPerformanceProfiler().getRecorder(category, tableName);
+    private double getAvgPerformanceValue(CopyContext context, PerformanceCategory category,
+            CopyContext.DataCopyItem copyItem) {
+        PerformanceRecorder recorder = context.getPerformanceProfiler().getRecorder(category, copyItem);
         if (recorder != null) {
             PerformanceRecorder.PerformanceAggregation performanceAggregation = recorder.getRecords()
                     .get(PerformanceUnit.ROWS);
@@ -681,8 +740,8 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
     }
 
     private void mutePerformanceRecorder(CopyContext context, CopyContext.DataCopyItem copyItem) {
-        context.getPerformanceProfiler().muteRecorder(PerformanceCategory.DB_READ, copyItem.getSourceItem());
-        context.getPerformanceProfiler().muteRecorder(PerformanceCategory.DB_WRITE, copyItem.getTargetItem());
+        context.getPerformanceProfiler().muteRecorder(PerformanceCategory.DB_READ, copyItem);
+        context.getPerformanceProfiler().muteRecorder(PerformanceCategory.DB_WRITE, copyItem);
     }
 
 }

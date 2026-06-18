@@ -6,28 +6,29 @@
 
 package com.sap.cx.boosters.commercedbsync.scheduler.impl;
 
+import com.sap.cx.boosters.commercedbsync.MigrationProgress;
+import com.sap.cx.boosters.commercedbsync.MigrationStatus;
 import com.sap.cx.boosters.commercedbsync.adapter.DataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.adapter.impl.ContextualDataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
+import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.events.CopyCompleteEvent;
 import com.sap.cx.boosters.commercedbsync.events.CopyDatabaseTableEvent;
+import com.sap.cx.boosters.commercedbsync.events.NodeAvailabilityEvent;
 import com.sap.cx.boosters.commercedbsync.scheduler.ClusterTableSplittingStrategy;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseOperationSchedulerAlgorithm;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
 import de.hybris.platform.core.Registry;
 import de.hybris.platform.core.Tenant;
 import de.hybris.platform.jalo.JaloSession;
 import de.hybris.platform.servicelayer.event.EventService;
+import de.hybris.platform.servicelayer.event.impl.AbstractEventListener;
 import de.hybris.platform.util.Config;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import com.sap.cx.boosters.commercedbsync.MigrationProgress;
-import com.sap.cx.boosters.commercedbsync.MigrationStatus;
-import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
-import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTask;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -37,12 +38,19 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MDC_CLUSTERID;
 import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.MDC_PIPELINE;
+import static com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants.UNUSED_CLUSTER_ID;
 
 /**
  * Scheduler for Cluster Based Migrations
@@ -83,10 +91,9 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 CopyContext.DataCopyItem dataCopyItem = itemToSchedule.getLeft();
                 final long sourceRowCount = itemToSchedule.getRight();
                 if (sourceRowCount > 0) {
-                    final int destinationNodeId = databaseOperationSchedulerAlgorithm
-                            .next(dataCopyItem.getSourceItem());
+                    validateRequiredClusterNodePresence(dataCopyItem.getSourceItem());
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, ++itemOrder, sourceRowCount,
-                            destinationNodeId);
+                            UNUSED_CLUSTER_ID);
                 } else {
                     databaseCopyTaskRepository.scheduleTask(context, dataCopyItem, -1, sourceRowCount, ownNodeId);
                     databaseCopyTaskRepository.markTaskCompleted(context, dataCopyItem, "0");
@@ -98,9 +105,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 }
             }
             startMonitorThread(context);
-            final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(ownNodeId, context.getMigrationId(),
-                    context.getPropertyOverrideMap(), context.getMigrationContext().isReversed());
-            eventService.publishEvent(event);
+            publishClusterEvent(context);
         } else {
             throw new IllegalStateException(
                     "No matching tables found to be copied. Please review configuration and adjust inclusions/exclusions if necessary");
@@ -111,7 +116,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
     public void resumeUnfinishedItems(CopyContext copyContext) throws Exception {
         databaseOperationSchedulerAlgorithm.reset();
         Set<DatabaseCopyTask> failedTasks = databaseCopyTaskRepository.findFailedTasks(copyContext);
-        if (failedTasks.isEmpty()) {
+        if (failedTasks.isEmpty() && databaseCopyTaskRepository.countQueuedTasks(copyContext) == 0) {
             throw new IllegalStateException("No pending failed table copy tasks found to be resumed");
         }
 
@@ -120,15 +125,30 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         databaseOperationSchedulerAlgorithm.reset();
 
         for (DatabaseCopyTask failedTask : failedTasks) {
-            databaseCopyTaskRepository.rescheduleTask(copyContext, failedTask.getPipelinename(),
-                    databaseOperationSchedulerAlgorithm.next(failedTask.getSourcetablename()));
+            validateRequiredClusterNodePresence(failedTask.getSourcetablename());
+            databaseCopyTaskRepository.rescheduleTask(copyContext, failedTask.getPipelinename(), UNUSED_CLUSTER_ID);
         }
         databaseCopyTaskRepository.resetMigration(copyContext);
         startMonitorThread(copyContext);
+        publishClusterEvent(copyContext);
+    }
+
+    private void publishClusterEvent(CopyContext copyContext) {
+        publishClusterEvent(copyContext, UNUSED_CLUSTER_ID);
+    }
+
+    private void publishClusterEvent(CopyContext copyContext, int targetNodeId) {
+        // TODO prevent event flood
         final CopyDatabaseTableEvent event = new CopyDatabaseTableEvent(
-                databaseOperationSchedulerAlgorithm.getOwnNodeId(), copyContext.getMigrationId(),
+                databaseOperationSchedulerAlgorithm.getOwnNodeId(), targetNodeId, copyContext.getMigrationId(),
                 copyContext.getPropertyOverrideMap(), copyContext.getMigrationContext().isReversed());
         eventService.publishEvent(event);
+    }
+
+    private void validateRequiredClusterNodePresence(String tableName) {
+        if (databaseOperationSchedulerAlgorithm.getNodeIds(tableName).isEmpty()) {
+            throw new IllegalStateException("There are no available nodes in cluster to process table: " + tableName);
+        }
     }
 
     private void logMigrationContext(final MigrationContext context) {
@@ -221,6 +241,18 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 MigrationProgress.ABORTED);
     }
 
+    @Override
+    public void notifyAboutAvailability(CopyContext copyContext) {
+        if (!Registry.hasCurrentTenant()) {
+            Registry.activateMasterTenant();
+        }
+
+        final NodeAvailabilityEvent event = new NodeAvailabilityEvent(
+                databaseOperationSchedulerAlgorithm.getOwnNodeId(), copyContext.getMigrationId(),
+                copyContext.getMigrationContext().isReversed());
+        eventService.publishEvent(event);
+    }
+
     public void setDatabaseCopyTaskRepository(DatabaseCopyTaskRepository databaseCopyTaskRepository) {
         this.databaseCopyTaskRepository = databaseCopyTaskRepository;
     }
@@ -246,6 +278,8 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         private final Map<String, String> contextMap;
         private final Tenant tenant;
         private final JaloSession jaloSession;
+        private final NodeAvailabilityEventListener listener;
+
         private OffsetDateTime lastUpdate = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
         public MigrationMonitor(CopyContext context, JaloSession jaloSession) {
@@ -253,7 +287,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             this.contextMap = MDC.getCopyOfContextMap();
             this.jaloSession = jaloSession;
             this.tenant = jaloSession.getTenant();
-
+            this.listener = new NodeAvailabilityEventListener(context);
         }
 
         @Override
@@ -276,6 +310,8 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
          */
         private void pollState() throws Exception {
             MigrationStatus currentState;
+            int queuedTasks;
+
             do {
                 currentState = getCurrentState(context, lastUpdate);
                 lastUpdate = OffsetDateTime.now(ZoneOffset.UTC);
@@ -286,6 +322,16 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                 }
 
                 logState(currentState);
+
+                queuedTasks = databaseCopyTaskRepository.countQueuedTasks(context);
+
+                if (queuedTasks > 0) {
+                    LOG.info("Queued tasks left: {}", queuedTasks);
+                    publishClusterEvent(context);
+                } else {
+                    LOG.info("No unassigned tasks left in queue");
+                }
+
                 Duration elapsedTillLastUpdate = Duration
                         .between(currentState.getLastUpdate().toInstant(ZoneOffset.UTC), Instant.now());
                 int stalledTimeout = context.getMigrationContext().getStalledTimeout();
@@ -322,8 +368,7 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         private void logState(MigrationStatus status) {
             for (final DatabaseCopyTask copyTask : status.getStatusUpdates()) {
                 try (MDC.MDCCloseable ignore = MDC.putCloseable(MDC_PIPELINE, copyTask.getPipelinename());
-                        MDC.MDCCloseable ignore2 = MDC.putCloseable(MDC_CLUSTERID,
-                                String.valueOf(copyTask.getTargetnodeId()))) {
+                        MDC.MDCCloseable ignore2 = MDC.putCloseable(MDC_CLUSTERID, clusterIdToLabel(copyTask))) {
                     if (copyTask.isFailure()) {
                         LOG.error("{}/{} processed. FAILED in {{}}. Cause: {{}} Last Update: {{}}",
                                 copyTask.getTargetrowcount(), copyTask.getSourcerowcount(), copyTask.getDuration(),
@@ -353,7 +398,13 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
             }
         }
 
+        private String clusterIdToLabel(DatabaseCopyTask task) {
+            return task.getTargetnodeId() == UNUSED_CLUSTER_ID ? "UNASSIGNED" : String.valueOf(task.getTargetnodeId());
+        }
+
         protected void prepareThread() {
+            eventService.registerEventListener(listener);
+
             MDC.setContextMap(contextMap);
 
             // tenant
@@ -363,12 +414,29 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
         }
 
         protected void cleanupThread() {
+            eventService.unregisterEventListener(listener);
+
             MDC.clear();
 
             // jalo session
             JaloSession.deactivate();
             // tenant
             Registry.unsetCurrentTenant();
+        }
+    }
+
+    private class NodeAvailabilityEventListener extends AbstractEventListener<NodeAvailabilityEvent> {
+        private final CopyContext context;
+
+        private NodeAvailabilityEventListener(CopyContext context) {
+            this.context = context;
+        }
+
+        @Override
+        protected void onEvent(NodeAvailabilityEvent event) {
+            LOG.debug("Received availability event from node: {}", event.getSourceNodeId());
+
+            publishClusterEvent(context, event.getSourceNodeId());
         }
     }
 }

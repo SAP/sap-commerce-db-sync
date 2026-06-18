@@ -19,6 +19,7 @@ import com.sap.cx.boosters.commercedbsync.events.CopyCompleteEvent;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceProfiler;
 import com.sap.cx.boosters.commercedbsync.processors.MigrationPostProcessor;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationCopyService;
 
 import de.hybris.platform.servicelayer.event.impl.AbstractEventListener;
 import de.hybris.platform.tx.Transaction;
@@ -32,6 +33,7 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     private MigrationContext migrationContext;
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
+    private DatabaseMigrationCopyService databaseMigrationCopyService;
     private PerformanceProfiler performanceProfiler;
     private List<MigrationPostProcessor> postProcessors;
     private MigrationContext reverseMigrationContext;
@@ -47,6 +49,7 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
             final CopyContext copyContext = new CopyContext(migrationId,
                     event.isReversed() ? reverseMigrationContext : migrationContext, Set.of(), performanceProfiler);
 
+            databaseMigrationCopyService.notifyFinished(copyContext);
             executePostProcessors(copyContext);
         } else {
             LOG.warn("Post processors were not executed as migration was not marked as completed");
@@ -96,6 +99,10 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     public void setDatabaseCopyTaskRepository(final DatabaseCopyTaskRepository databaseCopyTaskRepository) {
         this.databaseCopyTaskRepository = databaseCopyTaskRepository;
+    }
+
+    public void setDatabaseMigrationCopyService(DatabaseMigrationCopyService databaseMigrationCopyService) {
+        this.databaseMigrationCopyService = databaseMigrationCopyService;
     }
 
     public void setMigrationContext(final MigrationContext migrationContext) {

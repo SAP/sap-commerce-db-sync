@@ -39,6 +39,8 @@ public interface MigrationContext {
 
     boolean isRemoveMissingColumnsToSchemaEnabled();
 
+    boolean isAdjustColumnTypesOnSchemaEnabled();
+
     boolean isSchemaMigrationAutoTriggerEnabled();
 
     int getReaderBatchSize();

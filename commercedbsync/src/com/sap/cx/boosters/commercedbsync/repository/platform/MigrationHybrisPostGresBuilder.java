@@ -10,10 +10,16 @@ import de.hybris.bootstrap.ddl.DatabaseSettings;
 import de.hybris.bootstrap.ddl.sql.HybrisPostgreSqlBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.Platform;
+import org.apache.ddlutils.alteration.ColumnChange;
 import org.apache.ddlutils.model.Column;
+import org.apache.ddlutils.model.Database;
+import org.apache.ddlutils.model.Table;
 import org.apache.ddlutils.model.TypeMap;
 
+import java.io.IOException;
 import java.sql.Types;
+import java.util.List;
+import java.util.Map;
 
 public class MigrationHybrisPostGresBuilder extends HybrisPostgreSqlBuilder {
 
@@ -66,4 +72,31 @@ public class MigrationHybrisPostGresBuilder extends HybrisPostgreSqlBuilder {
     public String getColumnName(final Column column) {
         return column.getName();
     }
+
+    @Override
+    public void processTableStructureChanges(Database currentModel, Database desiredModel, Table sourceTable,
+            Table targetTable, Map parameters, List changes) throws IOException {
+        super.processTableStructureChanges(currentModel, desiredModel, sourceTable, targetTable, parameters, changes);
+
+        for (Object change : changes) {
+            if (change instanceof ColumnChange columnChange) {
+                Column sourceColumn = columnChange.getChangedColumn();
+                Column targetColumn = targetTable.findColumn(sourceColumn.getName(),
+                        this.getPlatform().isDelimitedIdentifierModeOn());
+                this.processColumnChange(sourceTable, targetTable, targetColumn);
+            }
+        }
+    }
+
+    protected void processColumnChange(Table sourceTable, Table targetTable, Column targetColumn) throws IOException {
+        this.print("ALTER TABLE ");
+        this.printlnIdentifier(this.getTableName(sourceTable));
+        this.printIndent();
+        this.print("ALTER COLUMN ");
+        this.printIdentifier(this.getColumnName(targetColumn));
+        this.print(" TYPE ");
+        this.print(this.getSqlType(targetColumn));
+        this.printEndOfStatement();
+    }
+
 }

@@ -73,6 +73,7 @@
                                         <tr>
                                             <th>Missing Table</th>
                                             <th>Missing Column</th>
+                                            <th>Column Type Differences</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -86,6 +87,7 @@
                                         <tr>
                                             <th>Missing Table</th>
                                             <th>Missing Column</th>
+                                            <th>Column Type Differences</th>
                                         </tr>
                                     </thead>
                                     <tbody>

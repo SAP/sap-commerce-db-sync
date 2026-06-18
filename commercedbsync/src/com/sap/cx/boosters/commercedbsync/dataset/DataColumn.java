@@ -10,6 +10,10 @@ public interface DataColumn {
 
     String getColumnName();
 
+    default String getColumnNameLowerCase() {
+        return getColumnName().toLowerCase();
+    }
+
     int getColumnType();
 
     int getPrecision();

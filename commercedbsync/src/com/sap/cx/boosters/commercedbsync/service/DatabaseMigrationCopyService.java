@@ -15,4 +15,8 @@ public interface DatabaseMigrationCopyService {
 
     void copyAllAsync(CopyContext context);
 
+    int tasksInProcessing(CopyContext context);
+
+    void notifyFinished(CopyContext context);
+
 }

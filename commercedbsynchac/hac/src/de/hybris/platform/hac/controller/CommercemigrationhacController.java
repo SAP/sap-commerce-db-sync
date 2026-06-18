@@ -118,6 +118,8 @@ public class CommercemigrationhacController {
                 migrationContext.isAddMissingTablesToSchemaEnabled());
         schemaSettings.put(CommercedbsyncConstants.MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED,
                 migrationContext.isRemoveMissingColumnsToSchemaEnabled());
+        schemaSettings.put(CommercedbsyncConstants.MIGRATION_SCHEMA_TARGET_COLUMNS_ADJUST_ENABLED,
+                migrationContext.isAdjustColumnTypesOnSchemaEnabled());
         model.addAttribute("schemaSettings", schemaSettings);
         model.addAttribute("schemaMigrationDisabled", !migrationContext.isSchemaMigrationEnabled());
         model.addAttribute("schemaSqlForm", new SchemaSqlFormData());
@@ -407,6 +409,7 @@ public class CommercemigrationhacController {
         schemaDifferenceState.setEnd(null);
         schemaDifferenceState.setLastUpdateEpoch(convertToEpoch(schemaDifferenceState.getLastUpdate()));
         schemaDifferenceState.setLastUpdate(null);
+        schemaDifferenceState.setDiffJson(null);
     }
 
     private Long convertToEpoch(LocalDateTime time) {
@@ -555,16 +558,16 @@ public class CommercemigrationhacController {
         String databaseTimezone = context.getDataSourceRepository().getDatabaseTimezone();
 
         if (StringUtils.isEmpty(databaseTimezone)) {
-            LOG.info("Database timezone for source not available!");
+            LOG.warn("Database timezone for source not available!");
             return false;
         }
 
         TimeZone source = TimeZone.getTimeZone(databaseTimezone);
         if (TimeZone.getTimeZone("UTC").getRawOffset() == source.getRawOffset()) {
-            LOG.info("The timezone on source and target are the same!!");
+            LOG.debug("The timezone on source and target are the same");
             return true;
         }
-        LOG.info("The timezone on source and target are different!!");
+        LOG.warn("The timezone on source and target are different!");
         return false;
     }
 }

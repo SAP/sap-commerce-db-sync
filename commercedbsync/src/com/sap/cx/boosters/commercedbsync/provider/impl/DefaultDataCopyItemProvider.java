@@ -106,17 +106,15 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
                     .anyMatch(t -> StringUtils.startsWithIgnoreCase(tableName, t));
         }
         if (isTypesystemTable) {
-
             final String additionalSuffix = getAdditionalSuffix(tableName, repository.getDatabaseProvider());
             final String tableNameWithoutAdditionalSuffix = getTableNameWithoutAdditionalSuffix(tableName,
                     additionalSuffix);
             final String typeSystemSuffix = repository.getDataSourceConfiguration().getTypeSystemSuffix();
-            LOG.debug("$$TS table name=" + tableName + ",additionalSuffix=" + additionalSuffix
-                    + ", tableNameWithoutAdditionalSuffix=" + tableNameWithoutAdditionalSuffix + ",typeSystemSuffix="
-                    + typeSystemSuffix);
-            LOG.debug("$$TS check="
-                    + !StringUtils.endsWithIgnoreCase(tableNameWithoutAdditionalSuffix, typeSystemSuffix));
-            return !StringUtils.endsWithIgnoreCase(tableNameWithoutAdditionalSuffix, typeSystemSuffix);
+            boolean check = !StringUtils.endsWithIgnoreCase(tableNameWithoutAdditionalSuffix, typeSystemSuffix);
+            LOG.debug(
+                    "$$TS table name={}, additionalSuffix={}, tableNameWithoutAdditionalSuffix={}, typeSystemSuffix={}, check={}",
+                    tableName, additionalSuffix, tableNameWithoutAdditionalSuffix, typeSystemSuffix, check);
+            return check;
         }
         return false;
     }
@@ -125,7 +123,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
             throws Exception {
         final Set<String> allTableNames = repository.getAllTableNames();
 
-        LOG.debug("$$ALL TABLES...getTableCandidates " + allTableNames);
+        LOG.debug("$$ALL TABLES - table candidates: {}", allTableNames);
         final Set<TableCandidate> tableCandidates = new TreeSet<>(tableCandidateComparator);
         final String tablePrefix = StringUtils.trimToEmpty(repository.getDataSourceConfiguration().getTablePrefix());
 
@@ -150,7 +148,7 @@ public class DefaultDataCopyItemProvider implements CopyItemProvider {
             final TableCandidate lpTable = createTableCandidate(repository, t.getTableName() + LP_SUFFIX, tablePrefix);
 
             if (allTableNames.stream().anyMatch(lpTable.getFullTableName()::equalsIgnoreCase)) {
-                LOG.debug("LP table Match... " + lpTable.getFullTableName());
+                LOG.debug("LP table match: {}", lpTable.getFullTableName());
                 tableCandidates.add(lpTable);
             }
 
