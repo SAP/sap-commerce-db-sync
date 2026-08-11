@@ -504,15 +504,16 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
 
     public void markTaskCompleted(final CopyContext context, final CopyContext.DataCopyItem copyItem,
             final String duration) throws Exception {
-        markTaskCompleted(context, copyItem, duration, 0);
+        markTaskCompleted(context, copyItem, duration, 0, 0);
     }
 
     @Override
     public synchronized void markTaskCompleted(final CopyContext context, final CopyContext.DataCopyItem copyItem,
-            final String duration, final float durationSeconds) throws Exception {
+            final String duration, final float durationSeconds, final long targetRowCount) throws Exception {
         Objects.requireNonNull(duration, "duration must not be null");
         // spotless:off
-        String sql = "UPDATE %s SET duration = ?, lastUpdate = ?, avgWriterRowThroughput = ?, avgReaderRowThroughput = ?, durationInSeconds = ? WHERE targetNodeId = ? AND migrationId = ? AND pipelineName = ? AND duration IS NULL".formatted(TABLECOPYTASKS);
+        String sql = ("UPDATE %s SET duration = ?, lastUpdate = ?, avgWriterRowThroughput = ?, avgReaderRowThroughput = ?, durationInSeconds = ?, targetRowCount = ? " +
+                "WHERE targetNodeId = ? AND migrationId = ? AND pipelineName = ? AND duration IS NULL").formatted(TABLECOPYTASKS);
         // spotless:on
         try (Connection connection = getConnection(context);
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -521,9 +522,10 @@ public class DefaultDatabaseCopyTaskRepository implements DatabaseCopyTaskReposi
             stmt.setObject(3, getAvgPerformanceValue(context, PerformanceCategory.DB_WRITE, copyItem));
             stmt.setObject(4, getAvgPerformanceValue(context, PerformanceCategory.DB_READ, copyItem));
             stmt.setFloat(5, durationSeconds);
-            stmt.setObject(6, getTargetNodeId());
-            stmt.setObject(7, context.getMigrationId());
-            stmt.setObject(8, copyItem.getPipelineName());
+            stmt.setLong(6, targetRowCount);
+            stmt.setObject(7, getTargetNodeId());
+            stmt.setObject(8, context.getMigrationId());
+            stmt.setObject(9, copyItem.getPipelineName());
             stmt.executeUpdate();
         }
         mutePerformanceRecorder(context, copyItem);

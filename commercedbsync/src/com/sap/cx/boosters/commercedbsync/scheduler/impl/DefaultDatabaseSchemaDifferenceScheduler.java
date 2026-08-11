@@ -18,13 +18,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 
+import java.sql.Connection;
+
 public class DefaultDatabaseSchemaDifferenceScheduler implements DatabaseSchemaDifferenceScheduler {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultDatabaseSchemaDifferenceScheduler.class);
 
     private DatabaseSchemaDifferenceTaskRepository databaseSchemaDifferenceTaskRepository;
 
-    private void prepare(final MigrationContext context) {
+    private void prepare(final MigrationContext context) throws Exception {
         final DataRepository repository = context.getDataRepository();
         final DataBaseProvider databaseProvider = repository.getDatabaseProvider();
         final ClassPathResource scriptResource = new ClassPathResource(
@@ -32,10 +34,19 @@ public class DefaultDatabaseSchemaDifferenceScheduler implements DatabaseSchemaD
 
         if (!scriptResource.exists()) {
             throw new IllegalStateException(
-                    "Scheduler tables creation script for database " + databaseProvider + " not found!");
+                    "Schema adjuster tables creation script for database " + databaseProvider + " not found!");
         }
 
-        repository.runSqlScript(scriptResource);
+        try (Connection connection = repository.getConnection()) {
+            boolean readOnly = connection.isReadOnly();
+
+            connection.setReadOnly(false);
+            repository.runSqlScript(scriptResource);
+
+            if (readOnly) {
+                connection.setReadOnly(true);
+            }
+        }
     }
 
     @Override

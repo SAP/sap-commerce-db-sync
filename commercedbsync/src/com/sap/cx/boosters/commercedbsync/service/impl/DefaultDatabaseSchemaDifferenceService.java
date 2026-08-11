@@ -253,6 +253,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                         migrationContext.getDataTargetRepository().getDataSourceConfiguration().getCatalog());
                 tableClone
                         .setSchema(migrationContext.getDataTargetRepository().getDataSourceConfiguration().getSchema());
+                migrationContext.getDataTargetRepository().adjustTableInSchema(tableClone);
                 database.addTable(tableClone);
                 LOG.info(
                         "getDatabaseModelWithChanges4TableCreation - missingTable.rightName = {}, missingTable.leftName = {}",

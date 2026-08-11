@@ -376,6 +376,12 @@ public class CustomClusterDatabaseCopyScheduler implements DatabaseCopyScheduler
                     } else if (copyTask.isCompleted()) {
                         LOG.info("{}/{} processed. Completed in {{}}. Last Update: {{}}", copyTask.getTargetrowcount(),
                                 copyTask.getSourcerowcount(), copyTask.getDuration(), copyTask.getLastUpdate());
+
+                        if (copyTask.getSourcerowcount() != copyTask.getTargetrowcount()) {
+                            LOG.warn(
+                                    "Pipeline marked as processed and completed but rows count on target different than expected (source: {}, target: {})",
+                                    copyTask.getSourcerowcount(), copyTask.getTargetrowcount());
+                        }
                     } else {
                         LOG.debug("{}/{} processed. Last Update: {{}}", copyTask.getTargetrowcount(),
                                 copyTask.getSourcerowcount(), copyTask.getLastUpdate());

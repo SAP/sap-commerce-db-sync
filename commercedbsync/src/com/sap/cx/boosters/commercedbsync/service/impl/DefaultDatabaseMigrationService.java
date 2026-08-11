@@ -7,6 +7,7 @@
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Set;
@@ -68,11 +69,17 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
             throw new IllegalStateException(
                     "Scheduler tables creation script for database " + databaseProvider + " not found!");
         }
-        // we cannot set "read-only" now...
-        repository.getConnection().setReadOnly(false);
-        repository.runSqlScript(scriptResource);
-        // we can reset to read-only now...
-        repository.getConnection().setReadOnly(true);
+
+        try (Connection connection = repository.getConnection()) {
+            boolean readOnly = connection.isReadOnly();
+
+            connection.setReadOnly(false);
+            repository.runSqlScript(scriptResource);
+
+            if (readOnly) {
+                connection.setReadOnly(true);
+            }
+        }
 
         databaseMigrationDataTypeMapperService.beforeMigration(context);
     }

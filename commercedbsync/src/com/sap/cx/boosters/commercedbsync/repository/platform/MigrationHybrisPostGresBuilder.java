@@ -6,6 +6,7 @@
 
 package com.sap.cx.boosters.commercedbsync.repository.platform;
 
+import de.hybris.bootstrap.ddl.DDLGeneratorUtils;
 import de.hybris.bootstrap.ddl.DatabaseSettings;
 import de.hybris.bootstrap.ddl.sql.HybrisPostgreSqlBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -13,6 +14,7 @@ import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.alteration.ColumnChange;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
+import org.apache.ddlutils.model.Index;
 import org.apache.ddlutils.model.Table;
 import org.apache.ddlutils.model.TypeMap;
 
@@ -22,9 +24,11 @@ import java.util.List;
 import java.util.Map;
 
 public class MigrationHybrisPostGresBuilder extends HybrisPostgreSqlBuilder {
+    private final DatabaseSettings databaseSettings;
 
     public MigrationHybrisPostGresBuilder(Platform platform, DatabaseSettings databaseSettings) {
         super(platform, databaseSettings);
+        this.databaseSettings = databaseSettings;
     }
 
     @Override
@@ -71,6 +75,11 @@ public class MigrationHybrisPostGresBuilder extends HybrisPostgreSqlBuilder {
     @Override
     public String getColumnName(final Column column) {
         return column.getName();
+    }
+
+    @Override
+    public String getIndexName(Index index) {
+        return DDLGeneratorUtils.getIndexName(index, this, this.databaseSettings, true);
     }
 
     @Override

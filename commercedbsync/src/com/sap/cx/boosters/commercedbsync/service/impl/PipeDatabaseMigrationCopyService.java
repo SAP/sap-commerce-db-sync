@@ -7,6 +7,8 @@
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import com.google.common.base.Stopwatch;
+import com.sap.cx.boosters.commercedbsync.adapter.DataRepositoryAdapter;
+import com.sap.cx.boosters.commercedbsync.adapter.impl.ContextualDataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
@@ -201,7 +203,25 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
     private void silentlyUpdateCompletedState(final CopyContext context, final CopyContext.DataCopyItem item,
             final String duration, final float durationSeconds) {
         try {
-            databaseCopyTaskRepository.markTaskCompleted(context, item, duration, durationSeconds);
+            final long rowCount;
+
+            if (item.getChunkData() == null && item.getRowCount() > 0) {
+                DataRepositoryAdapter adapter = new ContextualDataRepositoryAdapter(
+                        context.getMigrationContext().getDataTargetRepository());
+                LOG.debug("Counting rows in table: {} (validate completion)", item.getTargetItem());
+
+                rowCount = adapter.getRowCount(context.getMigrationContext(), item.getTargetItem());
+
+                if (rowCount != item.getRowCount()) {
+                    LOG.warn("Rows count for target table: {} is different than expected (source: {}, target: {})",
+                            item.getTargetItem(), item.getRowCount(), rowCount);
+                }
+            } else {
+                // cannot verify single chunk, against entire table
+                rowCount = item.getRowCount();
+            }
+
+            databaseCopyTaskRepository.markTaskCompleted(context, item, duration, durationSeconds, rowCount);
         } catch (final Exception e) {
             LOG.error("Failed to update copy status", e);
         }

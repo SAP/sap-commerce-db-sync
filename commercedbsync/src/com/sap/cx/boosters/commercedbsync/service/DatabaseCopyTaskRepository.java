@@ -210,8 +210,8 @@ public interface DatabaseCopyTaskRepository {
      * @param duration
      * @throws Exception
      */
-    void markTaskCompleted(CopyContext context, DataCopyItem copyItem, String duration, float durationseconds)
-            throws Exception;
+    void markTaskCompleted(CopyContext context, DataCopyItem copyItem, String duration, float durationseconds,
+            long targetRowCount) throws Exception;
 
     /**
      * Returns the number of tasks currently in queued state for the given

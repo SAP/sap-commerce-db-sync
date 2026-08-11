@@ -16,6 +16,7 @@ import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.TypeSystemTable;
+import org.apache.ddlutils.model.Table;
 import org.springframework.core.io.Resource;
 
 import javax.sql.DataSource;
@@ -122,4 +123,7 @@ public interface DataRepository {
     List<String> getPartitions(String table) throws SQLException;
 
     long getRowCount(String table, String currentPartition) throws Exception;
+
+    default void adjustTableInSchema(Table table) {
+    }
 }

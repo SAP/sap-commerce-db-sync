@@ -339,7 +339,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     throw new IllegalStateException(
                             "Corrupt dataset retrieved. Dataset should have information about unique columns");
                 }
-                return uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0)))
+                return uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.getFirst()))
                         .collect(Collectors.toCollection(LinkedHashSet::new));
             }
             return Set.of();
