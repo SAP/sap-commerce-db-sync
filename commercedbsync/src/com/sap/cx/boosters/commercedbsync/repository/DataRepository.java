@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -16,6 +16,7 @@ import com.sap.cx.boosters.commercedbsync.MarkersQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.OffsetQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.SeekQueryDefinition;
 import com.sap.cx.boosters.commercedbsync.TypeSystemTable;
+import org.apache.ddlutils.model.Table;
 import org.springframework.core.io.Resource;
 
 import javax.sql.DataSource;
@@ -40,7 +41,7 @@ public interface DataRepository {
 
     Set<String> getAllViewNames() throws SQLException;
 
-    Set<TypeSystemTable> getAllTypeSystemTables() throws Exception;
+    Set<TypeSystemTable> getAllTypeSystemTables(Set<String> allTableNames) throws Exception;
 
     boolean isAuditTable(String table) throws Exception;
 
@@ -122,4 +123,7 @@ public interface DataRepository {
     List<String> getPartitions(String table) throws SQLException;
 
     long getRowCount(String table, String currentPartition) throws Exception;
+
+    default void adjustTableInSchema(Table table) {
+    }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -9,13 +9,17 @@ package com.sap.cx.boosters.commercedbsync.scheduler.impl;
 import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
 import com.sap.cx.boosters.commercedbsync.scheduler.ClusterTableSplittingStrategy;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class DefaultClusterTableSplittingStrategy implements ClusterTableSplittingStrategy {
-    private static final long DEFAULT_ROW_THRESHOLD = 100000; // Fallback threshold
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultClusterTableSplittingStrategy.class);
 
     protected final MigrationContext migrationContext;
 
@@ -26,15 +30,20 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
     @Override
     public List<Pair<CopyContext.DataCopyItem, Long>> split(CopyContext.DataCopyItem item, Long rowCount,
             int numNodes) {
+        if (numNodes <= 0) {
+            throw new IllegalStateException(
+                    "No available nodes to perform split for pipeline: " + item.getPipelineName());
+        }
+
         List<Pair<CopyContext.DataCopyItem, Long>> virtualItems = new ArrayList<>();
         // doesn't matter if chunking is enabled - we need cluster as well
-        Long chunkSize = migrationContext.getClusterChunkSize(item.getTargetItem());
+        Long chunkSize = migrationContext.getClusterChunkSize(item.getSourceItem());
         // global/table chunk size is set (> 0) and there are cluster nodes
         boolean chunkingEnabled = chunkSize > 0 && numNodes > 1;
         // Determine the optimal split size dynamically based on row count and number of
         // nodes
         long splitSize = Math.max(chunkSize,
-                (int) Math.ceil(rowCount / numNodes / item.getBatchSize()) * item.getBatchSize());
+                (long) Math.ceil((double) rowCount / numNodes / item.getBatchSize()) * item.getBatchSize());
 
         // Handle not chunking, empty tables (rowCount == 0) or rowCounts extending
         // splitSize
@@ -43,6 +52,13 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
             virtualItems.add(Pair.of(item, rowCount));
             return virtualItems;
         }
+
+        // warn about potential misconfiguration
+        Optional.ofNullable(migrationContext.getClusterNodeGroup(item.getSourceItem())).filter(StringUtils::isNotEmpty)
+                .ifPresent(nodeGroup -> LOG.warn(
+                        "Table '{}' is configured to be migrated in chunks, however it's also assigned to fixed node group"
+                                + " ({}). This setup may not be what was intended and can even cause performance degradation",
+                        item.getSourceItem(), nodeGroup));
 
         int fullSplits = (int) (rowCount / splitSize);
         long remainingRows = rowCount % splitSize;
@@ -60,6 +76,16 @@ public class DefaultClusterTableSplittingStrategy implements ClusterTableSplitti
                     new CopyContext.DataCopyItem.ChunkData(fullSplits, splitSize));
             virtualItems.add(Pair.of(virtualItem, remainingRows));
         }
+
+        long totalRows = virtualItems.stream().mapToLong(Pair::getValue).sum();
+
+        if (totalRows != rowCount) {
+            throw new IllegalStateException("Split failed with unexpected number of total rows: %d expected: %d"
+                    .formatted(totalRows, rowCount));
+        }
+
+        LOG.debug("Table '{}' will be migrated in {} chunks, each of {} rows", item.getSourceItem(),
+                virtualItems.size(), splitSize);
 
         return virtualItems;
     }

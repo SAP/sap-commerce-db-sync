@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -11,9 +11,9 @@ import java.util.List;
 public interface DatabaseOperationSchedulerAlgorithm {
     int getOwnNodeId();
 
-    List<Integer> getNodeIds();
+    List<Integer> getNodeIds(String tableName);
 
-    int next();
+    int next(String tableName);
 
     void reset();
 }

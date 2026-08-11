@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -20,6 +20,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_SCHEMA_TARGET_TABLES_REMOVE_ENABLED = "migration.schema.target.tables.remove.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADD_ENABLED = "migration.schema.target.columns.add.enabled";
     public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_REMOVE_ENABLED = "migration.schema.target.columns.remove.enabled";
+    public static final String MIGRATION_SCHEMA_TARGET_COLUMNS_ADJUST_ENABLED = "migration.schema.target.columns.adjust.enabled";
     public static final String MIGRATION_TARGET_MAX_STAGE_MIGRATIONS = "migration.ds.target.db.max.stage.migrations";
     public static final String MIGRATION_DATA_SYNCHRONIZATION_ENABLED = "migration.data.synchronization.enabled";
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE = "migration.internal.tables.storage";
@@ -29,6 +30,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_READER_BATCHSIZE_FOR_TABLE = "migration.data.reader.batchsize.{table}";
     public static final String MIGRATION_CLUSTER_CHUNK_SIZE = "migration.cluster.chunk.size";
     public static final String MIGRATION_CLUSTER_CHUNK_SIZE_FOR_TABLE = "migration.cluster.chunk.size.{table}";
+    public static final String MIGRATION_CLUSTER_NODE_GROUP = "migration.cluster.node.group";
+    public static final String MIGRATION_CLUSTER_NODE_GROUP_FOR_TABLE = "migration.cluster.node.group.{table}";
     public static final String MIGRATION_DATA_TRUNCATE_ENABLED = "migration.data.truncate.enabled";
     public static final String MIGRATION_DATA_TRUNCATE_EXCLUDED = "migration.data.truncate.excluded";
     public static final String MIGRATION_DATA_WORKERS_READER_MAXTASKS = "migration.data.workers.reader.maxtasks";
@@ -55,6 +58,7 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_DATA_INCREMENTAL_TIMESTAMP = "migration.data.incremental.timestamp";
     public static final String MIGRATION_DATA_PIPE_TIMEOUT = "migration.data.pipe.timeout";
     public static final String MIGRATION_DATA_PIPE_CAPACITY = "migration.data.pipe.capacity";
+    public static final String MIGRATION_DATA_ADJUST_TIMESTAMPS_TO_UTC = "migration.data.adjust.timestamps.to.utc";
     public static final String MIGRATION_STALLED_TIMEOUT = "migration.stalled.timeout";
     public static final String MIGRATION_FILE_STORAGE_CONNECTIONSTRING = "migration.data.report.connectionstring";
     public static final String MIGRATION_DATATYPE_CHECK = "migration.datatype.check";
@@ -70,6 +74,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
     public static final String MIGRATION_PROFILING_MEMORY_MIN = "migration.memory.min";
     public static final String MIGRATION_PROFILING_MEMORY_ATTEMPTS = "migration.memory.attempts";
     public static final String MIGRATION_PROFILING_MEMORY_WAIT = "migration.memory.wait";
+    public static final String MIGRATION_FIXED_ROWS_FOR_TABLE = "migration.fixed.rows.count.{table}";
+    public static final String MIGRATION_ADDITIONAL_CONDITION_FOR_TABLE = "migration.additional.condition.{table}";
 
     public static final String MIGRATION_DATA_READTASK_KEEPALIVE_SECONDS = "migration.data.readtask.keepaliveseconds";
     public static final String MIGRATION_DATA_READTASK_QUEUE_CAPACITY = "migration.data.readtask.queuecapacity";
@@ -120,6 +126,8 @@ public final class CommercedbsyncConstants extends GeneratedCommercedbsyncConsta
 
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE_TARGET = "target";
     public static final String MIGRATION_INTERNAL_TABLES_STORAGE_SOURCE = "source";
+
+    public static final int UNUSED_CLUSTER_ID = -1;
 
     private CommercedbsyncConstants() {
         // empty to avoid instantiating this constant class

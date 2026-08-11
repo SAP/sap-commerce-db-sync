@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -12,6 +12,13 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+import com.google.gson.JsonSyntaxException;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceProgress;
 import com.sap.cx.boosters.commercedbsync.SchemaDifferenceStatus;
 import com.sap.cx.boosters.commercedbsync.TableCandidate;
@@ -26,6 +33,8 @@ import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseSchemaDifferenceSche
 import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationReportStorageService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceService;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseSchemaDifferenceTaskRepository;
+import de.hybris.platform.commercedbsynchac.data.DifferenceItemData;
+import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultContainerData;
 import de.hybris.platform.commercedbsynchac.data.SchemaDifferenceResultData;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +42,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.ddlutils.Platform;
 import org.apache.ddlutils.model.Column;
 import org.apache.ddlutils.model.Database;
+import org.apache.ddlutils.model.Index;
 import org.apache.ddlutils.model.Table;
 import org.apache.ddlutils.platform.SqlBuilder;
 import org.slf4j.Logger;
@@ -44,8 +54,11 @@ import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CancellationException;
@@ -64,6 +77,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     private DatabaseSchemaDifferenceScheduler databaseSchemaDifferenceScheduler;
     private MDCTaskDecorator mdcTaskDecorator;
     private final List<CompletableFuture<?>> schemaDiffTasks = new ArrayList<>();
+    private final Gson gson = new GsonBuilder()
+            .registerTypeHierarchyAdapter(ListMultimap.class, new ListMultimapAdapter()).create();
 
     @Override
     public String generateSchemaDifferencesSql(MigrationContext context,
@@ -73,16 +88,15 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         String schemaSql = "";
         if (stagingPrefixes.size() > maxStageMigrations) {
             final Database databaseModelWithChanges = getDatabaseModelWithChanges4TableDrop(context);
-            LOG.info("generateSchemaDifferencesSql..getDatabaseModelWithChanges4TableDrop.. - calibrating changes ");
+            LOG.info("generateSchemaDifferencesSql - DDL SQLs for DROP - calibrating changes");
             schemaSql = context.getDataTargetRepository().asPlatform().getDropTablesSql(databaseModelWithChanges, true);
             LOG.info("generateSchemaDifferencesSql - generated DDL SQLs for DROP. ");
         } else {
-            LOG.info(
-                    "generateSchemaDifferencesSql..getDatabaseModelWithChanges4TableCreation - calibrating Schema changes ");
+            LOG.info("generateSchemaDifferencesSql - DDL SQLs for CREATE/ALTER - calibrating changes");
             final DatabaseStatus databaseModelWithChanges = getDatabaseModelWithChanges4TableCreation(context,
                     schemaDifferenceResult);
             if (databaseModelWithChanges.isHasSchemaDiff()) {
-                LOG.info("generateSchemaDifferencesSql..Schema Diff found - now to generate the SQLs ");
+                LOG.info("generateSchemaDifferencesSql - Schema Diff found - generate SQLs for adjustment");
 
                 schemaSql = processChanges(context, schemaDifferenceResult.getTargetSchema().getDatabase(),
                         databaseModelWithChanges.getDatabase());
@@ -206,9 +220,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         final Database database = context.getDataTargetRepository().asDatabase(true);
         // clear tables and add only the ones to be removed
         final Table[] tables = database.getTables();
-        Stream.of(tables).forEach(t -> {
-            database.removeTable(t);
-        });
+        Stream.of(tables).forEach(database::removeTable);
         duplicateTables.forEach(t -> {
             final Table table = ObjectUtils.defaultIfNull(database.findTable(t), new Table());
             table.setName(t);
@@ -235,15 +247,17 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             final List<TableKeyPair> missingTables = targetDiff.getMissingTables();
             for (final TableKeyPair missingTable : missingTables) {
                 final Table tableClone = (Table) differenceResult.getSourceSchema().getDatabase()
-                        .findTable(missingTable.getLeftName(), false).clone();
-                tableClone.setName(missingTable.getRightName());
+                        .findTable(missingTable.leftName(), false).clone();
+                tableClone.setName(missingTable.rightName());
                 tableClone.setCatalog(
                         migrationContext.getDataTargetRepository().getDataSourceConfiguration().getCatalog());
                 tableClone
                         .setSchema(migrationContext.getDataTargetRepository().getDataSourceConfiguration().getSchema());
+                migrationContext.getDataTargetRepository().adjustTableInSchema(tableClone);
                 database.addTable(tableClone);
-                LOG.info("getDatabaseModelWithChanges4TableCreation - missingTable.getRightName() ="
-                        + missingTable.getRightName() + ", missingTable.getLeftName() = " + missingTable.getLeftName());
+                LOG.info(
+                        "getDatabaseModelWithChanges4TableCreation - missingTable.rightName = {}, missingTable.leftName = {}",
+                        missingTable.rightName(), missingTable.leftName());
             }
         }
 
@@ -254,14 +268,14 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                 final List<String> columns = missingColumnsInTable.get(missingColumnsTable);
                 for (final String missingColumn : columns) {
                     final Table missingColumnsTableModel = differenceResult.getSourceSchema().getDatabase()
-                            .findTable(missingColumnsTable.getLeftName(), false);
+                            .findTable(missingColumnsTable.leftName(), false);
                     final Column columnClone = (Column) missingColumnsTableModel.findColumn(missingColumn, false)
                             .clone();
-                    LOG.info(" Column " + columnClone.getName() + ", Type = " + columnClone.getType() + ", Type Code "
-                            + columnClone.getTypeCode() + ",size " + columnClone.getSize() + ", size as int "
-                            + columnClone.getSizeAsInt());
+                    LOG.info("Column: {}, type: {}, type code: {}, size: {}, size as int: {}", columnClone.getName(),
+                            columnClone.getType(), columnClone.getTypeCode(), columnClone.getSize(),
+                            columnClone.getSizeAsInt());
                     // columnClone.set
-                    final Table table = database.findTable(missingColumnsTable.getRightName(), false);
+                    final Table table = database.findTable(missingColumnsTable.rightName(), false);
                     Preconditions.checkState(table != null, "Data inconsistency: Table must exist.");
                     table.addColumn(columnClone);
                 }
@@ -273,10 +287,11 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             final SchemaDifference sourceDiff = differenceResult.getSourceSchema();
             final List<TableKeyPair> missingTables = sourceDiff.getMissingTables();
             for (final TableKeyPair missingTable : missingTables) {
-                final Table table = database.findTable(missingTable.getLeftName(), false);
+                final Table table = database.findTable(missingTable.leftName(), false);
                 database.removeTable(table);
-                LOG.info("getDatabaseModelWithChanges4TableCreation - missingTable.getRightName() ="
-                        + missingTable.getRightName() + ", missingTable.getLeftName() = " + missingTable.getLeftName());
+                LOG.info(
+                        "getDatabaseModelWithChanges4TableCreation - missingTable.rightName = {}, missingTable.leftName() = {}",
+                        missingTable.rightName(), missingTable.leftName());
             }
         }
 
@@ -287,19 +302,35 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             for (final TableKeyPair superfluousColumnsTable : superfluousColumnsInTable.keySet()) {
                 final List<String> columns = superfluousColumnsInTable.get(superfluousColumnsTable);
                 for (final String superfluousColumn : columns) {
-                    final Table table = database.findTable(superfluousColumnsTable.getLeftName(), false);
+                    final Table table = database.findTable(superfluousColumnsTable.leftName(), false);
                     Preconditions.checkState(table != null, "Data inconsistency: Table must exist.");
                     final Column columnToBeRemoved = table.findColumn(superfluousColumn, false);
                     // remove indices in case column is part of one
                     Stream.of(table.getIndices()).filter(i -> i.hasColumn(columnToBeRemoved))
-                            .forEach(i -> table.removeIndex(i));
+                            .forEach(table::removeIndex);
                     table.removeColumn(columnToBeRemoved);
                 }
             }
         }
+
+        // adjust column types differences
+        if (migrationContext.isAdjustColumnTypesOnSchemaEnabled()) {
+            final ListMultimap<TableKeyPair, ColumnTypePair> columnsDifferences = differenceResult.getSourceSchema()
+                    .getColumnsDifferencesInTable();
+            for (final TableKeyPair differentColumnsTable : columnsDifferences.keySet()) {
+                final List<ColumnTypePair> columns = columnsDifferences.get(differentColumnsTable);
+                for (final ColumnTypePair columnTypes : columns) {
+                    final Table table = database.findTable(differentColumnsTable.leftName(), false);
+                    Preconditions.checkState(table != null, "Data inconsistency: Table must exist.");
+                    final Column columnToBeAdjusted = table.findColumn(columnTypes.name(), false);
+                    columnToBeAdjusted.setSize(columnTypes.rightSize());
+                }
+            }
+        }
+
         dbStatus.setDatabase(database);
         dbStatus.setHasSchemaDiff(true);
-        LOG.info("getDatabaseModelWithChanges4TableCreation Schema Diff found -  done ");
+        LOG.info("getDatabaseModelWithChanges4TableCreation Schema Diff found - done");
         return dbStatus;
     }
 
@@ -314,7 +345,18 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         database.setIdMethod(model.getIdMethod());
         database.setVersion(model.getVersion());
         for (final Table table : model.getTables()) {
-            database.addTable((Table) table.clone());
+            Table clonedTable = (Table) table.clone();
+            Column[] columns = clonedTable.getColumns();
+            Index[] indices = clonedTable.getIndices();
+            Stream.of(columns).forEach(clonedTable::removeColumn);
+            Stream.of(indices).forEach(clonedTable::removeIndex);
+            for (Column column : columns) {
+                clonedTable.addColumn((Column) column.clone());
+            }
+            for (Index index : indices) {
+                clonedTable.addIndex((Index) index.clone());
+            }
+            database.addTable(clonedTable);
         }
 
         return database;
@@ -333,12 +375,18 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     @Override
     public SchemaDifferenceResult getSchemaDifferenceFromStatus(final MigrationContext migrationContext,
             final SchemaDifferenceStatus schemaDifferenceStatus) {
-        final SchemaDifference sourceSchemaDifference = getSchemaDifferenceFromResult(
-                migrationContext.getDataSourceRepository(), schemaDifferenceStatus.getDiffResult().getSource());
-        final SchemaDifference targetSchemaDifference = getSchemaDifferenceFromResult(
-                migrationContext.getDataTargetRepository(), schemaDifferenceStatus.getDiffResult().getTarget());
+        if (StringUtils.isEmpty(schemaDifferenceStatus.getDiffJson())) {
+            if (schemaDifferenceStatus.isCompleted()) {
+                LOG.warn("Missing differences detection result JSON");
+            }
+            return null;
+        }
 
-        return new SchemaDifferenceResult(sourceSchemaDifference, targetSchemaDifference);
+        try {
+            return gson.fromJson(schemaDifferenceStatus.getDiffJson(), SchemaDifferenceResult.class);
+        } catch (JsonSyntaxException e) {
+            throw new IllegalStateException("Failed to parse differences JSON result", e);
+        }
     }
 
     @Override
@@ -365,8 +413,8 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                 ? migrationContext.getDataSourceRepository()
                 : migrationContext.getDataTargetRepository();
 
-        LOG.info("computing SCHEMA diff, REF DB = " + leftRepository.getDatabaseProvider().getDbName()
-                + " vs Checking in DB = " + rightRepository.getDatabaseProvider().getDbName());
+        LOG.info("Computing SCHEMA diff, REF DB = {} vs Checking in DB = {}",
+                leftRepository.getDatabaseProvider().getDbName(), rightRepository.getDatabaseProvider().getDbName());
 
         return useTargetAsRefDatabase
                 ? computeDiff(migrationContext, leftRepository, rightRepository, targetTableCandidates,
@@ -378,8 +426,63 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     @Override
     public SchemaDifferenceStatus getSchemaDifferenceStatusById(final String schemaDifferenceId,
             final MigrationContext migrationContext) throws Exception {
-        return taskRepository
+        final SchemaDifferenceStatus status = taskRepository
                 .getSchemaDifferenceStatus(new SchemaDifferenceContext(schemaDifferenceId, migrationContext));
+
+        final SchemaDifferenceResult differenceResult = getSchemaDifferenceFromStatus(migrationContext, status);
+
+        if (differenceResult != null) {
+            final SchemaDifferenceResultContainerData diffResult = new SchemaDifferenceResultContainerData();
+
+            diffResult.setSource(extractDifferences(differenceResult.getSourceSchema()));
+            diffResult.setTarget(extractDifferences(differenceResult.getTargetSchema()));
+
+            status.setDiffResult(diffResult);
+        }
+
+        return status;
+    }
+
+    private SchemaDifferenceResultData extractDifferences(SchemaDifference differences) {
+        final List<DifferenceItemData> diffs = new ArrayList<>();
+
+        differences.getMissingTables().stream().map(this::forTableKey).peek(diff -> diff.setTableMissing(true))
+                .forEach(diffs::add);
+
+        differences.getMissingColumnsInTable().entries().forEach(mc -> {
+            DifferenceItemData diff = forTableKey(mc.getKey());
+
+            diff.setColumn(mc.getValue());
+            diff.setColumnMissing(true);
+
+            diffs.add(diff);
+        });
+
+        differences.getColumnsDifferencesInTable().entries().forEach(mc -> {
+            DifferenceItemData diff = forTableKey(mc.getKey());
+            ColumnTypePair columnTypes = mc.getValue();
+
+            diff.setColumn(columnTypes.name());
+            diff.setLeftType("%s(%s)".formatted(columnTypes.leftType(), columnTypes.leftSize()));
+            diff.setRightType("%s(%s)".formatted(columnTypes.rightType(), columnTypes.rightSize()));
+
+            diffs.add(diff);
+        });
+
+        final SchemaDifferenceResultData data = new SchemaDifferenceResultData();
+
+        data.setDifferences(Collections.unmodifiableList(diffs));
+
+        return data;
+    }
+
+    private DifferenceItemData forTableKey(TableKeyPair key) {
+        DifferenceItemData diff = new DifferenceItemData();
+
+        diff.setLeftName(key.leftName());
+        diff.setRightName(key.rightName());
+
+        return diff;
     }
 
     @Override
@@ -471,13 +574,11 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                 throw new CancellationException("Aborted - previous task failed!");
             }
 
-            final Stopwatch timer = Stopwatch.createStarted();
             try (MDC.MDCCloseable ignored = MDC.putCloseable(CommercedbsyncConstants.MDC_PIPELINE, pipelinename)) {
+                final Stopwatch timer = Stopwatch.createStarted();
                 final SchemaDifferenceResult schemaDifferenceResult = createSchemaDifferenceResult(
                         context.getMigrationContext());
                 LOG.info("Diff finished. Differences detected: {}", schemaDifferenceResult.hasDifferences());
-                taskRepository.saveSchemaDifference(context, schemaDifferenceResult.getSourceSchema(), "source");
-                taskRepository.saveSchemaDifference(context, schemaDifferenceResult.getTargetSchema(), "target");
                 final Stopwatch endStop = timer.stop();
                 silentlyUpdateCompletedState(context, pipelinename, endStop.toString(), endStop.elapsed().getSeconds(),
                         null);
@@ -505,6 +606,7 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
                 final Stopwatch timer = Stopwatch.createStarted();
                 final String sqlScript = generateSchemaDifferencesSql(context.getMigrationContext(), diffResult);
                 taskRepository.saveSqlScript(context, sqlScript);
+                taskRepository.saveDifferencesJson(context, gson.toJson(diffResult));
                 final Stopwatch endStop = timer.stop();
                 silentlyUpdateCompletedState(context, pipelinename, endStop.toString(), endStop.elapsed().getSeconds(),
                         null);
@@ -552,7 +654,16 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
 
     private String startSchemaDifferenceCheck(final MigrationContext migrationContext, final boolean waitForFinish)
             throws Exception {
-        final SchemaDifferenceStatus lastSchema = getMostRecentSchemaDifference(migrationContext);
+        SchemaDifferenceStatus lastSchema = null;
+
+        try {
+            lastSchema = getMostRecentSchemaDifference(migrationContext);
+        } catch (Exception e) {
+            LOG.warn(
+                    "Failed to fetch last schema difference check status (it's fine if internal tables needs to be readjusted)",
+                    e);
+        }
+
         if (lastSchema != null && lastSchema.getStatus() == SchemaDifferenceProgress.RUNNING) {
             LOG.debug("Found already running schema diff with ID: {}", lastSchema.getSchemaDifferenceId());
             return lastSchema.getSchemaDifferenceId();
@@ -575,31 +686,6 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         return schemaDifferenceContext.getSchemaDifferenceId();
     }
 
-    private SchemaDifference getSchemaDifferenceFromResult(final DataRepository dataRepository,
-            final SchemaDifferenceResultData schemaDifferenceResultData) {
-        SchemaDifference schemaDifference = new SchemaDifference(dataRepository.asDatabase(),
-                dataRepository.getDataSourceConfiguration().getTablePrefix());
-
-        for (String[] result : schemaDifferenceResultData.getResults()) {
-            final TableKeyPair tableKeyPair = new TableKeyPair(result[0], result[1]);
-
-            if (StringUtils.isNotEmpty(result[2])) {
-                for (String missingColumn : result[2].split(taskRepository.MISSING_COLUMN_DELIMITER)) {
-                    schemaDifference.getMissingColumnsInTable().put(tableKeyPair, missingColumn);
-                }
-            } else {
-                schemaDifference.missingTables.add(tableKeyPair);
-            }
-        }
-
-        return schemaDifference;
-    }
-
-    protected String getSchemaDifferencesAsJson(final SchemaDifferenceResult schemaDifferenceResult) {
-        final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        return gson.toJson(schemaDifferenceResult);
-    }
-
     protected SchemaDifference computeDiff(final MigrationContext context, final DataRepository leftRepository,
             final DataRepository rightRepository, final Set<TableCandidate> leftCandidates,
             final Set<TableCandidate> rightCandidates) throws CloneNotSupportedException {
@@ -607,51 +693,112 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         preProcessDatabaseModel(context, database, rightCandidates);
         final SchemaDifference schemaDifference = new SchemaDifference(database,
                 rightRepository.getDataSourceConfiguration().getTablePrefix());
-        LOG.info("LEFT Repo = " + leftRepository.getDatabaseProvider().getDbName());
-        LOG.info("RIGHT Repo = " + rightRepository.getDatabaseProvider().getDbName());
+        LOG.info("LEFT Repo = {}", leftRepository.getDatabaseProvider().getDbName());
+        LOG.info("RIGHT Repo = {}", rightRepository.getDatabaseProvider().getDbName());
 
         if (LOG.isDebugEnabled()) {
             try {
-                LOG.debug(" All tables in LEFT Repo " + leftRepository.getAllTableNames());
-                LOG.debug(" All tables in RIGHT Repo " + rightRepository.getAllTableNames());
+                LOG.debug("All tables in LEFT Repo {}", leftRepository.getAllTableNames());
+                LOG.debug("All tables in RIGHT Repo {}", rightRepository.getAllTableNames());
             } catch (final Exception e) {
-                LOG.error("Cannot fetch all Table Names" + e);
+                LOG.error("Cannot fetch all table names", e);
             }
         }
 
         // LOG.info(" -------------------------------");
         for (final TableCandidate leftCandidate : leftCandidates) {
-            LOG.info(" Checking if Left Table exists --> " + leftCandidate.getFullTableName());
+            LOG.info("Checking if Left Table exists: {}", leftCandidate.getFullTableName());
             final Table leftTable = leftRepository.asDatabase().findTable(leftCandidate.getFullTableName(), false);
             if (leftTable == null) {
-                LOG.error(String.format("Table %s in DB %s cannot be found, but should exist",
-                        leftCandidate.getFullTableName(),
-                        leftRepository.getDataSourceConfiguration().getConnectionString()));
+                LOG.error("Table {} in DB {} cannot be found, but should exist", leftCandidate.getFullTableName(),
+                        leftRepository.getDataSourceConfiguration().getConnectionString());
                 continue;
-
-                // throw new RuntimeException(String.format("Table %s in DB %s
-                // cannot be found, but should exists",
-                // leftCandidate.getFullTableName(),
-                // leftRepository.getDataSourceConfiguration().getConnectionString()));
             }
             final String rightTableName = translateTableName(leftRepository, rightRepository, leftCandidate);
             final Table rightTable = rightRepository.asDatabase().findTable(rightTableName, false);
             if (rightTable == null) {
                 schemaDifference.getMissingTables().add(new TableKeyPair(leftTable.getName(), rightTableName));
-                LOG.info("MISSING Table !! --> " + leftTable.getName() + " searched for " + rightTableName);
+                LOG.info("MISSING table: {} searched for: {}", leftTable.getName(), rightTableName);
             } else {
-                // LOG.info(" FOUND Table --> " + rightTable.getName());
                 final Column[] leftTableColumns = leftTable.getColumns();
-                for (final Column leftTableColumn : leftTableColumns) {
-                    if (rightTable.findColumn(leftTableColumn.getName(), false) == null) {
-                        LOG.info("Missing column --> " + leftTableColumn.getName() + " -->" + leftTable.getName());
-                        schemaDifference.getMissingColumnsInTable().put(
-                                new TableKeyPair(leftTable.getName(), rightTable.getName()), leftTableColumn.getName());
+                for (final Column leftColumn : leftTableColumns) {
+                    Column rightColumn = rightTable.findColumn(leftColumn.getName(), false);
+                    if (rightColumn == null) {
+                        LOG.info("MISSING column: {} in table: {}", leftColumn.getName(), leftTable.getName());
+                        schemaDifference.getMissingColumnsInTable()
+                                .put(new TableKeyPair(leftTable.getName(), rightTable.getName()), leftColumn.getName());
+                    } else if (isTextLike(leftColumn) && isTextLike(rightColumn)) {
+                        if (isTextSizeDifference(leftColumn, rightColumn)
+                                || leftColumn.getScale() != rightColumn.getScale()) {
+                            LOG.info("Column difference: {} in table: {} (LEFT {} vs RIGHT {}", leftColumn.getName(),
+                                    leftTable.getName(), leftColumn.toVerboseString(), rightColumn.toVerboseString());
+                            schemaDifference.getColumnsDifferencesInTable()
+                                    .put(new TableKeyPair(leftTable.getName(), rightTable.getName()),
+                                            new ColumnTypePair(leftColumn.getName(), leftColumn.getType(),
+                                                    leftColumn.getSize(), rightColumn.getType(),
+                                                    rightColumn.getSize()));
+                        }
                     }
                 }
             }
         }
         return schemaDifference;
+    }
+
+    // Anything at or above this is treated as "unbounded" — covers MySQL LONGTEXT
+    // (2147483647), MSSQL NVARCHAR(MAX) (1073741823), Oracle LONG, etc.
+    private static final long UNBOUNDED_THRESHOLD = 1_000_000_000L;
+
+    private static long textCapacity(Column col) {
+        // 1) Type-code path: if JDBC type itself is "large object", unbounded.
+        switch (col.getTypeCode()) {
+            case Types.CLOB :
+            case Types.NCLOB :
+            case Types.LONGVARCHAR :
+            case Types.LONGNVARCHAR :
+                return Long.MAX_VALUE;
+            default :
+                // fall through to size inspection
+        }
+
+        // 2) DDLUtils may report size as null / empty / 0 for unbounded types
+        // (PG TEXT, Oracle CLOB, HANA CLOB/NCLOB/TEXT)
+        final String sizeStr = col.getSize();
+        if (StringUtils.isBlank(sizeStr)) {
+            return Long.MAX_VALUE;
+        }
+
+        final long size;
+        try {
+            size = Long.parseLong(sizeStr.trim());
+        } catch (NumberFormatException e) {
+            // e.g. "MAX" on MSSQL if surfaced verbatim
+            return Long.MAX_VALUE;
+        }
+
+        if (size <= 0 || size >= UNBOUNDED_THRESHOLD) {
+            return Long.MAX_VALUE;
+        }
+        return size;
+    }
+
+    private static boolean isTextLike(Column col) {
+        if (col.isOfTextType()) {
+            return true;
+        }
+        return switch (col.getTypeCode()) {
+            case Types.NCHAR, Types.NVARCHAR, Types.LONGNVARCHAR, Types.NCLOB -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean isTextSizeDifference(Column left, Column right) {
+        long leftCap = textCapacity(left);
+        long rightCap = textCapacity(right);
+        if (leftCap == Long.MAX_VALUE && rightCap == Long.MAX_VALUE) {
+            return false; // both unbounded — equivalent
+        }
+        return leftCap != rightCap;
     }
 
     private String translateTableName(final DataRepository leftRepository, final DataRepository rightRepository,
@@ -726,16 +873,18 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         }
 
         public boolean hasDifferences() {
-            final boolean hasMissingTargetTables = getTargetSchema().getMissingTables().size() > 0;
-            final boolean hasMissingColumnsInTargetTable = getTargetSchema().getMissingColumnsInTable().size() > 0;
-            final boolean hasMissingSourceTables = getSourceSchema().getMissingTables().size() > 0;
-            final boolean hasMissingColumnsInSourceTable = getSourceSchema().getMissingColumnsInTable().size() > 0;
+            final boolean hasMissingTargetTables = !getTargetSchema().getMissingTables().isEmpty();
+            final boolean hasMissingColumnsInTargetTable = !getTargetSchema().getMissingColumnsInTable().isEmpty();
+            final boolean hasMissingSourceTables = !getSourceSchema().getMissingTables().isEmpty();
+            final boolean hasMissingColumnsInSourceTable = !getSourceSchema().getMissingColumnsInTable().isEmpty();
+            final boolean hasColumnsDifferencesInSource = !getSourceSchema().getColumnsDifferencesInTable().isEmpty();
+            final boolean hasColumnsDifferencesInTarget = !getTargetSchema().getColumnsDifferencesInTable().isEmpty();
             return hasMissingTargetTables || hasMissingColumnsInTargetTable || hasMissingSourceTables
-                    || hasMissingColumnsInSourceTable;
+                    || hasMissingColumnsInSourceTable || hasColumnsDifferencesInSource || hasColumnsDifferencesInTarget;
         }
     }
 
-    class DatabaseStatus {
+    public static class DatabaseStatus {
         private Database database;
 
         /**
@@ -772,17 +921,16 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
     }
 
     public static class SchemaDifference {
-
-        private final Database database;
-        private final String prefix;
+        private transient Database database;
+        private final String prefix; // TODO for removal?
 
         private final List<TableKeyPair> missingTables = new ArrayList<>();
         private final ListMultimap<TableKeyPair, String> missingColumnsInTable = ArrayListMultimap.create();
+        private final ListMultimap<TableKeyPair, ColumnTypePair> columnsDifferencesInTable = ArrayListMultimap.create();
 
         public SchemaDifference(final Database database, final String prefix) {
             this.database = database;
             this.prefix = prefix;
-
         }
 
         public Database getDatabase() {
@@ -800,25 +948,13 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
         public ListMultimap<TableKeyPair, String> getMissingColumnsInTable() {
             return missingColumnsInTable;
         }
+
+        public ListMultimap<TableKeyPair, ColumnTypePair> getColumnsDifferencesInTable() {
+            return columnsDifferencesInTable;
+        }
     }
 
-    public static class TableKeyPair {
-        private final String leftName;
-        private final String rightName;
-
-        public TableKeyPair(final String leftName, final String rightName) {
-            this.leftName = leftName;
-            this.rightName = rightName;
-        }
-
-        public String getLeftName() {
-            return leftName;
-        }
-
-        public String getRightName() {
-            return rightName;
-        }
-
+    public record TableKeyPair(String leftName, String rightName) {
         @Override
         public boolean equals(final Object o) {
             if (this == o) {
@@ -830,11 +966,42 @@ public class DefaultDatabaseSchemaDifferenceService implements DatabaseSchemaDif
             final TableKeyPair that = (TableKeyPair) o;
             return leftName.equals(that.leftName) && rightName.equals(that.rightName);
         }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(leftName, rightName);
-        }
     }
 
+    public record ColumnTypePair(String name, String leftType, String leftSize, String rightType, String rightSize) {
+    }
+
+    private static class ListMultimapAdapter
+            implements
+                JsonSerializer<ListMultimap<?, ?>>,
+                JsonDeserializer<ListMultimap<?, ?>> {
+
+        @Override
+        public JsonElement serialize(ListMultimap<?, ?> src, Type typeOfSrc, JsonSerializationContext ctx) {
+            // Serialize as an array of [key, value] pairs to preserve complex (record) keys
+            JsonArray arr = new JsonArray();
+            src.entries().forEach(e -> {
+                JsonArray pair = new JsonArray();
+                pair.add(ctx.serialize(e.getKey()));
+                pair.add(ctx.serialize(e.getValue()));
+                arr.add(pair);
+            });
+            return arr;
+        }
+
+        @Override
+        public ListMultimap<?, ?> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext ctx) {
+            Type[] typeArgs = ((ParameterizedType) typeOfT).getActualTypeArguments();
+            Type keyType = typeArgs[0];
+            Type valueType = typeArgs[1];
+            ListMultimap<Object, Object> result = ArrayListMultimap.create();
+            for (JsonElement el : json.getAsJsonArray()) {
+                JsonArray pair = el.getAsJsonArray();
+                Object k = ctx.deserialize(pair.get(0), keyType);
+                Object v = ctx.deserialize(pair.get(1), valueType);
+                result.put(k, v);
+            }
+            return result;
+        }
+    }
 }

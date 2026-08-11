@@ -1,11 +1,12 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.concurrent.impl;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.sap.cx.boosters.commercedbsync.adapter.DataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.adapter.impl.ContextualDataRepositoryAdapter;
@@ -101,10 +102,6 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         return pipe;
     }
 
-    private static String getRecorderName(CopyContext.DataCopyItem copyItem, boolean chunkedTable) {
-        return copyItem.getSourceItem() + (chunkedTable ? copyItem.getChunkData().getCurrentChunk() : "");
-    }
-
     private void scheduleWorkers(CopyContext context, DataWorkerExecutor<Boolean> workerExecutor,
             DataPipe<DataSet> pipe, CopyContext.DataCopyItem copyItem) throws Exception {
         DataRepositoryAdapter dataRepositoryAdapter = new ContextualDataRepositoryAdapter(
@@ -115,13 +112,15 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         boolean chunkedTable = copyItem.getChunkData() != null;
         try {
             PerformanceRecorder recorder = context.getPerformanceProfiler().createRecorder(PerformanceCategory.DB_READ,
-                    getRecorderName(copyItem, chunkedTable));
+                    copyItem);
             recorder.start();
 
             PipeTaskContext pipeTaskContext = new PipeTaskContext(context, pipe, table, dataRepositoryAdapter,
                     batchSize, recorder, taskRepository);
 
+            Set<String> batchColumns = Set.of();
             String batchColumn = "";
+
             // help.sap.com/viewer/d0224eca81e249cb821f2cdf45a82ace/LATEST/en-US/08a27931a21441b59094c8a6aa2a880e.html
             final Set<String> allColumnNames = context.getMigrationContext().getDataSourceRepository()
                     .getAllColumnNames(table);
@@ -130,18 +129,30 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
             } else if (allColumnNames.contains("ID")
                     && context.getMigrationContext().getDataSourceRepository().isAuditTable(table)) {
                 batchColumn = "ID";
+            } else {
+                batchColumns = getBatchColumns(context, table);
+
+                if (batchColumns.size() == 1) {
+                    batchColumn = batchColumns.iterator().next();
+
+                    if (!allColumnNames.contains(batchColumn)) {
+                        LOG.warn("Invalid batch column '{}' provided for table '{}'", batchColumn,
+                                copyItem.getSourceItem());
+                        batchColumn = "";
+                    }
+                }
             }
+
             LOG.debug("Using batchColumn: {}", batchColumn.isEmpty() ? "NONE" : batchColumn);
 
             if (batchColumn.isEmpty()) {
                 // trying offset queries with unique index columns
-                Set<String> batchColumns = getBatchColumns(context, table);
                 if (!batchColumns.isEmpty()) {
                     taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.OFFSET.toString());
                     taskRepository.updateTaskKeyColumns(context, copyItem, batchColumns);
 
                     List<Pair<Long, Long>> batches;
-                    if (context.getMigrationContext().isSchedulerResumeEnabled()) {
+                    if (isPipelineResumePossible(context, copyItem)) {
                         Set<DatabaseCopyBatch> pendingBatchesForPipeline = taskRepository
                                 .findPendingBatchesForPipeline(context, copyItem);
                         batches = pendingBatchesForPipeline.stream()
@@ -186,7 +197,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                 taskRepository.updateTaskCopyMethod(context, copyItem, DataCopyMethod.SEEK.toString());
                 taskRepository.updateTaskKeyColumns(context, copyItem, Lists.newArrayList(batchColumn));
                 List<List<Object>> batchMarkersList;
-                if (context.getMigrationContext().isSchedulerResumeEnabled()) {
+                if (isPipelineResumePossible(context, copyItem)) {
                     if (context.getMigrationContext().getPartitionedTables().contains(table)) {
                         LOG.debug("Resuming partitioned table {}", table);
                         final var partitions = dataRepositoryAdapter.getPartitions(table);
@@ -240,6 +251,16 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         }
     }
 
+    private boolean isPipelineResumePossible(CopyContext context, CopyContext.DataCopyItem copyItem) throws Exception {
+        if (!context.getMigrationContext().isSchedulerResumeEnabled()) {
+            return false;
+        }
+
+        boolean partitioned = context.getMigrationContext().getPartitionedTables().contains(copyItem.getSourceItem());
+
+        return taskRepository.hasPendingBatchesForPipeline(context, copyItem, partitioned);
+    }
+
     private static boolean isCurrentChunkBatch(CopyContext.DataCopyItem copyItem, boolean chunkedTable, int i) {
         boolean processBatch = true;
         if (chunkedTable) {
@@ -259,9 +280,14 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
         queryDefinition.setBatchSize(batchSize);
         queryDefinition.setDeletionEnabled(context.getMigrationContext().isDeletionEnabled());
         queryDefinition.setLpTableEnabled(context.getMigrationContext().isLpTableMigrationEnabled());
+        LOG.debug("Fetching batch markers for table: {} - batch size: {}, batch column: {}", table, batchSize,
+                batchColumn);
+        final Stopwatch timer = Stopwatch.createStarted();
         DataSet batchMarkers = dataRepositoryAdapter.getBatchMarkersOrderedByColumn(context.getMigrationContext(),
                 queryDefinition);
         List<List<Object>> batchMarkersList = batchMarkers.getAllResults();
+        LOG.debug("Fetched batch markers for table: {} - count: {}, duration: {}", table, batchMarkersList.size(),
+                timer.stop());
         if (batchMarkersList.isEmpty()) {
             throw new RuntimeException("Could not retrieve batch values for table " + table);
         }
@@ -281,8 +307,8 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     nextBatchMarkerRow = Optional.of(batchMarkersList.get(nextIndex));
                 }
                 if (!CollectionUtils.isEmpty(lastBatchMarkerRow)) {
-                    Object lastBatchValue = lastBatchMarkerRow.get(0);
-                    Object nextValue = nextBatchMarkerRow.map(v -> v.get(0)).orElseGet(() -> null);
+                    Object lastBatchValue = lastBatchMarkerRow.getFirst();
+                    Object nextValue = nextBatchMarkerRow.map(List::getFirst).orElseGet(() -> null);
                     // check if nextValue is null and allow Pair(value, null) only if it is last
                     // chunk
                     Pair<Object, Object> batchMarkersPair = Pair.of(lastBatchValue, nextValue);
@@ -313,7 +339,7 @@ public class DefaultDataPipeFactory implements DataPipeFactory<DataSet> {
                     throw new IllegalStateException(
                             "Corrupt dataset retrieved. Dataset should have information about unique columns");
                 }
-                return uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.get(0)))
+                return uniqueColumns.getAllResults().stream().map(row -> String.valueOf(row.getFirst()))
                         .collect(Collectors.toCollection(LinkedHashSet::new));
             }
             return Set.of();

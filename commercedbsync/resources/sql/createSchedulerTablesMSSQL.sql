@@ -2,31 +2,31 @@
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYTASKS;
 
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS (
-    targetnodeId int NOT NULL,
+    targetNodeId int NOT NULL,
     migrationId NVARCHAR(255) NOT NULL,
-    pipelinename NVARCHAR(255) NOT NULL,
-    itemorder int NOT NULL DEFAULT 0,
-    sourcetablename NVARCHAR(255) NOT NULL,
-    targettablename NVARCHAR(255) NOT NULL,
-    columnmap NVARCHAR(MAX) NULL,
+    pipelineName NVARCHAR(255) NOT NULL,
+    itemOrder int NOT NULL DEFAULT 0,
+    sourceTableName NVARCHAR(255) NOT NULL,
+    targetTableName NVARCHAR(255) NOT NULL,
+    columnMap NVARCHAR(MAX) NULL,
     duration NVARCHAR (255) NULL,
-    sourcerowcount bigint NOT NULL DEFAULT 0,
-    targetrowcount bigint NOT NULL DEFAULT 0,
+    sourceRowCount bigint NOT NULL DEFAULT 0,
+    targetRowCount bigint NOT NULL DEFAULT 0,
     failure char(1) NOT NULL DEFAULT '0',
     error NVARCHAR(MAX) NULL,
     published char(1) NOT NULL DEFAULT '0',
     truncated char(1) NOT NULL DEFAULT '0',
-    lastupdate DATETIME2 NOT NULL DEFAULT '0001-01-01 00:00:00',
-    avgwriterrowthroughput numeric(10,2) NULL DEFAULT 0,
-    avgreaderrowthroughput numeric(10,2) NULL DEFAULT 0,
-    copymethod NVARCHAR(255) NULL,
-    keycolumns NVARCHAR(255) NULL,
-    durationinseconds numeric(10,2) NULL DEFAULT 0,
-    batchsize int NOT NULL DEFAULT 1000,
+    lastUpdate DATETIME2 NOT NULL DEFAULT '0001-01-01 00:00:00',
+    avgWriterRowThroughput numeric(10,2) NULL DEFAULT 0,
+    avgReaderRowThroughput numeric(10,2) NULL DEFAULT 0,
+    copyMethod NVARCHAR(255) NULL,
+    keyColumns NVARCHAR(255) NULL,
+    durationInSeconds numeric(10,2) NULL DEFAULT 0,
+    batchSize int NOT NULL DEFAULT 1000,
     chunked char(1) NOT NULL DEFAULT '0',
-    chunknumber int,
-    chunksize BIGINT,
-    PRIMARY KEY (migrationid, targetnodeid, pipelinename)
+    chunkNumber int,
+    chunkSize BIGINT,
+    PRIMARY KEY (migrationId, targetNodeId, pipelineName)
 );
 
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES;
@@ -34,10 +34,10 @@ DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES;
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES (
     migrationId NVARCHAR(255) NOT NULL,
     batchId int NOT NULL DEFAULT 0,
-    pipelinename NVARCHAR(255) NOT NULL,
+    pipelineName NVARCHAR(255) NOT NULL,
     lowerBoundary NVARCHAR(255) NOT NULL,
     upperBoundary NVARCHAR(255) NULL,
-    PRIMARY KEY (migrationid, batchId, pipelinename)
+    PRIMARY KEY (migrationId, batchId, pipelineName)
 );
 
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART;
@@ -45,11 +45,11 @@ DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART;
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART (
                                                    migrationId NVARCHAR(255) NOT NULL,
                                                    batchId int NOT NULL DEFAULT 0,
-                                                   pipelinename NVARCHAR(255) NOT NULL,
+                                                   pipelineName NVARCHAR(255) NOT NULL,
                                                    lowerBoundary NVARCHAR(255) NOT NULL,
                                                    upperBoundary NVARCHAR(255) NULL,
                                                    partKey VARCHAR(128) NOT NULL,
-                                                   PRIMARY KEY (migrationid, batchId, pipelinename, partKey)
+                                                   PRIMARY KEY (migrationId, batchId, pipelineName, partKey)
 );
 
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYSTATUS;
@@ -63,7 +63,7 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYSTATUS (
     completed int NOT NULL DEFAULT 0,
     failed int NOT NULL DEFAULT 0,
     status NVARCHAR(255) NOT NULL DEFAULT 'RUNNING'
-    PRIMARY KEY (migrationid)
+    PRIMARY KEY (migrationId)
 );
 
 IF OBJECT_ID ('MIGRATIONTOOLKIT_TABLECOPYSTATUS_Update','TR') IS NOT NULL
@@ -78,16 +78,16 @@ BEGIN
     SET NOCOUNT ON
     -- latest update overall = latest update timestamp of updated tasks
     UPDATE s
-    SET s.lastUpdate = t.latestUpdate
+    SET s.lastUpdate = t.lastUpdate
     FROM MIGRATIONTOOLKIT_TABLECOPYSTATUS s
     INNER JOIN (
-        SELECT migrationId, MAX(lastUpdate) AS latestUpdate
+        SELECT migrationId, MAX(lastUpdate) AS lastUpdate
         FROM inserted
         GROUP BY migrationId
     ) AS t
     ON s.migrationId = t.migrationId
 
-    SELECT @relevant_count = COUNT(pipelinename)
+    SELECT @relevant_count = COUNT(pipelineName)
     FROM inserted
     WHERE failure = '1'
        OR duration IS NOT NULL
@@ -99,7 +99,7 @@ BEGIN
         SET s.completed = t.completed
         FROM MIGRATIONTOOLKIT_TABLECOPYSTATUS s
         INNER JOIN (
-            SELECT migrationId, COUNT(pipelinename) AS completed
+            SELECT migrationId, COUNT(pipelineName) AS completed
             FROM MIGRATIONTOOLKIT_TABLECOPYTASKS
             WHERE duration IS NOT NULL
             GROUP BY migrationId
@@ -110,7 +110,7 @@ BEGIN
         SET s.failed = t.failed
         FROM MIGRATIONTOOLKIT_TABLECOPYSTATUS s
         INNER JOIN (
-            SELECT migrationId, COUNT(pipelinename) AS failed
+            SELECT migrationId, COUNT(pipelineName) AS failed
             FROM MIGRATIONTOOLKIT_TABLECOPYTASKS
             WHERE failure = '1'
             GROUP BY migrationId

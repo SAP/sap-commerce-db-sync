@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -14,5 +14,9 @@ import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 public interface DatabaseMigrationCopyService {
 
     void copyAllAsync(CopyContext context);
+
+    int tasksInProcessing(CopyContext context);
+
+    void notifyFinished(CopyContext context);
 
 }

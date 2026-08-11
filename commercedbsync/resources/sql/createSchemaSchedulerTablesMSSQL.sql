@@ -1,25 +1,14 @@
-DROP TABLE IF EXISTS MIGRATIONTOOLKIT_SCHEMADIFFS
-
-CREATE TABLE MIGRATIONTOOLKIT_SCHEMADIFFS (
-    pk INT IDENTITY(1,1) PRIMARY KEY,
-    schemaDifferenceId NVARCHAR(255) NOT NULL,
-    referenceDatabase NVARCHAR(255) NOT NULL,
-    missingTableLeftName NVARCHAR(255) NOT NULL,
-    missingTableRightName NVARCHAR(255) NOT NULL,
-    missingColumnName NVARCHAR(255) NULL
-);
-
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_SCHEMADIFFTASKS
 
 CREATE TABLE MIGRATIONTOOLKIT_SCHEMADIFFTASKS (
     schemaDifferenceId NVARCHAR(255) NOT NULL,
-    pipelinename NVARCHAR(255) NOT NULL,
+    pipelineName NVARCHAR(255) NOT NULL,
     duration NVARCHAR (255) NULL,
     failure INT NOT NULL DEFAULT 0,
     error NVARCHAR(MAX) NULL,
     lastUpdate DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    durationinseconds NUMERIC(10,2) NULL DEFAULT 0,
-    PRIMARY KEY (schemaDifferenceId, pipelinename)
+    durationInSeconds NUMERIC(10,2) NULL DEFAULT 0,
+    PRIMARY KEY (schemaDifferenceId, pipelineName)
 );
 
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_SCHEMADIFFSTATUS
@@ -33,7 +22,8 @@ CREATE TABLE MIGRATIONTOOLKIT_SCHEMADIFFSTATUS (
     completed INT NOT NULL DEFAULT 0,
     failed INT NOT NULL DEFAULT 0,
     status NVARCHAR(255) NOT NULL DEFAULT 'RUNNING',
-    sqlScript NVARCHAR(MAX) NULL
+    sqlScript NVARCHAR(MAX) NULL,
+    diffJson NVARCHAR(MAX) NULL
 );
 
 IF OBJECT_ID ('MIGRATIONTOOLKIT_SCHEMADIFFSTATUS_Update','TR') IS NOT NULL
@@ -57,7 +47,7 @@ BEGIN
     ) AS t
     ON s.schemaDifferenceId = t.schemaDifferenceId
 
-    SELECT @relevant_count = COUNT(pipelinename)
+    SELECT @relevant_count = COUNT(pipelineName)
     FROM inserted
     WHERE failure = '1'
        OR duration IS NOT NULL
@@ -69,7 +59,7 @@ BEGIN
         SET s.completed = t.completed
         FROM MIGRATIONTOOLKIT_SCHEMADIFFSTATUS s
         INNER JOIN (
-            SELECT schemaDifferenceId, COUNT(pipelinename) AS completed
+            SELECT schemaDifferenceId, COUNT(pipelineName) AS completed
             FROM MIGRATIONTOOLKIT_SCHEMADIFFTASKS
             WHERE duration IS NOT NULL
             GROUP BY schemaDifferenceId
@@ -80,7 +70,7 @@ BEGIN
         SET s.failed = t.failed
         FROM MIGRATIONTOOLKIT_SCHEMADIFFSTATUS s
         INNER JOIN (
-            SELECT schemaDifferenceId, COUNT(pipelinename) AS failed
+            SELECT schemaDifferenceId, COUNT(pipelineName) AS failed
             FROM MIGRATIONTOOLKIT_SCHEMADIFFTASKS
             WHERE failure = '1'
             GROUP BY schemaDifferenceId

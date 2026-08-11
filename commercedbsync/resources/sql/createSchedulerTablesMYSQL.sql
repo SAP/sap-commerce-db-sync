@@ -2,8 +2,9 @@ DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYTASKS;
 #
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS
 (
+    pk                     BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     targetnodeId           int          NOT NULL,
-    migrationId            VARCHAR(255) NOT NULL,
+    migrationId            CHAR(36)     NOT NULL,
     pipelinename           VARCHAR(255) NOT NULL,
     itemorder              int NOT NULL DEFAULT 0,
     sourcetablename        VARCHAR(255) NOT NULL,
@@ -25,40 +26,42 @@ CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYTASKS
     batchsize              int          NOT NULL DEFAULT 1000,
     chunked                char(1) NOT NULL DEFAULT '0',
     chunknumber            int,
-    chunksize              BIGINT,
-    PRIMARY KEY (migrationid, targetnodeid, pipelinename)
-);
+    chunksize              BIGINT
+    -- UNIQUE KEY UQ_MAIN (migrationid, targetnodeid, pipelinename)
+) ROW_FORMAT=DYNAMIC;
 #
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES;
 #
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES
 (
-    migrationId   VARCHAR(255) NOT NULL,
+    pk            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    migrationId   CHAR(36)     NOT NULL,
     batchId       int          NOT NULL DEFAULT 0,
     pipelinename  VARCHAR(255) NOT NULL,
     lowerBoundary VARCHAR(255) NOT NULL,
-    upperBoundary VARCHAR(255) NULL,
-    PRIMARY KEY (migrationid, batchId, pipelinename)
-);
+    upperBoundary VARCHAR(255) NULL
+    -- UNIQUE KEY UQ_MAIN (migrationid, batchId, pipelinename)
+) ROW_FORMAT=DYNAMIC;
 #
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART;
 #
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYBATCHES_PART
 (
-    migrationId   VARCHAR(255) NOT NULL,
+    pk            BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    migrationId   CHAR(36)     NOT NULL,
     batchId       int          NOT NULL DEFAULT 0,
     pipelinename  VARCHAR(255) NOT NULL,
     lowerBoundary VARCHAR(255) NOT NULL,
     upperBoundary VARCHAR(255) NULL,
-    partKey      VARCHAR(128) NOT NULL,
-    PRIMARY KEY (migrationid, batchId, pipelinename, partKey)
-);
+    partKey       VARCHAR(128) NOT NULL
+    -- UNIQUE KEY UQ_MAIN (migrationid, batchId, pipelinename, partKey)
+) ROW_FORMAT=DYNAMIC;
 #
 DROP TABLE IF EXISTS MIGRATIONTOOLKIT_TABLECOPYSTATUS;
 #
 CREATE TABLE MIGRATIONTOOLKIT_TABLECOPYSTATUS
 (
-    migrationId VARCHAR(255) NOT NULL,
+    migrationId CHAR(36)     NOT NULL,
     startAt     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     endAt       datetime,
     lastUpdate  datetime,

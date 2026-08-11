@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -105,8 +105,8 @@ public class CopyContext {
         }
 
         public String getPipelineName() {
-            return getSourceItem() + (this.chunkData != null ? this.chunkData.getCurrentChunk() : "") + "->"
-                    + getTargetItem();
+            return "%s%s->%s".formatted(getSourceItem(),
+                    (this.chunkData != null ? "[" + this.chunkData.getCurrentChunk() + "]" : ""), getTargetItem());
         }
 
         public Map<String, String> getColumnMap() {

@@ -11,23 +11,29 @@ var buttonDsTargetValidate = "Validate Connection";
 
 $(document).ready(function() {
 
-	tableDsSource = $('#tableDsSource').dataTable({
+	tableDsSource = $('#tableDsSource').DataTable({
 		"bStateSave": true,
 		"bAutoWidth": false,
-		"aLengthMenu" : [[10,25,50,100,-1], [10,25,50,100,'all']]
+		"paging": false,
+        "filter" : false,
+        "info" : false,
+        "sorting" : [ [ 0, "asc" ] ]
 	});
 
-	tableDsTarget = $('#tableDsTarget').dataTable({
+	tableDsTarget = $('#tableDsTarget').DataTable({
         "bStateSave": true,
         "bAutoWidth": false,
-        "aLengthMenu" : [[10,25,50,100,-1], [10,25,50,100,'all']]
+		"paging": false,
+        "filter" : false,
+        "info" : false,
+        "sorting" : [ [ 0, "asc" ] ]
     });
 
     loadSource();
     loadTarget();
 
 	$( "#tabs" ).tabs({
-		activate: function(event, ui) { 
+		activate: function(event, ui) {
 			if ( ui.newPanel.attr('id') == 'tabs-1') {
 
 			}
@@ -38,13 +44,13 @@ $(document).ready(function() {
 			//toggleActiveSidebar(ui.newPanel.attr('id').replace(/^.*-/, ''));
 		}
 	});
-	
+
 	$('#buttonDsSourceValidate').click(validateSource);
 	$('#buttonDsTargetValidate').click(validateTarget);
 
-		
-	
-});	
+
+
+});
 
 function validateSource()
 {
@@ -103,13 +109,13 @@ function validateTarget()
 function loadSource()
 {
 	$('#tableDsSourceWrapper').fadeOut();
-	tableDsSource.fnClearTable();
-	
+	tableDsSource.clear().draw();
+
 	//$('#buttonCopyData').html(buttonCopyData + ' ' +  hac.global.getSpinnerImg());
     var token = $("meta[name='_csrf']").attr("content");
 
     var url = $('#tableDsSource').attr('data-url');
-    
+
 	$.ajax({
 		url:url,
 		type:'GET',
@@ -119,24 +125,25 @@ function loadSource()
         },
 		success: function(data) {
 			debug.log(data);
-			tableDsSource.fnAddData(["profile",data.profile]);
-			tableDsSource.fnAddData(["driver",data.driver]);
-			tableDsSource.fnAddData(["connectionString",data.connectionString]);
-			tableDsSource.fnAddData(["userName",data.userName]);
-			tableDsSource.fnAddData(["password",data.password]);
-			tableDsSource.fnAddData(["schema",data.schema]);
-			tableDsSource.fnAddData(["catalog",data.catalog]);
+			tableDsSource.row.add(["profile",data.profile]);
+			tableDsSource.row.add(["driver",data.driver]);
+			tableDsSource.row.add(["connectionString",data.connectionString]);
+			tableDsSource.row.add(["userName",data.userName]);
+			tableDsSource.row.add(["password",data.password]);
+			tableDsSource.row.add(["schema",data.schema]);
+			tableDsSource.row.add(["catalog",data.catalog]);
+			tableDsSource.draw();
 
 			$("#tableDsSourceWrapper").fadeIn();
 		},
 		error: hac.global.err
-	});				
+	});
 }
-	
+
 function loadTarget()
 {
 	$('#tableDsTargetWrapper').fadeOut();
-	tableDsTarget.fnClearTable();
+	tableDsTarget.clear().draw();
 
 	//$('#buttonCopyData').html(buttonCopyData + ' ' +  hac.global.getSpinnerImg());
     var token = $("meta[name='_csrf']").attr("content");
@@ -152,13 +159,14 @@ function loadTarget()
         },
 		success: function(data) {
 			debug.log(data);
-			tableDsTarget.fnAddData(["profile",data.profile]);
-			tableDsTarget.fnAddData(["driver",data.driver]);
-			tableDsTarget.fnAddData(["connectionString",data.connectionString]);
-			tableDsTarget.fnAddData(["userName",data.userName]);
-			tableDsTarget.fnAddData(["password",data.password]);
-			tableDsTarget.fnAddData(["schema",data.schema]);
-			tableDsTarget.fnAddData(["catalog",data.catalog]);
+			tableDsTarget.row.add(["profile",data.profile]);
+			tableDsTarget.row.add(["driver",data.driver]);
+			tableDsTarget.row.add(["connectionString",data.connectionString]);
+			tableDsTarget.row.add(["userName",data.userName]);
+			tableDsTarget.row.add(["password",data.password]);
+			tableDsTarget.row.add(["schema",data.schema]);
+			tableDsTarget.row.add(["catalog",data.catalog]);
+			tableDsTarget.draw();
 
 			$("#tableDsTargetWrapper").fadeIn();
 		},

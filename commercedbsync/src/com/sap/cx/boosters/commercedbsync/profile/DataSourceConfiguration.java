@@ -1,10 +1,12 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.profile;
+
+import java.util.Properties;
 
 /**
  * Contains a DataSource Configuration
@@ -41,4 +43,10 @@ public interface DataSourceConfiguration {
     boolean isRemoveAbandoned();
 
     long getMaxLifetime();
+
+    long getIdleTimeout();
+
+    long getKeepaliveTime();
+
+    Properties getDriverProperties();
 }

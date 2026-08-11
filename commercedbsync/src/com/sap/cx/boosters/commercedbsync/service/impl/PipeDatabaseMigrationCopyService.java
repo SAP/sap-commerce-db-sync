@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -7,6 +7,8 @@
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import com.google.common.base.Stopwatch;
+import com.sap.cx.boosters.commercedbsync.adapter.DataRepositoryAdapter;
+import com.sap.cx.boosters.commercedbsync.adapter.impl.ContextualDataRepositoryAdapter;
 import com.sap.cx.boosters.commercedbsync.constants.CommercedbsyncConstants;
 import com.sap.cx.boosters.commercedbsync.scheduler.DatabaseCopyScheduler;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
@@ -50,6 +52,8 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
     private final DatabaseCopyTaskRepository databaseCopyTaskRepository;
     private final DatabaseCopyScheduler scheduler;
 
+    private ThreadPoolTaskExecutor executor;
+
     public PipeDatabaseMigrationCopyService(DataPipeFactory<DataSet> pipeFactory,
             PipeWriterStrategy<DataSet> writerStrategy, DataThreadPoolFactory dataWriteTaskFactory,
             DatabaseCopyTaskRepository databaseCopyTaskRepository, DatabaseCopyScheduler scheduler) {
@@ -66,6 +70,21 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
         Deque<Pair<CopyContext.DataCopyItem, Callable<Boolean>>> tasksToSchedule = generateCopyTasks(context,
                 copyItems);
         scheduleTasks(context, tasksToSchedule);
+    }
+
+    @Override
+    public int tasksInProcessing(CopyContext context) {
+        return executor != null ? executor.getActiveCount() : 0;
+    }
+
+    @Override
+    public void notifyFinished(CopyContext context) {
+        if (executor == null) {
+            return;
+        }
+        // all tasks submitted, graceful shutdown
+        dataWriteTaskFactory.destroy(executor);
+        executor = null;
     }
 
     /**
@@ -126,9 +145,11 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
         List<Pair<CopyContext.DataCopyItem, Future<Boolean>>> runningTasks = new ArrayList<>();
         BackOffExecution backoff = null;
         CopyContext.DataCopyItem previousReject = null;
-        DataThreadPoolConfig poolConfig = new DataThreadPoolConfigBuilder(context.getMigrationContext())
-                .withPoolSize(context.getMigrationContext().getMaxParallelTableCopy()).build();
-        ThreadPoolTaskExecutor executor = dataWriteTaskFactory.create(context, poolConfig);
+        if (executor == null) {
+            DataThreadPoolConfig poolConfig = new DataThreadPoolConfigBuilder(context.getMigrationContext())
+                    .withPoolSize(context.getMigrationContext().getMaxParallelTableCopy()).build();
+            executor = dataWriteTaskFactory.create(context, poolConfig);
+        }
         try {
             while (tasksToSchedule.peekFirst() != null) {
                 Pair<CopyContext.DataCopyItem, Callable<Boolean>> task = tasksToSchedule.removeFirst();
@@ -149,8 +170,6 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
                     }
                 }
             }
-            // all tasks submitted, graceful shutdown
-            dataWriteTaskFactory.destroy(executor);
         } catch (Exception e) {
             try {
                 scheduler.abort(context);
@@ -170,7 +189,7 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
             }
         }
 
-        LOG.debug("Running Tasks" + runningTasks.size());
+        LOG.debug("Running tasks: {}", runningTasks.size());
     }
 
     private void markAsCancelled(CopyContext context, CopyContext.DataCopyItem item) {
@@ -184,9 +203,29 @@ public class PipeDatabaseMigrationCopyService implements DatabaseMigrationCopySe
     private void silentlyUpdateCompletedState(final CopyContext context, final CopyContext.DataCopyItem item,
             final String duration, final float durationSeconds) {
         try {
-            databaseCopyTaskRepository.markTaskCompleted(context, item, duration, durationSeconds);
+            final long rowCount;
+
+            if (item.getChunkData() == null && item.getRowCount() > 0) {
+                DataRepositoryAdapter adapter = new ContextualDataRepositoryAdapter(
+                        context.getMigrationContext().getDataTargetRepository());
+                LOG.debug("Counting rows in table: {} (validate completion)", item.getTargetItem());
+
+                rowCount = adapter.getRowCount(context.getMigrationContext(), item.getTargetItem());
+
+                if (rowCount != item.getRowCount()) {
+                    LOG.warn("Rows count for target table: {} is different than expected (source: {}, target: {})",
+                            item.getTargetItem(), item.getRowCount(), rowCount);
+                }
+            } else {
+                // cannot verify single chunk, against entire table
+                rowCount = item.getRowCount();
+            }
+
+            databaseCopyTaskRepository.markTaskCompleted(context, item, duration, durationSeconds, rowCount);
         } catch (final Exception e) {
             LOG.error("Failed to update copy status", e);
         }
+
+        scheduler.notifyAboutAvailability(context);
     }
 }

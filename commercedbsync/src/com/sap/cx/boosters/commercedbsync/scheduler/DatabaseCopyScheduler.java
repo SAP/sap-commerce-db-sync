@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -24,4 +24,6 @@ public interface DatabaseCopyScheduler {
     boolean isAborted(CopyContext context) throws Exception;
 
     void abort(CopyContext context) throws Exception;
+
+    void notifyAboutAvailability(CopyContext context);
 }

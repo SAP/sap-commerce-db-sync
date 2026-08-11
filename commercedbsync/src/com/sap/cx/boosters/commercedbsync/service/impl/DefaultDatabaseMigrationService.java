@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -7,6 +7,7 @@
 package com.sap.cx.boosters.commercedbsync.service.impl;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Set;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import com.sap.cx.boosters.commercedbsync.repository.DataRepository;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationDataTypeMapperService;
 import de.hybris.bootstrap.ddl.DataBaseProvider;
 import de.hybris.platform.servicelayer.config.ConfigurationService;
 import org.slf4j.Logger;
@@ -47,6 +49,7 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
     private CopyItemProvider copyItemProvider;
     private PerformanceProfiler performanceProfiler;
     private DatabaseMigrationReportService databaseMigrationReportService;
+    private DatabaseMigrationDataTypeMapperService databaseMigrationDataTypeMapperService;
     private DatabaseSchemaDifferenceService schemaDifferenceService;
     private ConfigurationService configurationService;
     private MigrationContextValidator migrationContextValidator;
@@ -66,12 +69,19 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
             throw new IllegalStateException(
                     "Scheduler tables creation script for database " + databaseProvider + " not found!");
         }
-        // we cannot set "read-only" now...
-        repository.getConnection().setReadOnly(false);
-        repository.runSqlScript(scriptResource);
-        // we can reset to read-only now...
-        repository.getConnection().setReadOnly(true);
 
+        try (Connection connection = repository.getConnection()) {
+            boolean readOnly = connection.isReadOnly();
+
+            connection.setReadOnly(false);
+            repository.runSqlScript(scriptResource);
+
+            if (readOnly) {
+                connection.setReadOnly(true);
+            }
+        }
+
+        databaseMigrationDataTypeMapperService.beforeMigration(context);
     }
 
     @Override
@@ -211,6 +221,11 @@ public class DefaultDatabaseMigrationService implements DatabaseMigrationService
 
     public void setDatabaseMigrationReportService(DatabaseMigrationReportService databaseMigrationReportService) {
         this.databaseMigrationReportService = databaseMigrationReportService;
+    }
+
+    public void setDatabaseMigrationDataTypeMapperService(
+            DatabaseMigrationDataTypeMapperService databaseMigrationDataTypeMapperService) {
+        this.databaseMigrationDataTypeMapperService = databaseMigrationDataTypeMapperService;
     }
 
     public void setSchemaDifferenceService(DatabaseSchemaDifferenceService schemaDifferenceService) {

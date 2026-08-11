@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -160,11 +160,14 @@ public class MySQLDataRepository extends AbstractDataRepository {
 
     @Override
     public String getDatabaseTimezone() {
-        String query = "SELECT @@system_time_zone as timezone";
+        String query = "SELECT @@system_time_zone AS system_timezone, @@session.time_zone AS session_timezone";
         try (Connection conn = super.getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 rs.next();
-                return rs.getString("timezone");
+                String systemTimezone = rs.getString("system_timezone");
+                String sessionTimezone = rs.getString("session_timezone");
+
+                return "SYSTEM".equalsIgnoreCase(sessionTimezone) ? systemTimezone : sessionTimezone;
             }
         } catch (Exception e) {
             LOG.warn("Failed to check database timezone", e);

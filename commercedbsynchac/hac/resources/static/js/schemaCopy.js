@@ -39,12 +39,12 @@ $(document).ready(function() {
     });
 
 	// tab 1
-	targetSchemaDiffTable = $('#targetSchemaDiffTable').dataTable({
+	targetSchemaDiffTable = $('#targetSchemaDiffTable').DataTable({
 		"bStateSave": true,
 		"bAutoWidth": false,
 		"aLengthMenu" : [[10,25,50,100,-1], [10,25,50,100,'all']]
 	});
-    sourceSchemaDiffTable = $('#sourceSchemaDiffTable').dataTable({
+    sourceSchemaDiffTable = $('#sourceSchemaDiffTable').DataTable({
         "bStateSave": true,
         "bAutoWidth": false,
         "aLengthMenu" : [[10,25,50,100,-1], [10,25,50,100,'all']]
@@ -101,8 +101,8 @@ function migrateSchemaPreview() {
 
 function monitorSchemaStatus(schemaDifferenceId) {
     currentSchemaDifferenceId = schemaDifferenceId;
-    targetSchemaDiffTable.fnClearTable();
-    sourceSchemaDiffTable.fnClearTable();
+    targetSchemaDiffTable.clear().draw();
+    sourceSchemaDiffTable.clear().draw();
     sqlQueryEditor.setValue("");
 
     $('#buttonStartSchemaPreview').prop('disabled', true);
@@ -112,7 +112,7 @@ function monitorSchemaStatus(schemaDifferenceId) {
     $('#buttonMigrateSchema').prop('disabled', true);
 
     doPoll();
-    pollInterval = setInterval(doPoll, 1000);
+    pollInterval = setInterval(doPoll, 5000);
 }
 
 function doPoll() {
@@ -212,7 +212,7 @@ function formatDuration(startEpoch, endEpoch) {
         let sec_num = (endEpoch - startEpoch) / 1000;
         let hours   = Math.floor(sec_num / 3600);
         let minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-        let seconds = sec_num - (hours * 3600) - (minutes * 60);
+        let seconds = Math.round(sec_num - (hours * 3600) - (minutes * 60));
         if (hours   < 10) {hours   = "0"+hours;}
         if (minutes < 10) {minutes = "0"+minutes;}
         if (seconds < 10) {seconds = "0"+seconds;}
@@ -221,15 +221,29 @@ function formatDuration(startEpoch, endEpoch) {
 }
 
 function fillResult(status) {
-    targetSchemaDiffTable.fnClearTable();
-    sourceSchemaDiffTable.fnClearTable();
+    targetSchemaDiffTable.clear();
+    sourceSchemaDiffTable.clear();
 
-    if(status.diffResult.target.results.length > 0) {
-        targetSchemaDiffTable.fnAddData(status.diffResult.target.results.map((result) => [result[1], result[2]]));
+    if (status.diffResult.target.differences.length > 0) {
+        status.diffResult.target.differences.filter(d => d.tableMissing).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, '', '']));
+        status.diffResult.target.differences.filter(d => d.columnMissing).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, d.column, '']));
+        status.diffResult.target.differences.filter(d => d.leftType && d.rightType).forEach(d =>
+            targetSchemaDiffTable.row.add([d.rightName, '', `${d.column}: ${d.rightType} &rarr; ${d.leftType}`]));
     }
-    if(status.diffResult.source.results.length > 0) {
-        sourceSchemaDiffTable.fnAddData(status.diffResult.source.results.map((result) => [result[1], result[2]]));
+
+    if (status.diffResult.source.differences.length > 0) {
+        status.diffResult.source.differences.filter(d => d.tableMissing).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, '', '']));
+        status.diffResult.source.differences.filter(d => d.columnMissing).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, d.column, '']));
+        status.diffResult.source.differences.filter(d => d.leftType && d.rightType).forEach(d =>
+            sourceSchemaDiffTable.row.add([d.rightName, '', `${d.column}: ${d.rightType} &rarr; ${d.leftType}`]));
     }
+
+    targetSchemaDiffTable.draw();
+    sourceSchemaDiffTable.draw();
 
     sqlQueryEditor.setValue(status.sqlScript);
 }

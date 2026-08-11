@@ -65,7 +65,7 @@
                 let sec_num = (endEpoch - startEpoch) / 1000;
                 let hours   = Math.floor(sec_num / 3600);
                 let minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-                let seconds = sec_num - (hours * 3600) - (minutes * 60);
+                let seconds = Math.round(sec_num - (hours * 3600) - (minutes * 60));
                 if (hours   < 10) {hours   = "0"+hours;}
                 if (minutes < 10) {minutes = "0"+minutes;}
                 if (seconds < 10) {seconds = "0"+seconds;}
@@ -174,7 +174,7 @@
                 },
                 error: function(xht, textStatus, ex) {
                     hac.global.error("Data migration process failed, please check the logs");
-                    
+
                     startButton.innerHTML = startButtonContentBefore;
 
                     configureStartButton(false)
@@ -295,7 +295,10 @@
                         if (playFinishSoundCheckbox && $(playFinishSoundCheckbox).is(':checked')) {
                             playFinishSound();
                         }
+                    }
+                    if (status.completed || status.aborted) {
                         clearInterval(pollInterval);
+                        pollInterval = null;
                     }
                 },
                 error: function(xhr, status, error) {
@@ -312,16 +315,18 @@
 
         function writeLogs(statusUpdates) {
             statusUpdates.forEach(function (entry) {
-                let message = `${formatEpoch(entry.lastUpdateEpoch)} | ${entry.pipelinename} | ${entry.targetrowcount} / ${entry.sourcerowcount} | `;
+                let message = `${formatEpoch(entry.lastUpdateEpoch)} | ${entry.pipelinename} | ${entry.sourcerowcount} / ${entry.targetrowcount} | `;
                 let p = document.createElement("p");
+
                 if (entry.failure) {
                     message += `FAILED! Reason: ${entry.error}`;
                     p.classList.add("failed");
                 }else if (entry.completed) {
-                    message += `Completed in ${entry.duration}`;
+                    message += `Completed ${entry.duration !== '0' ? 'in ' + entry.duration + ` (avg reader throughput: ${entry.avgReaderRowThroughput} rows/s, avg writer throughput: ${entry.avgWriterRowThroughput} rows/s)` : '(empty table)'}`;
                     p.classList.add("completed");
                 } else {
-                    message += "In progress..."
+                    let progress = Math.max(0, entry.sourcerowcount > 0 ? (entry.targetrowcount / entry.sourcerowcount * 100) : 100).toFixed(1);
+                    message += `In progress (${progress}%), node ID: ${entry.targetnodeId < 0 ? 'UNASSIGNED' : entry.targetnodeId}, avg reader throughput: ${entry.avgReaderRowThroughput} rows/s, avg writer throughput: ${entry.avgWriterRowThroughput} rows/s`
                 }
                 p.textContent = message;
                 logContainer.appendChild(p);

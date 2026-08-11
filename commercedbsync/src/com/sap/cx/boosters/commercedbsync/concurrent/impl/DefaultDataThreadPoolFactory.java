@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -62,7 +62,7 @@ public class DefaultDataThreadPoolFactory implements DataThreadPoolFactory {
         }
         executor.initialize();
         monitor.subscribe(executor);
-        LOG.debug("Creating executor with parameters: Pool Size:{}", corePoolSize);
+        LOG.debug("Creating executor with parameters: corePoolSize = {}", corePoolSize);
         return executor;
     }
 

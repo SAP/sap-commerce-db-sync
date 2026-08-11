@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -9,6 +9,7 @@ package com.sap.cx.boosters.commercedbsync.performance;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.AtomicDouble;
+import com.sap.cx.boosters.commercedbsync.context.CopyContext;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -78,6 +79,19 @@ public class PerformanceRecorder {
     @Override
     public String toString() {
         return "PerformanceRecorder{name=" + getName() + ",{" + Joiner.on("},{").join(getRecords().values()) + "}}";
+    }
+
+    public static String getRecorderName(CopyContext.DataCopyItem copyItem, PerformanceCategory category) {
+        String tableName = switch (category) {
+            case DB_READ -> copyItem.getSourceItem();
+            case DB_WRITE -> copyItem.getTargetItem();
+        };
+
+        if (copyItem.getChunkData() != null) {
+            tableName += "[%d]".formatted(copyItem.getChunkData().getCurrentChunk());
+        }
+
+        return tableName;
     }
 
     public static class PerformanceAggregation {

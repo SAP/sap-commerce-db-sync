@@ -1,13 +1,13 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
 
 package com.sap.cx.boosters.commercedbsync.events.handlers;
 
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +19,7 @@ import com.sap.cx.boosters.commercedbsync.events.CopyCompleteEvent;
 import com.sap.cx.boosters.commercedbsync.performance.PerformanceProfiler;
 import com.sap.cx.boosters.commercedbsync.processors.MigrationPostProcessor;
 import com.sap.cx.boosters.commercedbsync.service.DatabaseCopyTaskRepository;
+import com.sap.cx.boosters.commercedbsync.service.DatabaseMigrationCopyService;
 
 import de.hybris.platform.servicelayer.event.impl.AbstractEventListener;
 import de.hybris.platform.tx.Transaction;
@@ -32,6 +33,7 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     private MigrationContext migrationContext;
     private DatabaseCopyTaskRepository databaseCopyTaskRepository;
+    private DatabaseMigrationCopyService databaseMigrationCopyService;
     private PerformanceProfiler performanceProfiler;
     private List<MigrationPostProcessor> postProcessors;
     private MigrationContext reverseMigrationContext;
@@ -40,12 +42,18 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
     protected void onEvent(final CopyCompleteEvent event) {
         final String migrationId = event.getOperationId();
 
-        LOG.info("Migration finished on Node {} with result {}", event.getSourceNodeId(), event.getCopyResult());
-        final CopyContext copyContext = event.isReversed()
-                ? new CopyContext(migrationId, reverseMigrationContext, new HashSet<>(), performanceProfiler)
-                : new CopyContext(migrationId, migrationContext, new HashSet<>(), performanceProfiler);
+        LOG.info("Migration finished on node {} with status completed: {}", event.getSourceNodeId(),
+                event.getCopyResult());
 
-        executePostProcessors(copyContext);
+        if (event.getCopyResult()) {
+            final CopyContext copyContext = new CopyContext(migrationId,
+                    event.isReversed() ? reverseMigrationContext : migrationContext, Set.of(), performanceProfiler);
+
+            databaseMigrationCopyService.notifyFinished(copyContext);
+            executePostProcessors(copyContext);
+        } else {
+            LOG.warn("Post processors were not executed as migration was not marked as completed");
+        }
     }
 
     /**
@@ -80,6 +88,7 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
             });
         } catch (final Exception e) {
             LOG.error("Error during PostProcessor execution", e);
+
             if (e instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             } else {
@@ -90,6 +99,10 @@ public class CopyCompleteEventListener extends AbstractEventListener<CopyComplet
 
     public void setDatabaseCopyTaskRepository(final DatabaseCopyTaskRepository databaseCopyTaskRepository) {
         this.databaseCopyTaskRepository = databaseCopyTaskRepository;
+    }
+
+    public void setDatabaseMigrationCopyService(DatabaseMigrationCopyService databaseMigrationCopyService) {
+        this.databaseMigrationCopyService = databaseMigrationCopyService;
     }
 
     public void setMigrationContext(final MigrationContext migrationContext) {

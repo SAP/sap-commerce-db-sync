@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -9,7 +9,10 @@ package com.sap.cx.boosters.commercedbsync.repository.impl;
 import javax.sql.DataSource;
 
 import com.sap.cx.boosters.commercedbsync.context.MigrationContext;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ddlutils.Platform;
+import org.apache.ddlutils.model.Index;
+import org.apache.ddlutils.model.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -191,5 +194,16 @@ public class PostGresDataRepository extends AbstractDataRepository {
             LOG.warn("Failed to check database timezone", e);
         }
         return null;
+    }
+
+    @Override
+    public void adjustTableInSchema(Table table) {
+        String tablePrefix = getDataSourceConfiguration().getTablePrefix();
+
+        if (StringUtils.isNotEmpty(tablePrefix)) {
+            for (Index index : table.getIndices()) {
+                index.setName(tablePrefix + index.getName());
+            }
+        }
     }
 }

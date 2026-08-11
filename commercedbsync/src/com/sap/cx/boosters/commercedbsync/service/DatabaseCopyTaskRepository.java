@@ -1,5 +1,5 @@
 /*
- *  Copyright: 2025 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
+ *  Copyright: 2026 SAP SE or an SAP affiliate company and commerce-db-synccontributors.
  *  License: Apache-2.0
  *
  */
@@ -98,7 +98,7 @@ public interface DatabaseCopyTaskRepository {
     void scheduleTask(CopyContext context, CopyContext.DataCopyItem copyItem, long itemOrder, long sourceRowCount,
             int targetNode) throws Exception;
 
-    void rescheduleTask(CopyContext context, String pipelineName, int targetNodeId) throws Exception;
+    boolean rescheduleTask(CopyContext context, String pipelineName, int targetNodeId) throws Exception;
 
     void scheduleBatch(CopyContext context, CopyContext.DataCopyItem copyItem, int batchId, Object lowerBoundary,
             Object upperBoundary) throws Exception;
@@ -120,6 +120,9 @@ public interface DatabaseCopyTaskRepository {
     Set<DatabaseCopyBatch> findPendingBatchesForPipeline(CopyContext context, DataCopyItem item, String partition)
             throws Exception;
 
+    boolean hasPendingBatchesForPipeline(CopyContext context, CopyContext.DataCopyItem item, boolean partitioned)
+            throws Exception;
+
     Optional<DatabaseCopyTask> findPipeline(CopyContext context, CopyContext.DataCopyItem dataCopyItem)
             throws Exception;
 
@@ -134,6 +137,8 @@ public interface DatabaseCopyTaskRepository {
      * @throws Exception
      */
     Set<DatabaseCopyTask> findPendingTasks(CopyContext context) throws Exception;
+
+    Set<DatabaseCopyTask> findQueuedPendingTasks(CopyContext context) throws Exception;
 
     Set<DatabaseCopyTask> findFailedTasks(CopyContext context) throws Exception;
 
@@ -205,6 +210,17 @@ public interface DatabaseCopyTaskRepository {
      * @param duration
      * @throws Exception
      */
-    void markTaskCompleted(CopyContext context, DataCopyItem copyItem, String duration, float durationseconds)
-            throws Exception;
+    void markTaskCompleted(CopyContext context, DataCopyItem copyItem, String duration, float durationseconds,
+            long targetRowCount) throws Exception;
+
+    /**
+     * Returns the number of tasks currently in queued state for the given
+     * migration. Useful to decide whether more work can be scheduled or whether the
+     * queue is already saturated.
+     *
+     * @param context
+     *            the migration context
+     * @return count of queued tasks
+     */
+    int countQueuedTasks(CopyContext context) throws Exception;
 }
